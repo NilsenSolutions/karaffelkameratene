@@ -186,6 +186,17 @@ textarea {
 .samling-skjema[hidden], #oppsett[hidden], #live-innhold[hidden] { display: none; }
 .live-under { font-size: 1.1rem; margin: 1.25rem 0 .6rem; }
 
+/* Påmeldte på vertssiden */
+.pameldte { margin-top: .9rem; background: var(--ink); border-radius: 10px; padding: .9rem; }
+.pameldte[hidden] { display: none; }
+.pameldte-tittel { font-family: var(--tittel); font-size: 1rem; margin: .25rem 0 .5rem; }
+.pameldte-liste { list-style: none; margin: 0 0 .75rem; padding: 0; display: grid; gap: .35rem; }
+.pameldte-liste li { display: grid; grid-template-columns: 1fr auto; gap: .5rem; align-items: center; border-bottom: 1px solid var(--ink-lys); padding: .35rem 0; }
+.pameldte-liste .rang-meta { opacity: .7; font-size: .85rem; }
+.legg-til { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: .5rem; margin-top: .5rem; }
+.legg-til .knapp { padding: .6rem 1rem; }
+@media (max-width: 480px) { .legg-til { grid-template-columns: minmax(0, 1fr); } }
+
 /* Bekreftelse i siden */
 dialog.bekreft {
   width: min(92vw, 420px); border: 0; border-radius: var(--radius); padding: 1.25rem;

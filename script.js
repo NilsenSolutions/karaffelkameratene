@@ -3,11 +3,7 @@
 // =====================================================================
 
 const CONFIG = {
-  // Hvor påmeldinger sendes som e-post.
-  epost: "post@karaffelkameratene.no",
-  // Valgfritt: adressen til en skjematjeneste (for eksempel Formspree).
-  // Står den tom, åpnes en ferdig utfylt e-post hos den som melder seg på.
-  skjemaUrl: "",
+  // Påmeldinger lagres i databasen og vises for vertskapet på /kveld/vert/.
   // Påmeldingen stenger så mange timer før start.
   stengerTimerFoer: 24,
   // Antall plasser igjen der status går fra "Ledige plasser" til "Få plasser igjen".
@@ -145,38 +141,38 @@ function visPamelding(s) {
     return;
   }
 
-  const status = pameldingStatus(s, new Date());
-  badge.dataset.status = status;
-  badge.textContent = STATUS_TEKST[status];
-
   [
     ["Smaking", s.tittel],
     ["Når", datoTekst(startTid(s)) + ", " + klokkeTekst(s)],
     ["Hvor", s.sted],
     ["Tema", s.tema]
-  ].forEach(([k, v]) => {
+  ].filter(([, v]) => v).forEach(([k, v]) => {
     detaljer.append(el("dt", "", k), el("dd", "", v));
   });
 
-  const igjen = Math.max(s.plasser - s.paameldte, 0);
+  const status = visPlasser(s);
+  $("skjema").hidden = status === "stengt" || !$("bekreftelse").hidden;
+  visSenere(s);
+}
+
+// Status, antall påmeldte, plassmåler og knappetekst. Returnerer status.
+function visPlasser(s) {
+  const status = pameldingStatus(s, new Date());
+  const badge = $("pm-status-badge");
+  badge.dataset.status = status;
+  badge.textContent = STATUS_TEKST[status];
+
   $("plasser-blokk").hidden = false;
   const antall = s.paameldte > 0 ? s.paameldte + " påmeldt" : "Ingen påmeldt ennå";
-  $("plasser-tekst").textContent = igjen > 0
-    ? antall + "."
-    : antall + ". Det er fullt, men du kan melde deg på ventelisten.";
-  const prosent = Math.min(100, Math.round((s.paameldte / s.plasser) * 100));
+  const vente = s.venteliste > 0 ? ", " + s.venteliste + " på venteliste" : "";
+  $("plasser-tekst").textContent = status === "fullt"
+    ? antall + vente + ". Det er fullt, men du kan melde deg på ventelisten."
+    : antall + vente + ".";
+  const prosent = s.plasser > 0 ? Math.min(100, Math.round((s.paameldte / s.plasser) * 100)) : 100;
   requestAnimationFrame(() => { $("meter-fyll").style.width = prosent + "%"; });
 
-  const knapp = $("send-knapp");
-  const skjema = $("skjema");
-  if (status === "stengt") {
-    skjema.hidden = true;
-  } else {
-    skjema.hidden = false;
-    knapp.textContent = status === "fullt" ? "Sett meg på venteliste" : "Meld meg på";
-  }
-
-  visSenere(s);
+  $("send-knapp").textContent = status === "fullt" ? "Sett meg på venteliste" : "Meld meg på";
+  return status;
 }
 
 function visSenere(naaverende) {
@@ -207,59 +203,37 @@ function validerSkjema() {
   return true;
 }
 
-function visBekreftelse(venteliste, viaEpost) {
+function visBekreftelse(svar, navn) {
   $("skjema").hidden = true;
   const b = $("bekreftelse");
   b.hidden = false;
-  $("bekreftelse-tittel").textContent = venteliste ? "Du står på ventelisten" : "Takk for påmeldingen";
-  $("bekreftelse-tekst").textContent = viaEpost
-    ? "Vi har åpnet en ferdig utfylt e-post. Trykk send i e-postprogrammet for å fullføre. Legg gjerne datoen i kalenderen under."
-    : (venteliste
-        ? "Vi sier fra hvis det blir en ledig plass."
-        : "Vi gleder oss til å se deg. Legg datoen i kalenderen under.");
+  $("bekreftelse-tittel").textContent = svar.venteliste
+    ? "Du står på ventelisten" + (svar.plass ? " som nummer " + svar.plass : "")
+    : (svar.allerede ? "Du er allerede påmeldt, " + navn : "Takk, " + navn + ". Du er påmeldt");
+  $("bekreftelse-tekst").textContent = svar.venteliste
+    ? "Du får plassen hvis noen melder seg av. Vertskapet sier fra."
+    : "Vi gleder oss til å se deg. Legg datoen i kalenderen under.";
   b.focus();
 }
 
+// Påmeldingen lagres i databasen. Vertskapet ser listen på vertssiden.
 async function sendSkjema(e) {
   e.preventDefault();
   if (!validerSkjema() || !neste) return;
-
-  const venteliste = pameldingStatus(neste, new Date()) === "fullt";
-  const data = {
-    smaking: neste.tittel,
-    dato: neste.dato,
-    navn: $("navn").value.trim(),
-    vin: $("vin").value.trim(),
-    venteliste
-  };
-
-  if (CONFIG.skjemaUrl) {
-    const knapp = $("send-knapp");
-    knapp.disabled = true;
-    try {
-      const svar = await fetch(CONFIG.skjemaUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify(data)
-      });
-      if (!svar.ok) throw new Error("Status " + svar.status);
-      visBekreftelse(venteliste, false);
-    } catch (err) {
-      knapp.disabled = false;
-      feil("feil-navn", "navn", "Påmeldingen ble ikke sendt. Prøv igjen, eller send e-post til " + CONFIG.epost + ".");
-    }
-    return;
+  const navn = $("navn").value.trim();
+  const knapp = $("send-knapp");
+  knapp.disabled = true;
+  try {
+    const svar = await kall("meld_pa", { p_samling: neste.id, p_navn: navn, p_vin: $("vin").value.trim() });
+    visBekreftelse(svar, navn);
+    // Oppdater antall påmeldte og status uten å skjule bekreftelsen.
+    SMAKINGER = await kall("hent_samlinger", {});
+    const oppdatert = SMAKINGER.find(s => s.id === neste.id);
+    if (oppdatert) { neste = oppdatert; visPlasser(neste); }
+  } catch (err) {
+    feil("feil-navn", "navn", "Påmeldingen ble ikke lagret: " + err.message + ". Prøv igjen.");
   }
-
-  const emne = (venteliste ? "Venteliste: " : "Påmelding: ") + data.smaking;
-  const tekst = [
-    "Navn: " + data.navn,
-    "Smaking: " + data.smaking + " (" + data.dato + ")",
-    data.vin ? "Tar med: " + data.vin : "",
-    venteliste ? "Gjelder venteliste." : ""
-  ].filter(Boolean).join("\n");
-  window.location.href = "mailto:" + CONFIG.epost + "?subject=" + encodeURIComponent(emne) + "&body=" + encodeURIComponent(tekst);
-  visBekreftelse(venteliste, true);
+  knapp.disabled = false;
 }
 
 // ---------------- Kalenderfil (.ics) ----------------
@@ -385,19 +359,27 @@ function byggFilter() {
 
 // ---------------- Henting av smakinger ----------------
 
-async function hentSmakinger() {
+// Kaller en databasefunksjon. Kaster en Error med lesbar melding ved feil.
+async function kall(navn, args) {
   const k = window.KARAFFEL;
   if (!k || !k.url || !k.nokkel) throw new Error("Ikke koblet til databasen");
   const headere = { "Content-Type": "application/json", "apikey": k.nokkel };
   if (k.nokkel.startsWith("eyJ")) headere.Authorization = "Bearer " + k.nokkel;
-  const svar = await fetch(k.url.replace(/\/$/, "") + "/rest/v1/rpc/hent_samlinger", { method: "POST", headers: headere, body: "{}" });
-  if (!svar.ok) throw new Error("Status " + svar.status);
-  return await svar.json();
+  let svar;
+  try {
+    svar = await fetch(k.url.replace(/\/$/, "") + "/rest/v1/rpc/" + navn, { method: "POST", headers: headere, body: JSON.stringify(args || {}) });
+  } catch (e) {
+    throw new Error("Får ikke kontakt med serveren");
+  }
+  const tekst = await svar.text();
+  const data = tekst ? JSON.parse(tekst) : null;
+  if (!svar.ok) throw new Error((data && data.message) || "Feil fra serveren");
+  return data;
 }
 
 async function lastSmakinger() {
   try {
-    SMAKINGER = await hentSmakinger();
+    SMAKINGER = await kall("hent_samlinger", {});
     startNedtelling();
   } catch (err) {
     startNedtelling();
@@ -415,3 +397,9 @@ byggFilter();
 visLogg();
 $("skjema").addEventListener("submit", sendSkjema);
 $("kalender-knapp").addEventListener("click", lastNedKalender);
+$("en-til").addEventListener("click", () => {
+  $("bekreftelse").hidden = true;
+  $("skjema").reset();
+  $("skjema").hidden = false;
+  $("navn").focus();
+});

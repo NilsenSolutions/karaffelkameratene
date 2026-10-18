@@ -155,6 +155,7 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 .feil:empty { display: none; }
 .bekreftelse[hidden], form[hidden] { display: none; }
 .bekreftelse h3 { color: var(--sitron); }
+.lenke-knapp { font: inherit; color: var(--lilla-mork); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
 
 .senere { margin-top: 3rem; }
 .senere ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }

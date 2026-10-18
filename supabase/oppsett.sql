@@ -343,14 +343,73 @@ create table if not exists public.samling (
 );
 alter table public.samling enable row level security;
 revoke all on public.samling from anon, authenticated;
+-- Kolonnen paameldte brukes ikke lenger. Antallet telles fra tabellen pamelding.
 
--- Kommende samlinger til forsiden. Forsiden skjuler selv de som har startet.
+-- Påmeldinger: navn og hva man tar med, ingen e-post. Venteliste når det er fullt.
+create table if not exists public.pamelding (
+  id uuid primary key default gen_random_uuid(),
+  samling_id uuid not null references public.samling(id) on delete cascade,
+  navn text not null,
+  vin text not null default '',
+  venteliste boolean not null default false,
+  opprettet timestamptz not null default now()
+);
+create index if not exists pamelding_samling on public.pamelding (samling_id, opprettet);
+-- Eksakt klokke, så rekkefølgen på ventelisten er entydig også ved samtidige påmeldinger.
+alter table public.pamelding alter column opprettet set default clock_timestamp();
+alter table public.pamelding enable row level security;
+revoke all on public.pamelding from anon, authenticated;
+
+-- Flytter folk fra ventelisten når det blir ledig plass, i den rekkefølgen de meldte seg på.
+create or replace function public.flytt_opp(p_samling uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare ledige int;
+begin
+  select s.plasser - (select count(*) from pamelding p where p.samling_id = s.id and not p.venteliste)
+  into ledige from samling s where s.id = p_samling;
+  if coalesce(ledige, 0) > 0 then
+    update pamelding set venteliste = false
+    where id in (select id from pamelding where samling_id = p_samling and venteliste order by opprettet limit ledige);
+  end if;
+end $$;
+
+-- Påmelding fra forsiden. Samme navn to ganger på samme samling oppdaterer i stedet for å lage en ny.
+create or replace function public.meld_pa(p_samling uuid, p_navn text, p_vin text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_navn text := left(regexp_replace(trim(coalesce(p_navn, '')), '\s+', ' ', 'g'), 60);
+  v_vin text := left(trim(coalesce(p_vin, '')), 120);
+  s samling; eks pamelding; v_vente boolean; v_plass int;
+begin
+  if v_navn = '' then raise exception 'Skriv inn navnet ditt'; end if;
+  select * into s from samling where id = p_samling;
+  if not found then raise exception 'Finner ikke smakingen'; end if;
+  if s.dato < current_date then raise exception 'Påmeldingen er stengt'; end if;
+  select * into eks from pamelding where samling_id = p_samling and normaliser(navn) = normaliser(v_navn);
+  if found then
+    update pamelding set vin = case when v_vin <> '' then v_vin else vin end where id = eks.id;
+    v_vente := eks.venteliste;
+  else
+    if (select count(*) from pamelding where samling_id = p_samling) >= 200 then raise exception 'For mange påmeldinger'; end if;
+    v_vente := (select count(*) from pamelding where samling_id = p_samling and not venteliste) >= s.plasser;
+    insert into pamelding (samling_id, navn, vin, venteliste) values (p_samling, v_navn, v_vin, v_vente);
+  end if;
+  if v_vente then
+    select count(*) into v_plass from pamelding
+    where samling_id = p_samling and venteliste and opprettet <= coalesce(eks.opprettet, clock_timestamp());
+  end if;
+  return jsonb_build_object('venteliste', v_vente, 'plass', v_plass, 'allerede', eks.id is not null);
+end $$;
+
+-- Kommende samlinger til forsiden, med antall påmeldte (ikke navn). Forsiden skjuler selv de som har startet.
 create or replace function public.hent_samlinger()
 returns jsonb language sql stable security definer set search_path = public as $$
   select coalesce(jsonb_agg(jsonb_build_object(
-    'id', id, 'dato', dato, 'tid', tid, 'tittel', tittel, 'sted', sted, 'tema', tema,
-    'plasser', plasser, 'paameldte', paameldte) order by dato, tid), '[]'::jsonb)
-  from samling where dato >= current_date - 1
+    'id', s.id, 'dato', s.dato, 'tid', s.tid, 'tittel', s.tittel, 'sted', s.sted, 'tema', s.tema, 'plasser', s.plasser,
+    'paameldte', (select count(*) from pamelding p where p.samling_id = s.id and not p.venteliste),
+    'venteliste', (select count(*) from pamelding p where p.samling_id = s.id and p.venteliste))
+    order by s.dato, s.tid), '[]'::jsonb)
+  from samling s where s.dato >= current_date - 1
 $$;
 
 -- Til vertssiden: kommende og de siste 30 dagene, med status for kveldsoppsettet.
@@ -361,7 +420,9 @@ begin
   if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
   return (select coalesce(jsonb_agg(to_jsonb(s) || jsonb_build_object(
             'viner', (select count(*) from vin v where v.smaking_id = s.id::text),
-            'aktiv', coalesce(k.aktiv, false)) order by s.dato, s.tid), '[]'::jsonb)
+            'aktiv', coalesce(k.aktiv, false),
+            'paameldte', (select count(*) from pamelding p where p.samling_id = s.id and not p.venteliste),
+            'venteliste', (select count(*) from pamelding p where p.samling_id = s.id and p.venteliste)) order by s.dato, s.tid), '[]'::jsonb)
           from samling s left join smaking k on k.id = s.id::text
           where s.dato >= current_date - 30);
 end $$;
@@ -389,7 +450,35 @@ begin
     update smaking set tittel = coalesce(p_data->>'tittel', ''), dato = (p_data->>'dato')::date, sted = coalesce(p_data->>'sted', '')
     where id = v_id::text;
   end if;
+  perform flytt_opp(v_id);   -- flere plasser kan slippe folk inn fra ventelisten
   return v_id;
+end $$;
+
+-- Påmeldte og venteliste for én samling, i påmeldingsrekkefølge.
+create or replace function public.vert_hent_pameldinger(p_pin text, p_samling uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  return (select coalesce(jsonb_agg(jsonb_build_object('id', id, 'navn', navn, 'vin', vin, 'venteliste', venteliste, 'opprettet', opprettet)
+          order by venteliste, opprettet), '[]'::jsonb) from pamelding where samling_id = p_samling);
+end $$;
+
+-- Verten legger til noen som har meldt seg på muntlig.
+create or replace function public.vert_legg_til_pamelding(p_pin text, p_samling uuid, p_navn text, p_vin text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  return meld_pa(p_samling, p_navn, p_vin);
+end $$;
+
+-- Fjerner en påmelding. Første på ventelisten flyttes opp hvis det blir plass.
+create or replace function public.vert_fjern_pamelding(p_pin text, p_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_samling uuid;
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  delete from pamelding where id = p_id returning samling_id into v_samling;
+  if v_samling is not null then perform flytt_opp(v_samling); end if;
 end $$;
 
 create or replace function public.vert_slett_samling(p_pin text, p_id uuid)
@@ -407,7 +496,9 @@ grant execute on function public.hent_kveld(), public.send_gjetning(text, text, 
   public.vert_lagre(text, jsonb), public.vert_avslor(text, text, text, boolean),
   public.hent_samlinger(), public.vert_hent_samlinger(text), public.vert_lagre_samling(text, jsonb),
   public.vert_slett_samling(text, uuid), public.vert_hent_kveld(text, text), public.vert_aktiver(text, text, boolean),
-  public.hent_vinkjennere(), public.vert_nullstill(text, text) to anon;
+  public.hent_vinkjennere(), public.vert_nullstill(text, text),
+  public.meld_pa(uuid, text, text), public.vert_hent_pameldinger(text, uuid),
+  public.vert_legg_til_pamelding(text, uuid, text, text), public.vert_fjern_pamelding(text, uuid) to anon;
 
 -- =====================================================================
 -- SETT VERTENS PIN: bytt ut DIN-PIN under (minst 6 tegn) og kjør bare denne linjen.

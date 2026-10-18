@@ -31,8 +31,7 @@ const SAMLINGSFELT = [
   { felt: "tittel", navn: "Tittel", type: "text", bred: true },
   { felt: "sted", navn: "Sted", type: "text" },
   { felt: "tema", navn: "Tema", type: "text" },
-  { felt: "plasser", navn: "Plasser", type: "number" },
-  { felt: "paameldte", navn: "Påmeldte", type: "number" }
+  { felt: "plasser", navn: "Plasser", type: "number" }
 ];
 const PIN_NOKKEL = "karaffel-vert-pin";
 
@@ -213,7 +212,7 @@ function byggSamling(s) {
   const topp = el("div", "samling-topp");
   const tekst = el("div");
   tekst.append(el("h3", "samling-navn", s.id ? (s.tittel || "Uten tittel") : "Ny samling"));
-  if (s.id) tekst.append(el("p", "rang-meta", [kortDato(s.dato, s.tid), s.sted, s.paameldte + " påmeldt"].filter(Boolean).join(" · ")));
+  if (s.id) tekst.append(el("p", "rang-meta", [kortDato(s.dato, s.tid), s.sted, s.paameldte + " påmeldt" + (s.venteliste ? ", " + s.venteliste + " på venteliste" : "")].filter(Boolean).join(" · ")));
   topp.append(tekst);
   if (s.id) {
     const merke = s.aktiv ? "Kveldsmodus på" : s.viner ? "Kveld klar · " + s.viner + " viner" : "Kveld ikke konfigurert";
@@ -245,6 +244,9 @@ function byggSamling(s) {
       });
       knapper.append(pa);
     }
+    const visListe = el("button", "lenkeknapp", "Påmeldte (" + (s.paameldte + (s.venteliste || 0)) + ")");
+    visListe.type = "button";
+    knapper.append(visListe);
     const endre = el("button", "lenkeknapp", "Endre detaljer");
     endre.type = "button";
     knapper.append(endre);
@@ -255,6 +257,14 @@ function byggSamling(s) {
       knapper.append(null_);
     }
     kort.append(knapper);
+    const liste = el("div", "pameldte");
+    liste.hidden = !apneLister.has(s.id);
+    if (!liste.hidden) visPameldinger(s, liste);
+    visListe.addEventListener("click", () => {
+      liste.hidden = !liste.hidden;
+      if (liste.hidden) apneLister.delete(s.id); else { apneLister.add(s.id); visPameldinger(s, liste); }
+    });
+    kort.append(liste);
     const skjema = byggSamlingsskjema(s);
     skjema.hidden = true;
     endre.addEventListener("click", () => {
@@ -266,6 +276,79 @@ function byggSamling(s) {
     kort.append(byggSamlingsskjema(s));
   }
   return kort;
+}
+
+// ---------------- Påmeldte per samling ----------------
+
+const apneLister = new Set();   // hvilke lister som er åpne, så de holder seg åpne etter oppdatering
+const klokke = iso => new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+
+async function visPameldinger(s, boks) {
+  boks.textContent = "";
+  boks.append(el("p", "hjelp", "Henter påmeldte…"));
+  let rader;
+  try {
+    rader = await rpc("vert_hent_pameldinger", { p_pin: pin, p_samling: s.id });
+  } catch (err) {
+    boks.textContent = "";
+    boks.append(el("p", "feil", err.message));
+    return;
+  }
+  boks.textContent = "";
+
+  const pameldt = rader.filter(r => !r.venteliste);
+  const vente = rader.filter(r => r.venteliste);
+  const seksjon = (tittel, liste, nummerert) => {
+    boks.append(el("h4", "pameldte-tittel", tittel));
+    if (!liste.length) { boks.append(el("p", "hjelp", "Ingen ennå.")); return; }
+    const ol = el("ol", "pameldte-liste");
+    liste.forEach((r, i) => {
+      const li = el("li");
+      const tekst = el("span", "rang-tekst");
+      tekst.append(el("span", "rang-navn", (nummerert ? (i + 1) + ". " : "") + r.navn));
+      tekst.append(el("span", "rang-meta", [r.vin && "Tar med " + r.vin, klokke(r.opprettet)].filter(Boolean).join(" · ")));
+      const fjern = el("button", "lenkeknapp", "Fjern");
+      fjern.type = "button";
+      fjern.addEventListener("click", async () => {
+        if (!(await bekreft("Fjerne " + r.navn + " fra «" + (s.tittel || "samlingen") + "»?" +
+          (r.venteliste ? "" : " Første på ventelisten får plassen."), "Fjern"))) return;
+        try {
+          await rpc("vert_fjern_pamelding", { p_pin: pin, p_id: r.id });
+          await hentSamlinger();
+        } catch (err) { melding(err.message); }
+      });
+      li.append(tekst, fjern);
+      ol.append(li);
+    });
+    boks.append(ol);
+  };
+  seksjon("Påmeldt (" + pameldt.length + " av " + s.plasser + " plasser)", pameldt, false);
+  if (vente.length) seksjon("Venteliste (" + vente.length + ")", vente, true);
+
+  // Legg til noen som har meldt seg på muntlig.
+  const ny = el("form", "legg-til");
+  const navn = el("input");
+  Object.assign(navn, { type: "text", placeholder: "Navn", maxLength: 60, required: true });
+  navn.setAttribute("aria-label", "Navn på ny påmeldt");
+  const vin = el("input");
+  Object.assign(vin, { type: "text", placeholder: "Tar med (valgfritt)", maxLength: 120 });
+  vin.setAttribute("aria-label", "Hva personen tar med");
+  const leggTil = el("button", "knapp lys-knapp", "Legg til");
+  leggTil.type = "submit";
+  ny.append(navn, vin, leggTil);
+  ny.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!navn.value.trim()) return;
+    leggTil.disabled = true;
+    try {
+      await rpc("vert_legg_til_pamelding", { p_pin: pin, p_samling: s.id, p_navn: navn.value.trim(), p_vin: vin.value.trim() });
+      await hentSamlinger();
+    } catch (err) {
+      melding(err.message);
+      leggTil.disabled = false;
+    }
+  });
+  boks.append(ny);
 }
 
 function byggSamlingsskjema(s) {

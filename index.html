@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Karaffelkameratene</title>
+  <meta name="description" content="Karaffelkameratene er en vinklubb. Se når neste smaking starter, meld deg på og sjekk hva vi har drukket.">
+  <meta property="og:title" content="Karaffelkameratene">
+  <meta property="og:description" content="Vinklubb med smakinger, påmelding og vinlogg.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://karaffelkameratene.no/">
+  <meta name="theme-color" content="#1b1030">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#pamelding">Hopp til påmelding</a>
+
+  <a class="stripe" href="#pamelding" id="stripe" hidden>
+    <span id="stripe-tekst"></span>
+  </a>
+
+  <header class="topp">
+    <a class="merke" href="#">Karaffelkameratene</a>
+    <nav aria-label="Hovedmeny">
+      <a href="#kvelden">Slik blir kvelden</a>
+      <a href="#pamelding">Påmelding</a>
+      <a href="#vinlogg">Vinlogg</a>
+      <a href="#om">Om oss</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-tekst">
+        <h1>Vi tar en karaffel til.</h1>
+        <p class="ingress">Karaffelkameratene er en vinklubb. Vi møtes, smaker blindt, krangler høflig om druer og går hjem litt senere enn planlagt.</p>
+        <p><a class="knapp" href="#pamelding">Meld deg på neste smaking</a></p>
+      </div>
+
+      <div class="nedtelling" id="nedtelling" aria-live="off">
+        <p class="nt-tittel" id="nt-tittel">Neste smaking</p>
+        <div class="nt-tall" role="timer" aria-label="Tid til neste smaking">
+          <div><b id="nt-d">–</b><span>dager</span></div>
+          <div><b id="nt-t">–</b><span>timer</span></div>
+          <div><b id="nt-m">–</b><span>min</span></div>
+          <div><b id="nt-s">–</b><span>sek</span></div>
+        </div>
+        <p class="nt-info" id="nt-info"></p>
+      </div>
+    </section>
+
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-spor" id="marquee"></div>
+    </div>
+
+    <section id="kvelden" class="seksjon lys">
+      <div class="innpakning">
+        <h2>Slik blir kvelden</h2>
+        <ol class="steg">
+          <li>
+            <h3>Vi samles</h3>
+            <p>Verten har karaflet vinene på forhånd. Du får et glass og et navnekort, ikke en flaskeetikett.</p>
+          </li>
+          <li>
+            <h3>Vi smaker blindt</h3>
+            <p>Hver vin får poeng fra alle rundt bordet. Alle mener noe, og ingen får bruke «eik» som eneste svar.</p>
+          </li>
+          <li>
+            <h3>Vi avslører og spiser</h3>
+            <p>Flaskene kommer frem, poengene summeres, og så er det mat. Dette er det beste øyeblikket å ha tippet feil.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="pamelding" class="seksjon mork">
+      <div class="innpakning to-kol">
+        <div>
+          <h2>Påmelding</h2>
+          <p id="pm-status-badge" class="badge" data-status="">Laster…</p>
+          <dl class="detaljer" id="detaljer"></dl>
+
+          <div class="plasser" id="plasser-blokk" hidden>
+            <div class="plasser-linje">
+              <span id="plasser-tekst"></span>
+            </div>
+            <div class="meter" aria-hidden="true"><div id="meter-fyll"></div></div>
+          </div>
+        </div>
+
+        <div>
+          <form id="skjema" novalidate>
+            <div class="felt">
+              <label for="navn">Navn</label>
+              <input id="navn" name="navn" type="text" autocomplete="name" required>
+              <p class="feil" id="feil-navn" role="alert"></p>
+            </div>
+            <div class="felt">
+              <label for="epost">E-post</label>
+              <input id="epost" name="epost" type="email" autocomplete="email" required>
+              <p class="feil" id="feil-epost" role="alert"></p>
+            </div>
+            <div class="felt">
+              <label for="vin">Hva tar du med? <span class="valgfri">Valgfritt</span></label>
+              <input id="vin" name="vin" type="text" placeholder="For eksempel en nebbiolo">
+            </div>
+            <div class="felt avkryss">
+              <input id="samtykke" name="samtykke" type="checkbox" required>
+              <label for="samtykke">Jeg er over 18 år og godtar at klubben bruker e-postadressen min til å svare på påmeldingen.</label>
+              <p class="feil" id="feil-samtykke" role="alert"></p>
+            </div>
+            <button class="knapp" type="submit" id="send-knapp">Meld meg på</button>
+          </form>
+
+          <div class="bekreftelse" id="bekreftelse" hidden tabindex="-1">
+            <h3 id="bekreftelse-tittel"></h3>
+            <p id="bekreftelse-tekst"></p>
+            <p><button class="knapp" type="button" id="kalender-knapp">Legg i kalenderen</button></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="innpakning senere" id="senere-blokk" hidden>
+        <h3>Senere smakinger</h3>
+        <ul id="senere-liste"></ul>
+      </div>
+    </section>
+
+    <section id="vinlogg" class="seksjon lys">
+      <div class="innpakning">
+        <h2>Vinlogg</h2>
+        <p class="under">Det vi har drukket, og hva bordet mente om det. Poeng fra 1 til 10.</p>
+
+        <div class="verktoy">
+          <div class="filter" role="group" aria-label="Filtrer på vintype" id="filter"></div>
+          <div class="sorter" role="group" aria-label="Sorter">
+            <button type="button" data-sorter="dato" aria-pressed="true">Nyeste først</button>
+            <button type="button" data-sorter="poeng" aria-pressed="false">Høyest poeng</button>
+          </div>
+        </div>
+
+        <ul class="logg" id="logg" aria-live="polite"></ul>
+      </div>
+    </section>
+
+    <section id="om" class="seksjon mork">
+      <div class="innpakning smal">
+        <h2>Om oss</h2>
+        <p>Karaffelkameratene startet som et kjøkkenbord og noen flasker som trengte å åpnes. Siden har vi holdt det enkelt: en vert, ett tema og en regel om at ingen skal bli sittende med en vin de ikke tør å mene noe om.</p>
+        <p>Du trenger ikke kunne noe om vin for å være med. Du trenger bare å ha lyst til å smake, og å si fra når noe smaker kork.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bunn">
+    <p>Karaffelkameratene</p>
+    <p>Drikk med måte. Ingen under 18 år.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

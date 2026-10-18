@@ -213,7 +213,7 @@ function byggSamling(s) {
   const topp = el("div", "samling-topp");
   const tekst = el("div");
   tekst.append(el("h3", "samling-navn", s.id ? (s.tittel || "Uten tittel") : "Ny samling"));
-  if (s.id) tekst.append(el("p", "rang-meta", [kortDato(s.dato, s.tid), s.sted, s.paameldte + " av " + s.plasser + " påmeldt"].filter(Boolean).join(" · ")));
+  if (s.id) tekst.append(el("p", "rang-meta", [kortDato(s.dato, s.tid), s.sted, s.paameldte + " påmeldt"].filter(Boolean).join(" · ")));
   topp.append(tekst);
   if (s.id) {
     const merke = s.aktiv ? "Kveldsmodus på" : s.viner ? "Kveld klar · " + s.viner + " viner" : "Kveld ikke konfigurert";

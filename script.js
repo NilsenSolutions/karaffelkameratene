@@ -160,9 +160,10 @@ function visPamelding(s) {
 
   const igjen = Math.max(s.plasser - s.paameldte, 0);
   $("plasser-blokk").hidden = false;
+  const antall = s.paameldte > 0 ? s.paameldte + " påmeldt" : "Ingen påmeldt ennå";
   $("plasser-tekst").textContent = igjen > 0
-    ? s.paameldte + " av " + s.plasser + " plasser er tatt. " + igjen + " igjen."
-    : "Alle " + s.plasser + " plassene er tatt. Du kan melde deg på ventelisten.";
+    ? antall + "."
+    : antall + ". Det er fullt, men du kan melde deg på ventelisten.";
   const prosent = Math.min(100, Math.round((s.paameldte / s.plasser) * 100));
   requestAnimationFrame(() => { $("meter-fyll").style.width = prosent + "%"; });
 
@@ -198,21 +199,12 @@ function feil(id, inputId, melding) {
 }
 
 function validerSkjema() {
-  let ok = true;
-  const navn = $("navn").value.trim();
-  const epost = $("epost").value.trim();
-
-  if (!navn) { feil("feil-navn", "navn", "Skriv inn navnet ditt."); ok = false; }
-  else feil("feil-navn", "navn", "");
-
-  if (!epost) { feil("feil-epost", "epost", "Skriv inn e-postadressen din."); ok = false; }
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(epost)) { feil("feil-epost", "epost", "E-postadressen ser ikke riktig ut."); ok = false; }
-  else feil("feil-epost", "epost", "");
-
-  if (!$("samtykke").checked) { feil("feil-samtykke", "samtykke", "Du må bekrefte dette for å melde deg på."); ok = false; }
-  else feil("feil-samtykke", "samtykke", "");
-
-  return ok;
+  if (!$("navn").value.trim()) {
+    feil("feil-navn", "navn", "Skriv inn navnet ditt.");
+    return false;
+  }
+  feil("feil-navn", "navn", "");
+  return true;
 }
 
 function visBekreftelse(venteliste, viaEpost) {
@@ -223,7 +215,7 @@ function visBekreftelse(venteliste, viaEpost) {
   $("bekreftelse-tekst").textContent = viaEpost
     ? "Vi har åpnet en ferdig utfylt e-post. Trykk send i e-postprogrammet for å fullføre. Legg gjerne datoen i kalenderen under."
     : (venteliste
-        ? "Vi sier fra på e-post hvis det blir en ledig plass."
+        ? "Vi sier fra hvis det blir en ledig plass."
         : "Vi gleder oss til å se deg. Legg datoen i kalenderen under.");
   b.focus();
 }
@@ -237,7 +229,6 @@ async function sendSkjema(e) {
     smaking: neste.tittel,
     dato: neste.dato,
     navn: $("navn").value.trim(),
-    epost: $("epost").value.trim(),
     vin: $("vin").value.trim(),
     venteliste
   };
@@ -255,7 +246,7 @@ async function sendSkjema(e) {
       visBekreftelse(venteliste, false);
     } catch (err) {
       knapp.disabled = false;
-      feil("feil-epost", "epost", "Påmeldingen ble ikke sendt. Prøv igjen, eller send e-post til " + CONFIG.epost + ".");
+      feil("feil-navn", "navn", "Påmeldingen ble ikke sendt. Prøv igjen, eller send e-post til " + CONFIG.epost + ".");
     }
     return;
   }
@@ -263,7 +254,6 @@ async function sendSkjema(e) {
   const emne = (venteliste ? "Venteliste: " : "Påmelding: ") + data.smaking;
   const tekst = [
     "Navn: " + data.navn,
-    "E-post: " + data.epost,
     "Smaking: " + data.smaking + " (" + data.dato + ")",
     data.vin ? "Tar med: " + data.vin : "",
     venteliste ? "Gjelder venteliste." : ""

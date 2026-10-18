@@ -144,4 +144,36 @@ function visToppliste(liste, rader, mittNavn) {
   });
 }
 
+// ---------------- Tema ----------------
+// Vertskapet velger tema for hele siden på /kveld/vert/. Valget huskes i nettleseren (samme
+// nøkkel som forsiden), så neste besøk tegnes riktig med en gang. ?tema=… forhåndsviser uten å lagre.
+
+const TEMAER = ["kveld", "kamerater"];
+const TEMA_FARGE = { kveld: "#1b1030", kamerater: "#eef3ea" };
+
+function brukTema(tema) {
+  if (!TEMAER.includes(tema)) tema = "kveld";
+  if (tema === "kveld") document.documentElement.removeAttribute("data-tema");
+  else document.documentElement.setAttribute("data-tema", tema);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", TEMA_FARGE[tema]);
+}
+
+function huskTema(tema) {
+  try { localStorage.setItem("karaffel-tema", TEMAER.includes(tema) ? tema : "kveld"); } catch (e) { /* blokkert lagring */ }
+}
+
+async function lastTema() {
+  let forhandsvis = null;
+  try { forhandsvis = new URLSearchParams(location.search).get("tema"); } catch (e) { /* gammel nettleser */ }
+  if (TEMAER.includes(forhandsvis)) return brukTema(forhandsvis);
+  try {
+    const tema = await rpc("hent_tema", {});
+    brukTema(tema);
+    huskTema(tema);
+  } catch (e) { /* behold det siden alt viser */ }
+}
+
+if (tilkoblet()) lastTema();
+
 const vinTittel = v =>[v.produsent, v.navn].filter(Boolean).join(" ") || "Vin " + v.bokstav;

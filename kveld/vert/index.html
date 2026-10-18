@@ -8,9 +8,18 @@
   <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../style.css?v=20261018h">
-  <link rel="stylesheet" href="../kveld.css?v=20261018h">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&family=Permanent+Marker&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    // Samme tema som forsiden, valgt før siden tegnes. felles.js henter det lagrede valget etterpå.
+    (function () {
+      var t = null;
+      try { t = new URLSearchParams(location.search).get("tema") || localStorage.getItem("karaffel-tema"); } catch (e) {}
+      if (t === "kamerater") document.documentElement.setAttribute("data-tema", t);
+    })();
+  </script>
+  <link rel="stylesheet" href="../../style.css?v=20261018i">
+  <link rel="stylesheet" href="../kveld.css?v=20261018i">
+  <link rel="stylesheet" href="../../tema.css?v=20261018i">
 </head>
 <body class="kveld">
   <header class="topp">
@@ -65,8 +74,8 @@
       </section>
 
       <section class="kort" aria-labelledby="tema-tittel">
-        <h2 class="kort-tittel" id="tema-tittel">Utseende på forsiden</h2>
-        <p class="hjelp">Velg hvordan forsiden ser ut for alle som besøker den. Forhåndsvis gjerne før du tar det i bruk.</p>
+        <h2 class="kort-tittel" id="tema-tittel">Utseende</h2>
+        <p class="hjelp">Velg utseende for hele siden: forsiden, kveldsmodus og vertssiden. Det gjelder alle som besøker den. Forhåndsvis gjerne før du tar det i bruk.</p>
         <fieldset class="tema-valg">
           <legend>Tema</legend>
           <label class="tema-alt">
@@ -79,7 +88,7 @@
           </label>
         </fieldset>
         <div class="samling-knapper">
-          <button class="knapp" type="button" id="lagre-tema">Bruk på forsiden</button>
+          <button class="knapp" type="button" id="lagre-tema">Bruk på hele siden</button>
           <a class="knapp lys-knapp" id="forhandsvis-tema" href="../../?tema=kveld" target="_blank" rel="noopener">Forhåndsvis</a>
         </div>
         <p class="status" id="tema-status" role="status"></p>
@@ -114,8 +123,8 @@
     </div>
   </main>
 
-  <script src="../oppsett.js?v=20261018h"></script>
-  <script src="../felles.js?v=20261018h"></script>
-  <script src="vert.js?v=20261018h"></script>
+  <script src="../oppsett.js?v=20261018i"></script>
+  <script src="../felles.js?v=20261018i"></script>
+  <script src="vert.js?v=20261018i"></script>
 </body>
 </html>

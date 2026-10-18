@@ -106,3 +106,85 @@ html[data-tema="kamerater"] .bunn { background: var(--k-kort); color: var(--k-te
   html[data-tema="kamerater"] .hero { grid-template-columns: 1fr; grid-template-areas: "tekst" "bilde" "nedtelling"; }
   html[data-tema="kamerater"] .hero-kamerater { max-width: 340px; }
 }
+
+/* =====================================================================
+   Kveldsmodus og vertssiden (body.kveld)
+   kveld.css bygger på mørke variabler. Her byttes de til lyse flater,
+   og det som ellers ville fått lys tekst på lys bunn, rettes enkeltvis.
+   ===================================================================== */
+
+html[data-tema="kamerater"] body.kveld {
+  --ink: var(--k-bakgrunn);
+  --ink-lys: var(--k-kort);
+  --hvit: var(--k-tekst);
+  --lilla: var(--k-bakgrunn);
+  --lilla-mork: var(--k-dempet);
+}
+
+/* Røde knapper skal ha hvit tekst selv om --hvit er byttet til mørk tekstfarge her. */
+html[data-tema="kamerater"] body.kveld .knapp:not(.lys-knapp) { color: #fff; }
+
+/* Merker og faner */
+html[data-tema="kamerater"] .kveld-merke { background: var(--k-gul); color: var(--k-tekst); }
+html[data-tema="kamerater"] .faner { background: var(--k-bakgrunn); }
+html[data-tema="kamerater"] .fane { border-color: var(--k-linje); }
+html[data-tema="kamerater"] .fane[aria-current="true"] { background: var(--k-blaa); border-color: var(--k-blaa); color: #fff; }
+html[data-tema="kamerater"] .fane-avslort { border-color: var(--k-rod); }
+html[data-tema="kamerater"] :is(.fane-bokstav, .vin-bokstav, .rang-bokstav, .kort-tittel, .kort legend, .poeng-topp label, .kort.felt label) { font-weight: 400; }
+html[data-tema="kamerater"] .vin-bokstav { color: #fff; }
+html[data-tema="kamerater"] .rang-bokstav { background: var(--k-blaa); color: #fff; }
+
+/* Kort og skjema */
+html[data-tema="kamerater"] .kort { border: 2px solid var(--k-linje); }
+html[data-tema="kamerater"] .gruppe { color: var(--k-gronn); }
+html[data-tema="kamerater"] .brikke { border-color: var(--k-linje); color: var(--k-tekst); }
+html[data-tema="kamerater"] .brikke[aria-pressed="true"] { background: var(--k-blaa); border-color: var(--k-blaa); color: #fff; }
+html[data-tema="kamerater"] input[type="range"] { accent-color: var(--k-blaa); }
+html[data-tema="kamerater"] .kveld :is(input[type="text"], input[type="password"], input[type="date"], input[type="time"], input[type="number"], textarea) {
+  color: var(--k-tekst); background: #fff; border: 2px solid var(--k-linje);
+}
+html[data-tema="kamerater"] .kveld :is(input, textarea):focus { border-color: var(--k-blaa); }
+html[data-tema="kamerater"] .poeng-kort { background: var(--k-gul); color: var(--k-tekst); border-color: var(--k-gul); }
+html[data-tema="kamerater"] .poeng-kort input[type="range"] { accent-color: var(--k-rod); }
+html[data-tema="kamerater"] .lys-knapp { background: #fff; color: var(--k-blaa); box-shadow: inset 0 0 0 2px var(--k-blaa); }
+html[data-tema="kamerater"] .lys-knapp:hover { background: var(--k-bakgrunn); }
+html[data-tema="kamerater"] .lenkeknapp { color: var(--k-blaa); }
+
+/* Meldinger og resultater */
+html[data-tema="kamerater"] .melding { background: var(--k-rod); color: #fff; }
+html[data-tema="kamerater"] .varsel { background: var(--k-gul); color: var(--k-tekst); }
+html[data-tema="kamerater"] .feil { color: var(--k-rod); }
+html[data-tema="kamerater"] .resultat { border-color: var(--k-blaa); }
+html[data-tema="kamerater"] .gjett-svar.ok { color: var(--k-gronn); }
+html[data-tema="kamerater"] .gjett-svar.naer { color: #8a5d00; }
+html[data-tema="kamerater"] .gjett-svar.bom { color: var(--k-rod); }
+html[data-tema="kamerater"] .vinner { background: var(--k-gul); color: var(--k-tekst); font-weight: 400; }
+
+/* Lister */
+html[data-tema="kamerater"] .rang-knapp { background: #fff; color: var(--k-tekst); border: 2px solid var(--k-linje); }
+html[data-tema="kamerater"] .rang-poeng { color: var(--k-rod); font-weight: 400; }
+html[data-tema="kamerater"] .toppliste li { background: var(--k-bakgrunn); color: var(--k-tekst); }
+html[data-tema="kamerater"] .toppliste li.meg { outline-color: var(--k-blaa); }
+
+/* Vertssiden */
+html[data-tema="kamerater"] .live li { background: var(--k-bakgrunn); }
+html[data-tema="kamerater"] .live li.avslort { outline-color: var(--k-blaa); }
+html[data-tema="kamerater"] .live .mangler { color: var(--k-rod); }
+html[data-tema="kamerater"] .samling-rad { border-bottom-color: var(--k-linje); }
+html[data-tema="kamerater"] .samling-rad.aktiv { outline-color: var(--k-blaa); }
+html[data-tema="kamerater"] .status-merke { background: var(--k-linje); color: var(--k-tekst); }
+html[data-tema="kamerater"] .status-merke.klar { background: var(--k-gronn); color: #fff; }
+html[data-tema="kamerater"] .status-merke.pa { background: var(--k-gul); color: var(--k-tekst); }
+html[data-tema="kamerater"] :is(.gjett-oppsett, .vin-rad) { border-color: var(--k-linje); }
+html[data-tema="kamerater"] .avkryss-linje input { accent-color: var(--k-blaa); }
+html[data-tema="kamerater"] .fasit-merke, html[data-tema="kamerater"] .vin-felt .fasit label::after { background: var(--k-gul); color: var(--k-tekst); }
+html[data-tema="kamerater"] .vin-felt .fasit input { border-color: var(--k-gul); }
+html[data-tema="kamerater"] .pameldte-liste li { border-bottom-color: var(--k-linje); }
+html[data-tema="kamerater"] .tema-alt { border-color: var(--k-linje); }
+html[data-tema="kamerater"] .tema-alt:has(input:checked) { border-color: var(--k-blaa); }
+html[data-tema="kamerater"] .tema-alt input { accent-color: var(--k-blaa); }
+html[data-tema="kamerater"] .tema-alt strong { color: var(--k-tekst); font-weight: 400; }
+
+/* Bekreftelse i siden */
+html[data-tema="kamerater"] dialog.bekreft { border: 3px solid var(--k-blaa); }
+html[data-tema="kamerater"] dialog.bekreft::backdrop { background: rgba(31, 63, 120, .35); }

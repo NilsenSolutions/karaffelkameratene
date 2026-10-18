@@ -9,9 +9,18 @@
   <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../style.css?v=20261018h">
-  <link rel="stylesheet" href="kveld.css?v=20261018h">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&family=Permanent+Marker&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    // Samme tema som forsiden, valgt før siden tegnes. felles.js henter det lagrede valget etterpå.
+    (function () {
+      var t = null;
+      try { t = new URLSearchParams(location.search).get("tema") || localStorage.getItem("karaffel-tema"); } catch (e) {}
+      if (t === "kamerater") document.documentElement.setAttribute("data-tema", t);
+    })();
+  </script>
+  <link rel="stylesheet" href="../style.css?v=20261018i">
+  <link rel="stylesheet" href="kveld.css?v=20261018i">
+  <link rel="stylesheet" href="../tema.css?v=20261018i">
 </head>
 <body class="kveld">
   <header class="topp">
@@ -46,8 +55,8 @@
     <p>Drikk med måte. Ingen under 18 år.</p>
   </footer>
 
-  <script src="oppsett.js?v=20261018h"></script>
-  <script src="felles.js?v=20261018h"></script>
-  <script src="kveld.js?v=20261018h"></script>
+  <script src="oppsett.js?v=20261018i"></script>
+  <script src="felles.js?v=20261018i"></script>
+  <script src="kveld.js?v=20261018i"></script>
 </body>
 </html>

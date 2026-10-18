@@ -122,7 +122,9 @@ async function lagreTema() {
   status.textContent = "Lagrer…";
   try {
     await rpc("vert_sett_tema", { p_pin: pin, p_tema: tema });
-    status.textContent = "Forsiden bruker nå " + (tema === "kamerater" ? "Kamerater" : "Kveld") + ".";
+    brukTema(tema);
+    huskTema(tema);
+    status.textContent = "Hele siden bruker nå " + (tema === "kamerater" ? "Kamerater" : "Kveld") + ".";
   } catch (err) {
     status.textContent = "Ble ikke lagret: " + err.message;
   }

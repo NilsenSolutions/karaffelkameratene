@@ -47,6 +47,8 @@ Verten styrer alt fra `/kveld/vert/`:
 4. Trykk «Avslør» per vin øverst under «Kveldsmodus». Gjetningene låses, fasit vises på alle telefonene, og «Hvem traff best» oppdateres.
 5. Trykk «Avslutt kveldsmodus» når kvelden er over. Gjetningene og rangeringen blir liggende i databasen.
 
+«Nullstill kvelden» (under Kveldsmodus, eller «Nullstill» på samlingen) sletter alle gjetninger og poeng for kvelden og skjuler vinene igjen. Vinene og fasit beholdes, og telefonene starter med blanke ark. Nyttig etter en prøverunde. Kan ikke angres.
+
 Poeng: treff gir 2. Årgang ett år unna gir 1. Pris innenfor 10 % gir 2, innenfor 25 % gir 1. Store og små bokstaver, aksenter og ekstra mellomrom spiller ingen rolle («Gruner» = «Grüner»). Flere riktige svar i fasit skilles med /, for eksempel «Syrah / Shiraz».
 
 Blindsmaking med flasker i pose: legg inn vinene med bokstav og hvem som tok dem med før kvelden, og fyll inn fasit under «Endre kvelden» før du avslører. Vertssiden viser hvilke viner som mangler fasit og spør før en slik vin avsløres.

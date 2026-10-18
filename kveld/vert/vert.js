@@ -179,6 +179,19 @@ async function aktiver(id, verdi) {
   }
 }
 
+// Sletter alle gjetninger og poeng for kvelden og skjuler vinene igjen. Vinene og fasit beholdes.
+async function nullstill(id, tittel) {
+  if (!confirm("Nullstille «" + tittel + "»?\n\nAlle gjetninger og poeng slettes, og alle vinene skjules igjen. " +
+    "Vinene og fasit beholdes. Telefonene starter med blanke ark. Dette kan ikke angres.")) return;
+  try {
+    await rpc("vert_nullstill", { p_pin: pin, p_id: id });
+    await Promise.all([hentLive(), hentSamlinger(), hentVinkjennere()]);
+    melding("");
+  } catch (err) {
+    melding("Ble ikke nullstilt: " + err.message);
+  }
+}
+
 // ---------------- Planlagte samlinger ----------------
 
 async function hentSamlinger() {
@@ -233,6 +246,12 @@ function byggSamling(s) {
     const endre = el("button", "lenkeknapp", "Endre detaljer");
     endre.type = "button";
     knapper.append(endre);
+    if (s.viner) {
+      const null_ = el("button", "lenkeknapp", "Nullstill");
+      null_.type = "button";
+      null_.addEventListener("click", () => nullstill(s.id, s.tittel || "kvelden"));
+      knapper.append(null_);
+    }
     kort.append(knapper);
     const skjema = byggSamlingsskjema(s);
     skjema.hidden = true;
@@ -478,6 +497,7 @@ if (!tilkoblet()) {
   $("oppsett").addEventListener("submit", e => { e.preventDefault(); lagreOppsett(false); });
   $("lagre-aktiver").addEventListener("click", () => lagreOppsett(true));
   $("lukk-oppsett").addEventListener("click", lukkOppsett);
+  $("nullstill").addEventListener("click", () => { if (live) nullstill(live.id, live.tittel || "kvelden"); });
   $("avslutt").addEventListener("click", () => {
     if (live && confirm("Avslutte kveldsmodus for «" + live.tittel + "»? Telefonene viser da at ingen smaking er aktiv.")) aktiver(live.id, false);
   });

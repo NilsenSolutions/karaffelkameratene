@@ -48,7 +48,8 @@ function deltakerId() {
 }
 const DELTAKER = deltakerId();
 
-const lagringsnokkel = () => "karaffel-kveld-" + kveld.id;
+// Ny runde (verten har nullstilt) gir ny nøkkel og dermed blanke ark på telefonen.
+const lagringsnokkel = () => "karaffel-kveld-" + kveld.id + (kveld.runde ? "-r" + kveld.runde : "");
 
 function tomVin() {
   return { struktur: {}, aromaer: [], notat: "", poeng: null, gjett: {}, sendt: true };
@@ -129,7 +130,11 @@ async function hentKveld() {
   }
 
   const forrige = kveld;
-  const nyKveld = !forrige || forrige.id !== ny.id;
+  const nyKveld = !forrige || forrige.id !== ny.id || (forrige.runde || 0) !== (ny.runde || 0);
+  if (forrige && forrige.id === ny.id && nyKveld) {
+    try { localStorage.removeItem(lagringsnokkel()); } catch (e) { /* rydder den gamle runden når det går */ }
+    Object.keys(sendKo).forEach(b => clearTimeout(sendKo[b]));
+  }
   const endret = nyKveld ||
     JSON.stringify(forrige.viner) !== JSON.stringify(ny.viner) ||
     JSON.stringify(forrige.gjett) !== JSON.stringify(ny.gjett);

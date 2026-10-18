@@ -22,6 +22,8 @@ create table if not exists public.smaking (
   aktiv boolean not null default false,
   opprettet timestamptz not null default now()
 );
+-- Øker hver gang verten nullstiller kvelden. Telefonene starter da med blanke ark.
+alter table public.smaking add column if not exists runde int not null default 0;
 
 create table if not exists public.vin (
   smaking_id text not null references public.smaking(id) on delete cascade,
@@ -129,7 +131,7 @@ end $$;
 create or replace function public.hent_kveld()
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
-    'id', s.id, 'tittel', s.tittel, 'dato', s.dato, 'sted', s.sted, 'gjett', s.gjett,
+    'id', s.id, 'tittel', s.tittel, 'dato', s.dato, 'sted', s.sted, 'gjett', s.gjett, 'runde', s.runde,
     'viner', coalesce((
       select jsonb_agg(
         case when v.avslort then jsonb_build_object(
@@ -301,6 +303,17 @@ begin
   update vin set avslort = p_avslort where smaking_id = p_smaking and bokstav = p_bokstav;
 end $$;
 
+-- Nullstill kvelden: sletter alle gjetninger og poeng og skjuler vinene igjen. Vinene og fasit beholdes.
+create or replace function public.vert_nullstill(p_pin text, p_id text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  delete from gjetning where smaking_id = p_id;
+  update vin set avslort = false where smaking_id = p_id;
+  update smaking set runde = runde + 1 where id = p_id;
+  if not found then raise exception 'Finner ikke kvelden'; end if;
+end $$;
+
 -- Slå kveldsmodus på for én kveld (og av for alle andre), eller av.
 create or replace function public.vert_aktiver(p_pin text, p_id text, p_aktiv boolean)
 returns void language plpgsql security definer set search_path = public as $$
@@ -394,7 +407,7 @@ grant execute on function public.hent_kveld(), public.send_gjetning(text, text, 
   public.vert_lagre(text, jsonb), public.vert_avslor(text, text, text, boolean),
   public.hent_samlinger(), public.vert_hent_samlinger(text), public.vert_lagre_samling(text, jsonb),
   public.vert_slett_samling(text, uuid), public.vert_hent_kveld(text, text), public.vert_aktiver(text, text, boolean),
-  public.hent_vinkjennere() to anon;
+  public.hent_vinkjennere(), public.vert_nullstill(text, text) to anon;
 
 -- =====================================================================
 -- SETT VERTENS PIN: bytt ut DIN-PIN under (minst 6 tegn) og kjør bare denne linjen.

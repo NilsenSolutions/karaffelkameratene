@@ -170,9 +170,22 @@ textarea {
 .vin-felt .felt { margin-bottom: .6rem; }
 .vin-felt label { font-size: .9rem; }
 #oppsett h2 { margin-top: 2rem; }
-.samling-rad { border: 0; padding: 1rem 0; margin: 0; border-bottom: 1px solid var(--ink); min-width: 0; }
-.samling-rad legend { float: left; width: 100%; font-family: var(--tittel); font-weight: 800; font-size: 1.1rem; padding: 0; margin-bottom: .5rem; }
+.samling-rad { padding: 1rem 0; border-bottom: 1px solid var(--ink); }
 .samling-rad.forbi { opacity: .6; }
+.samling-rad.aktiv { background: var(--ink); border-radius: 10px; padding: 1rem; outline: 2px solid var(--sitron); }
+.samling-topp { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; margin-bottom: .75rem; }
+.samling-navn { font-size: 1.15rem; margin: 0 0 .2rem; }
+.samling-topp .rang-meta { margin: 0; opacity: .8; font-size: .92rem; }
+.status-merke {
+  flex: 0 0 auto; font-size: .8rem; font-weight: 600; border-radius: 999px; padding: .2rem .65rem;
+  background: var(--ink); color: var(--lilla-mork); white-space: nowrap;
+}
+.status-merke.klar { background: #3ddc97; color: var(--ink); }
+.status-merke.pa { background: var(--sitron); color: var(--ink); }
+.samling-skjema { margin-top: 1rem; }
+.samling-skjema[hidden], #oppsett[hidden], #live-innhold[hidden] { display: none; }
+.live-under { font-size: 1.1rem; margin: 1.25rem 0 .6rem; }
+.live-knapper { margin-top: 1rem; }
 .vin-felt .bred { grid-column: 1 / -1; }
 .samling-knapper { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .samling-knapper .knapp { padding: .6rem 1.1rem; }

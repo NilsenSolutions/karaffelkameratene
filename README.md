@@ -28,7 +28,7 @@ Ren HTML, CSS og JavaScript. Ingen byggesteg og ingen avhengigheter utenom Googl
 
 ## Oppdatere innhold
 
-**Planlagte samlinger** redigeres på vertssiden `/kveld/vert/` (logg inn med PIN) under «Planlagte samlinger»: dato, klokkeslett, tittel, sted, tema, antall plasser og antall påmeldte. Forsiden henter dem fra databasen. Oppdater påmeldte når noen melder seg på. Passerte smakinger ignoreres, og nedtellingen hopper videre til neste. «Bruk i kveldsmodus» fyller inn kveldens oppsett fra en samling.
+**Planlagte samlinger** redigeres på vertssiden `/kveld/vert/` (logg inn med PIN) under «Planlagte samlinger»: dato, klokkeslett, tittel, sted, tema, antall plasser og antall påmeldte. Forsiden henter dem fra databasen. Oppdater påmeldte når noen melder seg på. Passerte smakinger ignoreres, og nedtellingen hopper videre til neste.
 
 Resten ligger øverst i `script.js`:
 
@@ -41,9 +41,11 @@ Eksemplene i filene er plassholdere. Bytt ut `post@karaffelkameratene.no` med en
 
 Verten styrer alt fra `/kveld/vert/`:
 
-1. Under «Kveldens oppsett»: fyll inn smakingen (ny id gir blanke ark), velg hva som skal gjettes, legg inn vinene og trykk «Lagre og gjør aktiv».
-2. Deltakerne åpner `/kveld/`, skriver navnet sitt og gjetter. Gjetninger og poeng lagres i databasen. Struktur, aromaer og notater blir på telefonen.
-3. Trykk «Avslør» per vin. Gjetningene låses, fasit vises på alle telefonene, og «Hvem traff best» oppdateres.
+1. Under «Planlagte samlinger»: trykk «Konfigurer kvelden» på en samling, velg hva som skal gjettes og legg inn vinene. Kvelden kan forberedes i god tid.
+2. Når dere er i gang: trykk «Aktiver kveldsmodus» på samlingen (eller «Lagre og aktiver»). Bare én kveld kan være aktiv om gangen.
+3. Deltakerne åpner `/kveld/`, skriver navnet sitt og gjetter. Gjetninger og poeng lagres i databasen. Struktur, aromaer og notater blir på telefonen.
+4. Trykk «Avslør» per vin øverst under «Kveldsmodus». Gjetningene låses, fasit vises på alle telefonene, og «Hvem traff best» oppdateres.
+5. Trykk «Avslutt kveldsmodus» når kvelden er over. Gjetningene og rangeringen blir liggende i databasen.
 
 Poeng: treff gir 2. Årgang ett år unna gir 1. Pris innenfor 10 % gir 2, innenfor 25 % gir 1.
 

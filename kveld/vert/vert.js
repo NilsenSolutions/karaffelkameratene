@@ -1,4 +1,5 @@
-// Vertssiden: legg inn viner, avslør dem og følg rangeringen.
+// Vertssiden: planlagte samlinger, kveldsoppsett per samling, aktivering, avsløring og rangering.
+// Kveldsoppsettet til en samling har samme id som samlingen.
 
 const FELTER = [
   { felt: "distrikt", navn: "Distrikt", etikett: "Hvilket distrikt?" },
@@ -18,10 +19,21 @@ const VINFELT = [
   { felt: "pris", navn: "Pris (kr)" },
   { felt: "tatt_med", navn: "Tatt med av" }
 ];
+const SAMLINGSFELT = [
+  { felt: "dato", navn: "Dato", type: "date" },
+  { felt: "tid", navn: "Klokkeslett", type: "time" },
+  { felt: "tittel", navn: "Tittel", type: "text", bred: true },
+  { felt: "sted", navn: "Sted", type: "text" },
+  { felt: "tema", navn: "Tema", type: "text" },
+  { felt: "plasser", navn: "Plasser", type: "number" },
+  { felt: "paameldte", navn: "Påmeldte", type: "number" }
+];
 const PIN_NOKKEL = "karaffel-vert-pin";
 
 let pin = "";
-let data = null;
+let live = null;         // den aktive kvelden
+let samlinger = [];
+let redigerer = null;    // samlingen hvis kveld konfigureres nå
 let timer = null;
 
 function melding(tekst) {
@@ -32,6 +44,8 @@ function melding(tekst) {
 
 function lesPin() { try { return sessionStorage.getItem(PIN_NOKKEL) || ""; } catch (e) { return ""; } }
 function lagrePin(p) { try { p ? sessionStorage.setItem(PIN_NOKKEL, p) : sessionStorage.removeItem(PIN_NOKKEL); } catch (e) { /* ignorer */ } }
+
+const kortDato = (dato, tid) => [datoTekst(dato), tid ? "kl. " + tid.replace(":", ".") : ""].filter(Boolean).join(" ");
 
 // ---------------- Innlogging ----------------
 
@@ -66,47 +80,37 @@ async function start() {
   $("logg-inn").hidden = true;
   $("vert").hidden = false;
   try {
-    data = await rpc("vert_hent", { p_pin: pin });
+    await Promise.all([hentLive(), hentSamlinger()]);
   } catch (err) {
     if (/PIN/.test(err.message)) return loggUt();
     melding(err.message);
+  }
+  clearInterval(timer);
+  timer = setInterval(() => hentLive().catch(err => melding(err.message)), 4000);
+}
+
+// ---------------- Aktiv kveld: avsløring og rangering ----------------
+
+async function hentLive() {
+  live = await rpc("vert_hent", { p_pin: pin });
+  melding("");
+  visLive();
+  if (live) {
+    try { visToppliste($("toppliste"), await rpc("hent_rangering", { p_smaking: live.id }), null); } catch (e) { /* neste runde */ }
+  }
+}
+
+function visLive() {
+  $("live-innhold").hidden = !live;
+  if (!live) {
+    $("live-info").textContent = "Ingen kveld er aktiv. Konfigurer kvelden for en samling under, og trykk «Aktiver kveldsmodus».";
     return;
   }
-  fyllSkjema(data);
-  visLive(data);
-  hentRangering();
-  hentSamlinger();
-  clearInterval(timer);
-  timer = setInterval(oppdater, 4000);
-}
-
-async function oppdater() {
-  try {
-    data = await rpc("vert_hent", { p_pin: pin });
-    melding("");
-    visLive(data);
-    hentRangering();
-  } catch (err) {
-    melding(err.message);
-  }
-}
-
-// ---------------- Live: avsløring og rangering ----------------
-
-function visLive(d) {
-  $("vert-tittel").textContent = d && d.tittel ? d.tittel : "Ingen smaking lagret ennå";
-  $("vert-info").textContent = d
-    ? [datoTekst(d.dato), d.sted, d.deltakere + " deltakere har sendt inn"].filter(Boolean).join(" · ")
-    : "Fyll inn kveldens oppsett under og lagre.";
+  $("live-info").textContent = [live.tittel, datoTekst(live.dato), live.deltakere + " deltakere har sendt inn"].filter(Boolean).join(" · ");
 
   const liste = $("live");
   liste.textContent = "";
-  const viner = d ? d.viner : [];
-  if (!viner.length) {
-    liste.append(el("li", "hjelp", "Ingen viner er lagt inn ennå."));
-    return;
-  }
-  viner.forEach(v => {
+  live.viner.forEach(v => {
     const li = el("li", v.avslort ? "avslort" : "");
     li.append(el("span", "rang-bokstav", v.bokstav));
     const tekst = el("span", "rang-tekst");
@@ -124,54 +128,96 @@ async function avslor(v, verdi, knapp) {
   if (!verdi && !confirm("Skjule vin " + v.bokstav + " igjen? Deltakerne kan da endre gjetningene sine.")) return;
   knapp.disabled = true;
   try {
-    await rpc("vert_avslor", { p_pin: pin, p_smaking: data.id, p_bokstav: v.bokstav, p_avslort: verdi });
-    await oppdater();
+    await rpc("vert_avslor", { p_pin: pin, p_smaking: live.id, p_bokstav: v.bokstav, p_avslort: verdi });
+    await hentLive();
   } catch (err) {
     melding(err.message);
     knapp.disabled = false;
   }
 }
 
-async function hentRangering() {
-  const liste = $("toppliste");
-  if (!data || !data.id) { liste.textContent = ""; return; }
+async function aktiver(id, verdi) {
   try {
-    const rader = await rpc("hent_rangering", { p_smaking: data.id });
-    visToppliste(liste, rader, null);
-  } catch (err) { /* vises ved neste oppdatering */ }
+    await rpc("vert_aktiver", { p_pin: pin, p_id: id, p_aktiv: verdi });
+    await Promise.all([hentLive(), hentSamlinger()]);
+    if (verdi) $("live-tittel").scrollIntoView({ behavior: "smooth", block: "start" });
+    return true;
+  } catch (err) {
+    melding(err.message);
+    return false;
+  }
 }
 
 // ---------------- Planlagte samlinger ----------------
 
-const SAMLINGSFELT = [
-  { felt: "dato", navn: "Dato", type: "date" },
-  { felt: "tid", navn: "Klokkeslett", type: "time" },
-  { felt: "tittel", navn: "Tittel", type: "text", bred: true },
-  { felt: "sted", navn: "Sted", type: "text" },
-  { felt: "tema", navn: "Tema", type: "text" },
-  { felt: "plasser", navn: "Plasser", type: "number" },
-  { felt: "paameldte", navn: "Påmeldte", type: "number" }
-];
-
 async function hentSamlinger() {
-  try {
-    const rader = await rpc("vert_hent_samlinger", { p_pin: pin });
-    const boks = $("samlinger");
-    boks.textContent = "";
-    if (!rader.length) boks.append(el("p", "hjelp", "Ingen samlinger er planlagt."));
-    rader.forEach(s => boks.append(byggSamling(s)));
-  } catch (err) {
-    melding(err.message);
-  }
+  samlinger = await rpc("vert_hent_samlinger", { p_pin: pin });
+  const boks = $("samlinger");
+  boks.textContent = "";
+  if (!samlinger.length) boks.append(el("p", "hjelp", "Ingen samlinger er planlagt."));
+  samlinger.forEach(s => boks.append(byggSamling(s)));
 }
 
 function byggSamling(s) {
-  const rad = el("fieldset", "samling-rad");
-  if (s.id) rad.dataset.id = s.id;
+  const kort = el("article", "samling-rad");
+  if (s.id) kort.dataset.id = s.id;
   const forbi = s.dato && s.dato < new Date().toISOString().slice(0, 10);
-  if (forbi) rad.classList.add("forbi");
-  rad.append(el("legend", "", s.id ? (s.tittel || "Uten tittel") + (forbi ? " (passert)" : "") : "Ny samling"));
+  if (forbi) kort.classList.add("forbi");
+  if (s.aktiv) kort.classList.add("aktiv");
 
+  // Sammendrag
+  const topp = el("div", "samling-topp");
+  const tekst = el("div");
+  tekst.append(el("h3", "samling-navn", s.id ? (s.tittel || "Uten tittel") : "Ny samling"));
+  if (s.id) tekst.append(el("p", "rang-meta", [kortDato(s.dato, s.tid), s.sted, s.paameldte + " av " + s.plasser + " påmeldt"].filter(Boolean).join(" · ")));
+  topp.append(tekst);
+  if (s.id) {
+    const merke = s.aktiv ? "Kveldsmodus på" : s.viner ? "Kveld klar · " + s.viner + " viner" : "Kveld ikke konfigurert";
+    topp.append(el("span", "status-merke" + (s.aktiv ? " pa" : s.viner ? " klar" : ""), merke));
+  }
+  kort.append(topp);
+
+  // Handlinger
+  if (s.id) {
+    const knapper = el("div", "samling-knapper");
+    const konfig = el("button", "knapp", s.viner ? "Endre kvelden" : "Konfigurer kvelden");
+    konfig.type = "button";
+    konfig.addEventListener("click", () => apneOppsett(s));
+    knapper.append(konfig);
+    if (s.aktiv) {
+      const av = el("button", "knapp lys-knapp", "Avslutt kveldsmodus");
+      av.type = "button";
+      av.addEventListener("click", () => { if (confirm("Avslutte kveldsmodus for «" + s.tittel + "»? Telefonene viser da at ingen smaking er aktiv.")) aktiver(s.id, false); });
+      knapper.append(av);
+    } else if (s.viner) {
+      const pa = el("button", "knapp lys-knapp", "Aktiver kveldsmodus");
+      pa.type = "button";
+      pa.addEventListener("click", () => {
+        const annen = samlinger.find(x => x.aktiv && x.id !== s.id);
+        if (annen && !confirm("«" + annen.tittel + "» er aktiv nå. Bytte til «" + s.tittel + "»?")) return;
+        aktiver(s.id, true);
+      });
+      knapper.append(pa);
+    }
+    const endre = el("button", "lenkeknapp", "Endre detaljer");
+    endre.type = "button";
+    knapper.append(endre);
+    kort.append(knapper);
+    const skjema = byggSamlingsskjema(s);
+    skjema.hidden = true;
+    endre.addEventListener("click", () => {
+      skjema.hidden = !skjema.hidden;
+      endre.textContent = skjema.hidden ? "Endre detaljer" : "Skjul detaljer";
+    });
+    kort.append(skjema);
+  } else {
+    kort.append(byggSamlingsskjema(s));
+  }
+  return kort;
+}
+
+function byggSamlingsskjema(s) {
+  const boks = el("div", "samling-skjema");
   const rutenett = el("div", "vin-felt");
   SAMLINGSFELT.forEach(f => {
     const id = "sam-" + (s.id || "ny") + "-" + f.felt;
@@ -185,28 +231,21 @@ function byggSamling(s) {
     felt.append(lab, inp);
     rutenett.append(felt);
   });
-  rad.append(rutenett);
+  boks.append(rutenett);
 
   const knapper = el("div", "samling-knapper");
   const lagreKnapp = el("button", "knapp", "Lagre");
   lagreKnapp.type = "button";
-  const bruk = el("button", "knapp lys-knapp", "Bruk i kveldsmodus");
-  bruk.type = "button";
-  const slett = el("button", "lenkeknapp", s.id ? "Slett" : "Avbryt");
+  const slett = el("button", "lenkeknapp", s.id ? "Slett samlingen" : "Avbryt");
   slett.type = "button";
   const status = el("p", "status");
   status.setAttribute("role", "status");
-  knapper.append(lagreKnapp, bruk, slett);
-  rad.append(knapper, status);
-
-  const les = () => {
-    const d = { id: rad.dataset.id || "" };
-    rad.querySelectorAll("input").forEach(i => { d[i.dataset.felt] = i.value.trim(); });
-    return d;
-  };
+  knapper.append(lagreKnapp, slett);
+  boks.append(knapper, status);
 
   lagreKnapp.addEventListener("click", async () => {
-    const d = les();
+    const d = { id: s.id || "" };
+    boks.querySelectorAll("input").forEach(i => { d[i.dataset.felt] = i.value.trim(); });
     if (!d.dato) { status.textContent = "Velg en dato."; return; }
     if (!d.tid) d.tid = "18:00";
     lagreKnapp.disabled = true;
@@ -214,6 +253,7 @@ function byggSamling(s) {
     try {
       await rpc("vert_lagre_samling", { p_pin: pin, p_data: d });
       await hentSamlinger();
+      if (s.aktiv) await hentLive();
     } catch (err) {
       status.textContent = "Ble ikke lagret: " + err.message;
       lagreKnapp.disabled = false;
@@ -221,50 +261,58 @@ function byggSamling(s) {
   });
 
   slett.addEventListener("click", async () => {
-    if (!rad.dataset.id) { rad.remove(); return; }
-    if (!confirm("Slette «" + (s.tittel || "samlingen") + "»? Den forsvinner fra forsiden.")) return;
+    if (!s.id) { boks.closest(".samling-rad").remove(); return; }
+    const advarsel = "Slette «" + (s.tittel || "samlingen") + "»? Den forsvinner fra forsiden" +
+      (s.viner ? ", og kveldsoppsettet med vinene og alle gjetningene slettes også." : ".");
+    if (!confirm(advarsel)) return;
     try {
-      await rpc("vert_slett_samling", { p_pin: pin, p_id: rad.dataset.id });
-      await hentSamlinger();
+      await rpc("vert_slett_samling", { p_pin: pin, p_id: s.id });
+      if (redigerer && redigerer.id === s.id) lukkOppsett();
+      await Promise.all([hentSamlinger(), hentLive()]);
     } catch (err) {
       status.textContent = "Ble ikke slettet: " + err.message;
     }
   });
-
-  // Fyller kveldens oppsett med denne samlingen. Verten lagrer selv etterpå.
-  bruk.addEventListener("click", () => {
-    const d = les();
-    $("s-id").value = d.dato;
-    $("s-tittel").value = d.tittel;
-    $("s-dato").value = d.dato;
-    $("s-sted").value = d.sted;
-    $("lagre-status").textContent = "Fylt inn fra «" + (d.tittel || d.dato) + "». Legg inn vinene og trykk Lagre og gjør aktiv.";
-    $("oppsett").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-
-  return rad;
+  return boks;
 }
 
 function nySamling() {
   const boks = $("samlinger");
   const tom = boks.querySelector("p.hjelp");
   if (tom) tom.remove();
-  const rad = byggSamling({ dato: "", tid: "18:00", plasser: 12, paameldte: 0 });
-  boks.prepend(rad);
-  rad.querySelector("input").focus();
+  const kort = byggSamling({ dato: "", tid: "18:00", plasser: 12, paameldte: 0 });
+  boks.prepend(kort);
+  kort.querySelector("input").focus();
 }
 
-// ---------------- Oppsett ----------------
+// ---------------- Kveldsoppsett for en samling ----------------
 
-function fyllSkjema(d) {
-  const iDag = new Date();
-  const iso = iDag.getFullYear() + "-" + String(iDag.getMonth() + 1).padStart(2, "0") + "-" + String(iDag.getDate()).padStart(2, "0");
-  $("s-id").value = d ? d.id : iso;
-  $("s-tittel").value = d ? d.tittel : "";
-  $("s-dato").value = d && d.dato ? d.dato : iso;
-  $("s-sted").value = d ? d.sted : "";
+async function apneOppsett(s) {
+  let kveld = null;
+  try {
+    kveld = await rpc("vert_hent_kveld", { p_pin: pin, p_id: s.id });
+  } catch (err) {
+    melding(err.message);
+    return;
+  }
+  redigerer = s;
+  $("oppsett-tittel").textContent = "Kvelden: " + (s.tittel || "Uten tittel");
+  $("oppsett-info").textContent = [kortDato(s.dato, s.tid), s.sted].filter(Boolean).join(" · ") +
+    (kveld && kveld.aktiv ? " · Kveldsmodus er på" : "");
+  $("lagre-status").textContent = "";
+  $("lagre-aktiver").hidden = Boolean(kveld && kveld.aktiv);
+  fyllOppsett(kveld);
+  $("oppsett").hidden = false;
+  $("oppsett").scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
-  const gjett = d ? d.gjett : [];
+function lukkOppsett() {
+  redigerer = null;
+  $("oppsett").hidden = true;
+}
+
+function fyllOppsett(k) {
+  const gjett = k ? k.gjett : [{ felt: "distrikt", etikett: "Hvilket distrikt?" }, { felt: "aargang", etikett: "Årgang" }];
   const boks = $("gjett-valg");
   boks.textContent = "";
   FELTER.forEach(f => {
@@ -294,7 +342,7 @@ function fyllSkjema(d) {
 
   const viner = $("viner");
   viner.textContent = "";
-  (d && d.viner.length ? d.viner : [{ bokstav: "A" }]).forEach(v => leggTilVin(v));
+  (k && k.viner.length ? k.viner : [{ bokstav: "A" }]).forEach(v => leggTilVin(v));
 }
 
 function nesteBokstav() {
@@ -335,7 +383,7 @@ function leggTilVin(v) {
   $("viner").append(rad);
 }
 
-function lesSkjema() {
+function lesOppsett() {
   const gjett = [...document.querySelectorAll(".gjett-oppsett")]
     .filter(r => r.querySelector("input[type=checkbox]").checked)
     .map(r => {
@@ -349,47 +397,49 @@ function lesSkjema() {
     r.querySelectorAll("input").forEach(i => { v[i.dataset.felt] = i.value.trim(); });
     return v;
   });
-  return {
-    id: $("s-id").value.trim(),
-    tittel: $("s-tittel").value.trim(),
-    dato: $("s-dato").value,
-    sted: $("s-sted").value.trim(),
-    gjett,
-    viner
-  };
+  return { id: redigerer.id, tittel: redigerer.tittel, dato: redigerer.dato, sted: redigerer.sted, gjett, viner };
 }
 
-async function lagre(e) {
-  e.preventDefault();
+async function lagreOppsett(ogAktiver) {
   const status = $("lagre-status");
-  const ny = lesSkjema();
-  if (!ny.id) { status.textContent = "Smakingen må ha en id."; return; }
+  const ny = lesOppsett();
   if (!ny.viner.length) { status.textContent = "Legg inn minst én vin."; return; }
-  $("lagre").disabled = true;
+  $("lagre").disabled = $("lagre-aktiver").disabled = true;
   status.textContent = "Lagrer…";
   try {
     await rpc("vert_lagre", { p_pin: pin, p_data: ny });
-    status.textContent = "Lagret. Smakingen er aktiv på alle telefonene.";
-    data = await rpc("vert_hent", { p_pin: pin });
-    fyllSkjema(data);
-    visLive(data);
-    hentRangering();
+    if (ogAktiver) {
+      const annen = samlinger.find(x => x.aktiv && x.id !== ny.id);
+      if (annen && !confirm("«" + annen.tittel + "» er aktiv nå. Bytte til «" + ny.tittel + "»?")) {
+        status.textContent = "Lagret, men ikke aktivert.";
+      } else if (await aktiver(ny.id, true)) {
+        lukkOppsett();
+      }
+    } else {
+      status.textContent = "Lagret.";
+      await Promise.all([hentSamlinger(), hentLive()]);
+    }
   } catch (err) {
     status.textContent = "Ble ikke lagret: " + err.message;
   }
-  $("lagre").disabled = false;
+  $("lagre").disabled = $("lagre-aktiver").disabled = false;
 }
 
 // ---------------- Start ----------------
 
 if (!tilkoblet()) {
-  melding("Kveldsmodus er ikke koblet til databasen ennå. Fyll inn kveld/oppsett.js.");
+  melding("Vertssiden er ikke koblet til databasen ennå. Fyll inn kveld/oppsett.js.");
 } else {
   $("logg-inn").addEventListener("submit", loggInn);
   $("logg-ut").addEventListener("click", loggUt);
-  $("ny-vin").addEventListener("click", () => leggTilVin({}));
   $("ny-samling").addEventListener("click", nySamling);
-  $("oppsett").addEventListener("submit", lagre);
+  $("ny-vin").addEventListener("click", () => leggTilVin({}));
+  $("oppsett").addEventListener("submit", e => { e.preventDefault(); lagreOppsett(false); });
+  $("lagre-aktiver").addEventListener("click", () => lagreOppsett(true));
+  $("lukk-oppsett").addEventListener("click", lukkOppsett);
+  $("avslutt").addEventListener("click", () => {
+    if (live && confirm("Avslutte kveldsmodus for «" + live.tittel + "»? Telefonene viser da at ingen smaking er aktiv.")) aktiver(live.id, false);
+  });
   pin = lesPin();
   if (pin) start(); else $("logg-inn").hidden = false;
 }

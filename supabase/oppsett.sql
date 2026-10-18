@@ -172,7 +172,7 @@ returns boolean language sql security definer set search_path = public as $$
   select pin_ok(p_pin)
 $$;
 
--- Aktiv (eller nyeste) smaking med full fasit og antall gjetninger per vin.
+-- Den aktive kvelden med full fasit og antall gjetninger per vin. Null når ingen er aktiv.
 create or replace function public.vert_hent(p_pin text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare r jsonb;
@@ -188,11 +188,25 @@ begin
         order by v.rekkefolge, v.bokstav)
       from vin v where v.smaking_id = s.id), '[]'::jsonb))
   into r
-  from smaking s order by s.aktiv desc, s.opprettet desc limit 1;
+  from smaking s where s.aktiv order by s.opprettet desc limit 1;
   return r;
 end $$;
 
--- Lagre smaking og viner. Gjør denne smakingen aktiv. Viner som fjernes slettes med gjetningene sine.
+-- Kveldsoppsettet for én samling (id = samlingens id), aktiv eller ikke.
+create or replace function public.vert_hent_kveld(p_pin text, p_id text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare r jsonb;
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  select jsonb_build_object(
+    'id', s.id, 'tittel', s.tittel, 'dato', s.dato, 'sted', s.sted, 'gjett', s.gjett, 'aktiv', s.aktiv,
+    'viner', coalesce((select jsonb_agg(to_jsonb(v) - 'smaking_id' order by v.rekkefolge, v.bokstav)
+                       from vin v where v.smaking_id = s.id), '[]'::jsonb))
+  into r from smaking s where s.id = p_id;
+  return r;
+end $$;
+
+-- Lagre kveldsoppsett og viner uten å endre om kvelden er aktiv. Viner som fjernes slettes med gjetningene sine.
 create or replace function public.vert_lagre(p_pin text, p_data jsonb)
 returns void language plpgsql security definer set search_path = public as $$
 declare
@@ -203,9 +217,8 @@ begin
   if coalesce(v_id, '') = '' then raise exception 'Smakingen mangler id'; end if;
 
   insert into smaking (id, tittel, dato, sted, gjett, aktiv)
-  values (v_id, coalesce(p_data->>'tittel', ''), nullif(p_data->>'dato', '')::date, coalesce(p_data->>'sted', ''), coalesce(p_data->'gjett', '[]'), true)
-  on conflict (id) do update set tittel = excluded.tittel, dato = excluded.dato, sted = excluded.sted, gjett = excluded.gjett, aktiv = true;
-  update smaking set aktiv = false where id <> v_id;
+  values (v_id, coalesce(p_data->>'tittel', ''), nullif(p_data->>'dato', '')::date, coalesce(p_data->>'sted', ''), coalesce(p_data->'gjett', '[]'), false)
+  on conflict (id) do update set tittel = excluded.tittel, dato = excluded.dato, sted = excluded.sted, gjett = excluded.gjett;
 
   delete from vin where smaking_id = v_id
     and bokstav not in (select x->>'bokstav' from jsonb_array_elements(coalesce(p_data->'viner', '[]')) x);
@@ -226,6 +239,21 @@ returns void language plpgsql security definer set search_path = public as $$
 begin
   if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
   update vin set avslort = p_avslort where smaking_id = p_smaking and bokstav = p_bokstav;
+end $$;
+
+-- Slå kveldsmodus på for én kveld (og av for alle andre), eller av.
+create or replace function public.vert_aktiver(p_pin text, p_id text, p_aktiv boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  if p_aktiv then
+    if not exists (select 1 from vin where smaking_id = p_id) then
+      raise exception 'Legg inn minst én vin før kvelden aktiveres';
+    end if;
+    update smaking set aktiv = (id = p_id) where aktiv or id = p_id;
+  else
+    update smaking set aktiv = false where id = p_id;
+  end if;
 end $$;
 
 -- ---------------- Planlagte samlinger (forsiden) ----------------
@@ -252,13 +280,17 @@ returns jsonb language sql stable security definer set search_path = public as $
   from samling where dato >= current_date - 1
 $$;
 
--- Til vertssiden: kommende og de siste 30 dagene.
+-- Til vertssiden: kommende og de siste 30 dagene, med status for kveldsoppsettet.
+-- Kveldsoppsettet til en samling har samme id som samlingen.
 create or replace function public.vert_hent_samlinger(p_pin text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
-  return (select coalesce(jsonb_agg(to_jsonb(s) order by s.dato, s.tid), '[]'::jsonb)
-          from samling s where s.dato >= current_date - 30);
+  return (select coalesce(jsonb_agg(to_jsonb(s) || jsonb_build_object(
+            'viner', (select count(*) from vin v where v.smaking_id = s.id::text),
+            'aktiv', coalesce(k.aktiv, false)) order by s.dato, s.tid), '[]'::jsonb)
+          from samling s left join smaking k on k.id = s.id::text
+          where s.dato >= current_date - 30);
 end $$;
 
 -- Ny samling når id mangler, ellers oppdatering. Returnerer id.
@@ -280,6 +312,9 @@ begin
       plasser = coalesce(nullif(p_data->>'plasser', '')::int, 12), paameldte = coalesce(nullif(p_data->>'paameldte', '')::int, 0)
     where id = v_id;
     if not found then raise exception 'Finner ikke samlingen'; end if;
+    -- Hold kveldsoppsettet i takt med samlingen.
+    update smaking set tittel = coalesce(p_data->>'tittel', ''), dato = (p_data->>'dato')::date, sted = coalesce(p_data->>'sted', '')
+    where id = v_id::text;
   end if;
   return v_id;
 end $$;
@@ -288,6 +323,7 @@ create or replace function public.vert_slett_samling(p_pin text, p_id uuid)
 returns void language plpgsql security definer set search_path = public as $$
 begin
   if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  delete from smaking where id = p_id::text;
   delete from samling where id = p_id;
 end $$;
 
@@ -297,7 +333,7 @@ grant execute on function public.hent_kveld(), public.send_gjetning(text, text, 
   public.hent_rangering(text), public.vert_logg_inn(text), public.vert_hent(text),
   public.vert_lagre(text, jsonb), public.vert_avslor(text, text, text, boolean),
   public.hent_samlinger(), public.vert_hent_samlinger(text), public.vert_lagre_samling(text, jsonb),
-  public.vert_slett_samling(text, uuid) to anon;
+  public.vert_slett_samling(text, uuid), public.vert_hent_kveld(text, text), public.vert_aktiver(text, text, boolean) to anon;
 
 -- =====================================================================
 -- SETT VERTENS PIN: bytt ut DIN-PIN under (minst 6 tegn) og kjør bare denne linjen.

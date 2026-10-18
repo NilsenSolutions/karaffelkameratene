@@ -32,39 +32,33 @@
     </form>
 
     <div id="vert" hidden>
-      <section>
-        <h1 id="vert-tittel">Kvelden</h1>
-        <p class="kveld-info" id="vert-info"></p>
-      </section>
+      <h1>Vertsside</h1>
 
       <section class="kort" aria-labelledby="live-tittel">
-        <h2 class="kort-tittel" id="live-tittel">Avsløring</h2>
-        <p class="hjelp">Når du avslører en vin, låses gjetningene og fasit vises på alle telefonene.</p>
-        <ul class="live" id="live"></ul>
-      </section>
-
-      <section class="kort" aria-labelledby="rang-tittel">
-        <h2 class="kort-tittel" id="rang-tittel">Hvem traff best</h2>
-        <ol class="toppliste" id="toppliste"></ol>
+        <h2 class="kort-tittel" id="live-tittel">Kveldsmodus</h2>
+        <p class="kveld-info" id="live-info"></p>
+        <div id="live-innhold" hidden>
+          <p class="hjelp">Når du avslører en vin, låses gjetningene og fasit vises på alle telefonene.</p>
+          <ul class="live" id="live"></ul>
+          <h3 class="live-under">Hvem traff best</h3>
+          <ol class="toppliste" id="toppliste"></ol>
+          <div class="samling-knapper live-knapper">
+            <a class="knapp lys-knapp" href="../" target="_blank" rel="noopener">Åpne kveldsmodus</a>
+            <button class="lenkeknapp" type="button" id="avslutt">Avslutt kveldsmodus</button>
+          </div>
+        </div>
       </section>
 
       <section class="kort" aria-labelledby="sam-tittel">
         <h2 class="kort-tittel" id="sam-tittel">Planlagte samlinger</h2>
-        <p class="hjelp">Det som står her vises på forsiden med nedtelling og påmelding. Oppdater påmeldte når noen melder seg på.</p>
+        <p class="hjelp">Samlingene vises på forsiden med nedtelling og påmelding. Konfigurer kvelden for en samling, og aktiver kveldsmodus når dere er i gang.</p>
         <div id="samlinger"></div>
         <button class="knapp lys-knapp" type="button" id="ny-samling">Ny samling</button>
       </section>
 
-      <form id="oppsett">
-        <h2>Kveldens oppsett</h2>
-
-        <fieldset class="kort">
-          <legend>Smakingen</legend>
-          <div class="felt"><label for="s-id">Id <span class="valgfri">Ny id gir blanke ark for alle</span></label><input id="s-id" type="text" required></div>
-          <div class="felt"><label for="s-tittel">Tittel</label><input id="s-tittel" type="text"></div>
-          <div class="felt"><label for="s-dato">Dato</label><input id="s-dato" type="date"></div>
-          <div class="felt"><label for="s-sted">Sted</label><input id="s-sted" type="text"></div>
-        </fieldset>
+      <form id="oppsett" hidden>
+        <h2 id="oppsett-tittel">Kvelden</h2>
+        <p class="kveld-info" id="oppsett-info"></p>
 
         <fieldset class="kort">
           <legend>Hva skal gjettes?</legend>
@@ -79,9 +73,11 @@
         </fieldset>
 
         <div class="panel-bunn">
-          <button class="knapp" type="submit" id="lagre">Lagre og gjør aktiv</button>
+          <button class="knapp" type="submit" id="lagre">Lagre kvelden</button>
+          <button class="knapp lys-knapp" type="button" id="lagre-aktiver">Lagre og aktiver</button>
         </div>
         <p class="status" id="lagre-status" role="status"></p>
+        <button class="lenkeknapp" type="button" id="lukk-oppsett">Lukk uten å lagre</button>
       </form>
 
       <button class="lenkeknapp" type="button" id="logg-ut">Logg ut</button>

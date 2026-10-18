@@ -75,6 +75,7 @@ async function start() {
   fyllSkjema(data);
   visLive(data);
   hentRangering();
+  hentSamlinger();
   clearInterval(timer);
   timer = setInterval(oppdater, 4000);
 }
@@ -138,6 +139,119 @@ async function hentRangering() {
     const rader = await rpc("hent_rangering", { p_smaking: data.id });
     visToppliste(liste, rader, null);
   } catch (err) { /* vises ved neste oppdatering */ }
+}
+
+// ---------------- Planlagte samlinger ----------------
+
+const SAMLINGSFELT = [
+  { felt: "dato", navn: "Dato", type: "date" },
+  { felt: "tid", navn: "Klokkeslett", type: "time" },
+  { felt: "tittel", navn: "Tittel", type: "text", bred: true },
+  { felt: "sted", navn: "Sted", type: "text" },
+  { felt: "tema", navn: "Tema", type: "text" },
+  { felt: "plasser", navn: "Plasser", type: "number" },
+  { felt: "paameldte", navn: "Påmeldte", type: "number" }
+];
+
+async function hentSamlinger() {
+  try {
+    const rader = await rpc("vert_hent_samlinger", { p_pin: pin });
+    const boks = $("samlinger");
+    boks.textContent = "";
+    if (!rader.length) boks.append(el("p", "hjelp", "Ingen samlinger er planlagt."));
+    rader.forEach(s => boks.append(byggSamling(s)));
+  } catch (err) {
+    melding(err.message);
+  }
+}
+
+function byggSamling(s) {
+  const rad = el("fieldset", "samling-rad");
+  if (s.id) rad.dataset.id = s.id;
+  const forbi = s.dato && s.dato < new Date().toISOString().slice(0, 10);
+  if (forbi) rad.classList.add("forbi");
+  rad.append(el("legend", "", s.id ? (s.tittel || "Uten tittel") + (forbi ? " (passert)" : "") : "Ny samling"));
+
+  const rutenett = el("div", "vin-felt");
+  SAMLINGSFELT.forEach(f => {
+    const id = "sam-" + (s.id || "ny") + "-" + f.felt;
+    const felt = el("div", "felt" + (f.bred ? " bred" : ""));
+    const lab = el("label", "", f.navn);
+    lab.htmlFor = id;
+    const inp = el("input");
+    Object.assign(inp, { type: f.type, id, value: s[f.felt] != null ? s[f.felt] : "" });
+    if (f.type === "number") { inp.min = 0; inp.inputMode = "numeric"; }
+    inp.dataset.felt = f.felt;
+    felt.append(lab, inp);
+    rutenett.append(felt);
+  });
+  rad.append(rutenett);
+
+  const knapper = el("div", "samling-knapper");
+  const lagreKnapp = el("button", "knapp", "Lagre");
+  lagreKnapp.type = "button";
+  const bruk = el("button", "knapp lys-knapp", "Bruk i kveldsmodus");
+  bruk.type = "button";
+  const slett = el("button", "lenkeknapp", s.id ? "Slett" : "Avbryt");
+  slett.type = "button";
+  const status = el("p", "status");
+  status.setAttribute("role", "status");
+  knapper.append(lagreKnapp, bruk, slett);
+  rad.append(knapper, status);
+
+  const les = () => {
+    const d = { id: rad.dataset.id || "" };
+    rad.querySelectorAll("input").forEach(i => { d[i.dataset.felt] = i.value.trim(); });
+    return d;
+  };
+
+  lagreKnapp.addEventListener("click", async () => {
+    const d = les();
+    if (!d.dato) { status.textContent = "Velg en dato."; return; }
+    if (!d.tid) d.tid = "18:00";
+    lagreKnapp.disabled = true;
+    status.textContent = "Lagrer…";
+    try {
+      await rpc("vert_lagre_samling", { p_pin: pin, p_data: d });
+      await hentSamlinger();
+    } catch (err) {
+      status.textContent = "Ble ikke lagret: " + err.message;
+      lagreKnapp.disabled = false;
+    }
+  });
+
+  slett.addEventListener("click", async () => {
+    if (!rad.dataset.id) { rad.remove(); return; }
+    if (!confirm("Slette «" + (s.tittel || "samlingen") + "»? Den forsvinner fra forsiden.")) return;
+    try {
+      await rpc("vert_slett_samling", { p_pin: pin, p_id: rad.dataset.id });
+      await hentSamlinger();
+    } catch (err) {
+      status.textContent = "Ble ikke slettet: " + err.message;
+    }
+  });
+
+  // Fyller kveldens oppsett med denne samlingen. Verten lagrer selv etterpå.
+  bruk.addEventListener("click", () => {
+    const d = les();
+    $("s-id").value = d.dato;
+    $("s-tittel").value = d.tittel;
+    $("s-dato").value = d.dato;
+    $("s-sted").value = d.sted;
+    $("lagre-status").textContent = "Fylt inn fra «" + (d.tittel || d.dato) + "». Legg inn vinene og trykk Lagre og gjør aktiv.";
+    $("oppsett").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  return rad;
+}
+
+function nySamling() {
+  const boks = $("samlinger");
+  const tom = boks.querySelector("p.hjelp");
+  if (tom) tom.remove();
+  const rad = byggSamling({ dato: "", tid: "18:00", plasser: 12, paameldte: 0 });
+  boks.prepend(rad);
+  rad.querySelector("input").focus();
 }
 
 // ---------------- Oppsett ----------------
@@ -274,6 +388,7 @@ if (!tilkoblet()) {
   $("logg-inn").addEventListener("submit", loggInn);
   $("logg-ut").addEventListener("click", loggUt);
   $("ny-vin").addEventListener("click", () => leggTilVin({}));
+  $("ny-samling").addEventListener("click", nySamling);
   $("oppsett").addEventListener("submit", lagre);
   pin = lesPin();
   if (pin) start(); else $("logg-inn").hidden = false;

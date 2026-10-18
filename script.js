@@ -14,13 +14,9 @@ const CONFIG = {
   faaPlasser: 3
 };
 
-// dato: "ÅÅÅÅ-MM-DD", tid: "TT:MM". Passerte smakinger ignoreres automatisk.
-// paameldte: oppdater tallet når noen melder seg på.
-const SMAKINGER = [
-  { dato: "2026-11-14", tid: "18:00", tittel: "Barolo mot Barbaresco", sted: "Hos Nilsen", tema: "To nabodistrikter, én drue", plasser: 12, paameldte: 8 },
-  { dato: "2026-12-12", tid: "18:00", tittel: "Julebord med musserende", sted: "Sted avtales", tema: "Alt med bobler", plasser: 14, paameldte: 3 },
-  { dato: "2027-01-23", tid: "18:00", tittel: "Blindsmaking: nye verden mot gamle", sted: "Sted avtales", tema: "Alle tar med én flaske i pose", plasser: 12, paameldte: 0 }
-];
+// Planlagte smakinger hentes fra databasen og redigeres på vertssiden (/kveld/vert/).
+// Format: dato "ÅÅÅÅ-MM-DD", tid "TT:MM". Passerte smakinger ignoreres automatisk.
+let SMAKINGER = [];
 
 // type: rod, hvit, rose eller musserende. poeng: 1 til 10.
 const VINLOGG = [
@@ -397,9 +393,33 @@ function byggFilter() {
   });
 }
 
+// ---------------- Henting av smakinger ----------------
+
+async function hentSmakinger() {
+  const k = window.KARAFFEL;
+  if (!k || !k.url || !k.nokkel) throw new Error("Ikke koblet til databasen");
+  const headere = { "Content-Type": "application/json", "apikey": k.nokkel };
+  if (k.nokkel.startsWith("eyJ")) headere.Authorization = "Bearer " + k.nokkel;
+  const svar = await fetch(k.url.replace(/\/$/, "") + "/rest/v1/rpc/hent_samlinger", { method: "POST", headers: headere, body: "{}" });
+  if (!svar.ok) throw new Error("Status " + svar.status);
+  return await svar.json();
+}
+
+async function lastSmakinger() {
+  try {
+    SMAKINGER = await hentSmakinger();
+    startNedtelling();
+  } catch (err) {
+    startNedtelling();
+    $("nt-tittel").textContent = "Smakingene kunne ikke hentes";
+    $("nt-info").textContent = "Prøv å laste siden på nytt om litt.";
+    $("pm-status-badge").textContent = "Kunne ikke hente smakingene";
+  }
+}
+
 // ---------------- Start ----------------
 
-startNedtelling();
+lastSmakinger();
 byggMarquee();
 byggFilter();
 visLogg();

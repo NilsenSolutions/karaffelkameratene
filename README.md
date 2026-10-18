@@ -7,10 +7,11 @@ Ren HTML, CSS og JavaScript. Ingen byggesteg og ingen avhengigheter utenom Googl
 ## Hva siden gjør
 
 - **Nedtelling** til neste smaking, med en stripe øverst som følger med når du scroller.
-- **Påmelding** med levende status: ledige plasser, få plasser igjen, fullt (venteliste) og stengt. Plassmåleren oppdateres ut fra tallene i `script.js`.
+- **Påmelding** med levende status: ledige plasser, få plasser igjen, fullt (venteliste) og stengt. Plassmåleren følger tallene verten legger inn.
 - **Legg i kalenderen**: laster ned en `.ics`-fil for smakingen.
 - **Vinlogg** som kan filtreres på vintype og sorteres på dato eller poeng.
-- **Kveldsmodus** på `/kveld/`: smakeskjema på mobilen under selve smakingen, med struktur, aromaer, notat, poeng og blindgjetting. Alt lagres bare på telefonen til den som bruker det.
+- **Kveldsmodus** på `/kveld/`: smakeskjema på mobilen under selve smakingen, med struktur, aromaer, notat, poeng og blindgjetting. Verten avslører vinene og ser hvem som traff best.
+- **Vertsside** på `/kveld/vert/` (PIN): planlagte samlinger, kveldens viner, avsløring og rangering.
 
 ## Filer
 
@@ -19,31 +20,38 @@ Ren HTML, CSS og JavaScript. Ingen byggesteg og ingen avhengigheter utenom Googl
 | `index.html` | Sidestruktur og tekst |
 | `style.css` | Utseende |
 | `script.js` | Innhold, innstillinger og all dynamikk |
-| `kveld/` | Kveldsmodus: `index.html`, `kveld.css` og `kveld.js` |
+| `kveld/` | Kveldsmodus for deltakerne, felles kode (`felles.js`) og databasetilkobling (`oppsett.js`) |
+| `kveld/vert/` | Vertssiden |
+| `supabase/oppsett.sql` | Tabeller og funksjoner i databasen |
 | `404.html` | Siden som vises når en adresse ikke finnes |
 | `CNAME` | Domenet for GitHub Pages |
 
 ## Oppdatere innhold
 
-Alt innhold ligger øverst i `script.js`:
+**Planlagte samlinger** redigeres på vertssiden `/kveld/vert/` (logg inn med PIN) under «Planlagte samlinger»: dato, klokkeslett, tittel, sted, tema, antall plasser og antall påmeldte. Forsiden henter dem fra databasen. Oppdater påmeldte når noen melder seg på. Passerte smakinger ignoreres, og nedtellingen hopper videre til neste. «Bruk i kveldsmodus» fyller inn kveldens oppsett fra en samling.
 
-- `SMAKINGER`: dato, klokkeslett, tittel, sted, tema, antall plasser og antall påmeldte. Oppdater `paameldte` når noen melder seg på. Passerte smakinger ignoreres, og nedtellingen hopper videre til neste.
+Resten ligger øverst i `script.js`:
+
 - `VINLOGG`: vin, land, type (`rod`, `hvit`, `rose`, `musserende`), dato og poeng.
 - `CONFIG`: e-postadresse, når påmeldingen stenger (standard 24 timer før start) og hvor mange plasser som regnes som «få».
 
 Eksemplene i filene er plassholdere. Bytt ut `post@karaffelkameratene.no` med en adresse som faktisk fungerer.
 
-## Før hver smaking: kveldsmodus
+## Kveldsmodus
 
-Rediger `KVELD` øverst i `kveld/kveld.js`:
+Verten styrer alt fra `/kveld/vert/`:
 
-- `id`: sett en ny verdi for hver smaking (for eksempel datoen), så starter alle med blanke ark.
-- `tittel`, `dato`, `sted` og `epost` (dit «Send poengene til verten» går).
-- `blind`: `true` skjuler vinene. Hver deltaker trykker «Avslør» når verten har vist flasken, og ser da fasit på gjetningene sine.
-- `gjett`: hva som skal gjettes. Med `valg` blir det knapper, uten blir det et tekstfelt. Fasit legges i feltet med samme navn på hver vin.
-- `viner`: bokstav, vin, produsent, drue, land, årgang, hvem som tok den med og fasit for gjettingen.
+1. Under «Kveldens oppsett»: fyll inn smakingen (ny id gir blanke ark), velg hva som skal gjettes, legg inn vinene og trykk «Lagre og gjør aktiv».
+2. Deltakerne åpner `/kveld/`, skriver navnet sitt og gjetter. Gjetninger og poeng lagres i databasen. Struktur, aromaer og notater blir på telefonen.
+3. Trykk «Avslør» per vin. Gjetningene låses, fasit vises på alle telefonene, og «Hvem traff best» oppdateres.
+
+Poeng: treff gir 2. Årgang ett år unna gir 1. Pris innenfor 10 % gir 2, innenfor 25 % gir 1.
 
 Lag en QR-kode til `https://karaffelkameratene.no/kveld/` og sett den på bordet.
+
+## Database (Supabase)
+
+Samlinger, viner og gjetninger ligger i Supabase-prosjektet `hylnvfljjusphgshmwql`. Tilkoblingen står i `kveld/oppsett.js` (offentlig nøkkel, trygg å publisere). Hele oppsettet ligger i `supabase/oppsett.sql`, og nederst i den står hvordan vertens PIN byttes. Tabellene er stengt for direkte tilgang. Alt går gjennom funksjoner, og alt som endrer noe krever PIN.
 
 ## Hvordan påmeldingen virker
 
@@ -52,7 +60,7 @@ En statisk side har ingen server, så påmeldingen kan ikke lagres på siden. De
 1. **Standard:** skjemaet åpner en ferdig utfylt e-post til klubben. Den som melder seg på må trykke send.
 2. **Skjematjeneste:** legg adressen til en tjeneste som Formspree i `CONFIG.skjemaUrl`. Da sendes påmeldingen direkte som JSON, og du får den på e-post.
 
-Plasstallet oppdateres ikke av seg selv. Det gjør du manuelt i `SMAKINGER`.
+Plasstallet oppdateres ikke av seg selv. Det gjør verten på vertssiden.
 
 ## Publisere med GitHub Pages
 

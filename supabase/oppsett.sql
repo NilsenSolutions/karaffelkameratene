@@ -228,11 +228,76 @@ begin
   update vin set avslort = p_avslort where smaking_id = p_smaking and bokstav = p_bokstav;
 end $$;
 
+-- ---------------- Planlagte samlinger (forsiden) ----------------
+
+create table if not exists public.samling (
+  id uuid primary key default gen_random_uuid(),
+  dato date not null,
+  tid text not null default '18:00',
+  tittel text not null default '',
+  sted text not null default '',
+  tema text not null default '',
+  plasser int not null default 12 check (plasser >= 0),
+  paameldte int not null default 0 check (paameldte >= 0)
+);
+alter table public.samling enable row level security;
+revoke all on public.samling from anon, authenticated;
+
+-- Kommende samlinger til forsiden. Forsiden skjuler selv de som har startet.
+create or replace function public.hent_samlinger()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', id, 'dato', dato, 'tid', tid, 'tittel', tittel, 'sted', sted, 'tema', tema,
+    'plasser', plasser, 'paameldte', paameldte) order by dato, tid), '[]'::jsonb)
+  from samling where dato >= current_date - 1
+$$;
+
+-- Til vertssiden: kommende og de siste 30 dagene.
+create or replace function public.vert_hent_samlinger(p_pin text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  return (select coalesce(jsonb_agg(to_jsonb(s) order by s.dato, s.tid), '[]'::jsonb)
+          from samling s where s.dato >= current_date - 30);
+end $$;
+
+-- Ny samling når id mangler, ellers oppdatering. Returnerer id.
+create or replace function public.vert_lagre_samling(p_pin text, p_data jsonb)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare v_id uuid := nullif(p_data->>'id', '')::uuid;
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  if coalesce(p_data->>'dato', '') = '' then raise exception 'Samlingen mangler dato'; end if;
+  if (p_data->>'tid') !~ '^\d{1,2}:\d{2}$' then raise exception 'Klokkeslett må være på formen 18:00'; end if;
+  if v_id is null then
+    insert into samling (dato, tid, tittel, sted, tema, plasser, paameldte)
+    values ((p_data->>'dato')::date, p_data->>'tid', coalesce(p_data->>'tittel', ''), coalesce(p_data->>'sted', ''),
+            coalesce(p_data->>'tema', ''), coalesce(nullif(p_data->>'plasser', '')::int, 12), coalesce(nullif(p_data->>'paameldte', '')::int, 0))
+    returning id into v_id;
+  else
+    update samling set dato = (p_data->>'dato')::date, tid = p_data->>'tid', tittel = coalesce(p_data->>'tittel', ''),
+      sted = coalesce(p_data->>'sted', ''), tema = coalesce(p_data->>'tema', ''),
+      plasser = coalesce(nullif(p_data->>'plasser', '')::int, 12), paameldte = coalesce(nullif(p_data->>'paameldte', '')::int, 0)
+    where id = v_id;
+    if not found then raise exception 'Finner ikke samlingen'; end if;
+  end if;
+  return v_id;
+end $$;
+
+create or replace function public.vert_slett_samling(p_pin text, p_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  delete from samling where id = p_id;
+end $$;
+
 -- Hvem som kan kalle hva.
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function public.hent_kveld(), public.send_gjetning(text, text, uuid, text, jsonb, numeric),
   public.hent_rangering(text), public.vert_logg_inn(text), public.vert_hent(text),
-  public.vert_lagre(text, jsonb), public.vert_avslor(text, text, text, boolean) to anon;
+  public.vert_lagre(text, jsonb), public.vert_avslor(text, text, text, boolean),
+  public.hent_samlinger(), public.vert_hent_samlinger(text), public.vert_lagre_samling(text, jsonb),
+  public.vert_slett_samling(text, uuid) to anon;
 
 -- =====================================================================
 -- SETT VERTENS PIN: bytt ut DIN-PIN under (minst 6 tegn) og kjør bare denne linjen.

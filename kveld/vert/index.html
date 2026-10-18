@@ -40,6 +40,7 @@
         <div id="live-innhold" hidden>
           <p class="hjelp">Når du avslører en vin, låses gjetningene og fasit vises på alle telefonene.</p>
           <ul class="live" id="live"></ul>
+          <p class="vinner" id="kveldens-vinner" hidden></p>
           <h3 class="live-under">Hvem traff best</h3>
           <ol class="toppliste" id="toppliste"></ol>
           <div class="samling-knapper live-knapper">
@@ -56,6 +57,12 @@
         <button class="knapp lys-knapp" type="button" id="ny-samling">Ny samling</button>
       </section>
 
+      <section class="kort" aria-labelledby="vk-tittel">
+        <h2 class="kort-tittel" id="vk-tittel">Vinkjennerne</h2>
+        <p class="hjelp">Alle avslørte kvelder samlet. Prosenten er andelen av mulige gjettepoeng de kveldene man var med, så små og store kvelder teller likt. Tallet til høyre er vinkjennerpoeng: prosenten trukket mot klubbens snitt med vekt som én vanlig kveld, så én heldig kveld ikke slår jevn innsats over mange.</p>
+        <ol class="toppliste" id="vinkjennere"></ol>
+      </section>
+
       <form id="oppsett" hidden>
         <h2 id="oppsett-tittel">Kvelden</h2>
         <p class="kveld-info" id="oppsett-info"></p>
@@ -68,6 +75,7 @@
 
         <fieldset class="kort">
           <legend>Viner</legend>
+          <p class="hjelp">Feltene merket <span class="fasit-merke">fasit</span> brukes i gjettingen. Flere riktige svar skilles med /, for eksempel «Syrah / Shiraz». Har gjestene med flaskene i pose, fyll inn bokstav og hvem som tok den med nå, og fasit i løpet av kvelden før du avslører.</p>
           <div id="viner"></div>
           <button class="knapp lys-knapp" type="button" id="ny-vin">Legg til vin</button>
         </fieldset>

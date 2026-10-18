@@ -10,14 +10,20 @@ const FELTER = [
   { felt: "produsent", navn: "Produsent", etikett: "Produsent" }
 ];
 const VINFELT = [
+  { felt: "tatt_med", navn: "Tatt med av" },
   { felt: "produsent", navn: "Produsent" },
   { felt: "navn", navn: "Vin" },
   { felt: "aargang", navn: "Årgang" },
   { felt: "drue", navn: "Drue" },
   { felt: "land", navn: "Land" },
   { felt: "distrikt", navn: "Distrikt" },
-  { felt: "pris", navn: "Pris (kr)" },
-  { felt: "tatt_med", navn: "Tatt med av" }
+  { felt: "pris", navn: "Pris (kr)" }
+];
+// Klassisk blindsmaking: land, drue og årgang.
+const STANDARD_GJETT = [
+  { felt: "land", etikett: "Hvilket land?" },
+  { felt: "drue", etikett: "Hvilken drue?" },
+  { felt: "aargang", etikett: "Årgang" }
 ];
 const SAMLINGSFELT = [
   { felt: "dato", navn: "Dato", type: "date" },
@@ -80,7 +86,7 @@ async function start() {
   $("logg-inn").hidden = true;
   $("vert").hidden = false;
   try {
-    await Promise.all([hentLive(), hentSamlinger()]);
+    await Promise.all([hentLive(), hentSamlinger(), hentVinkjennere()]);
   } catch (err) {
     if (/PIN/.test(err.message)) return loggUt();
     melding(err.message);
@@ -96,9 +102,29 @@ async function hentLive() {
   melding("");
   visLive();
   if (live) {
-    try { visToppliste($("toppliste"), await rpc("hent_rangering", { p_smaking: live.id }), null); } catch (e) { /* neste runde */ }
+    try {
+      const rader = await rpc("hent_rangering", { p_smaking: live.id });
+      visToppliste($("toppliste"), rader, null);
+      visVinner(rader);
+    } catch (e) { /* neste runde */ }
   }
 }
+
+// Når alle vinene er avslørt, kåres kveldens vinkjenner automatisk.
+function visVinner(rader) {
+  const boks = $("kveldens-vinner");
+  const ferdig = live && live.viner.length && live.viner.every(v => v.avslort);
+  const navn = ferdig ? vinnere(rader) : [];
+  boks.hidden = !navn.length;
+  boks.textContent = navn.length ? "🏆 Kveldens vinkjenner: " + listeTekst(navn) : "";
+}
+
+async function hentVinkjennere() {
+  try { visVinkjennere($("vinkjennere"), await rpc("hent_vinkjennere", {}), null); } catch (e) { /* vises ved neste henting */ }
+}
+
+// Gjettefelt som mangler fasit for en vin. Ingen kan få poeng for dem.
+const manglerFasit = (v, gjett) => gjett.filter(g => !String(v[g.felt] || "").trim()).map(g => FELTER.find(f => f.felt === g.felt).navn.toLowerCase());
 
 function visLive() {
   $("live-innhold").hidden = !live;
@@ -116,6 +142,8 @@ function visLive() {
     const tekst = el("span", "rang-tekst");
     tekst.append(el("span", "rang-navn", vinTittel(v) + (v.aargang ? " " + v.aargang : "")));
     tekst.append(el("span", "rang-meta", v.antall + " gjetninger" + (v.snitt != null ? " · snitt " + komma(v.snitt) : "")));
+    const mangler = manglerFasit(v, live.gjett);
+    if (mangler.length && !v.avslort) tekst.append(el("span", "mangler", "Mangler fasit: " + mangler.join(", ")));
     const knapp = el("button", v.avslort ? "knapp lys-knapp" : "knapp", v.avslort ? "Skjul igjen" : "Avslør");
     knapp.type = "button";
     knapp.addEventListener("click", () => avslor(v, !v.avslort, knapp));
@@ -126,10 +154,13 @@ function visLive() {
 
 async function avslor(v, verdi, knapp) {
   if (!verdi && !confirm("Skjule vin " + v.bokstav + " igjen? Deltakerne kan da endre gjetningene sine.")) return;
+  const mangler = verdi ? manglerFasit(v, live.gjett) : [];
+  if (mangler.length && !confirm("Vin " + v.bokstav + " mangler fasit for " + listeTekst(mangler) +
+    ". Ingen får poeng for det. Fyll inn under «Endre kvelden» først, eller avslør likevel?")) return;
   knapp.disabled = true;
   try {
     await rpc("vert_avslor", { p_pin: pin, p_smaking: live.id, p_bokstav: v.bokstav, p_avslort: verdi });
-    await hentLive();
+    await Promise.all([hentLive(), hentVinkjennere()]);
   } catch (err) {
     melding(err.message);
     knapp.disabled = false;
@@ -312,7 +343,7 @@ function lukkOppsett() {
 }
 
 function fyllOppsett(k) {
-  const gjett = k ? k.gjett : [{ felt: "distrikt", etikett: "Hvilket distrikt?" }, { felt: "aargang", etikett: "Årgang" }];
+  const gjett = k ? k.gjett : STANDARD_GJETT;
   const boks = $("gjett-valg");
   boks.textContent = "";
   FELTER.forEach(f => {
@@ -329,13 +360,13 @@ function fyllOppsett(k) {
     etikett.setAttribute("aria-label", "Spørsmål for " + f.navn);
     etikett.className = "g-etikett";
     const valg = el("input");
-    Object.assign(valg, { type: "text", value: valgt && valgt.valg ? valgt.valg.join(", ") : "", placeholder: "Alternativer, f.eks. Barolo, Barbaresco" });
+    Object.assign(valg, { type: "text", value: valgt && valgt.valg ? valgt.valg.join(", ") : "", placeholder: "Svaralternativer (valgfritt)" });
     valg.setAttribute("aria-label", "Alternativer for " + f.navn);
     valg.className = "g-valg";
     const detaljer = el("div", "gjett-detaljer");
     detaljer.append(etikett, valg);
     detaljer.hidden = !cb.checked;
-    cb.addEventListener("change", () => { detaljer.hidden = !cb.checked; });
+    cb.addEventListener("change", () => { detaljer.hidden = !cb.checked; markerFasit(); });
     rad.append(avkryss, detaljer);
     boks.append(rad);
   });
@@ -343,6 +374,15 @@ function fyllOppsett(k) {
   const viner = $("viner");
   viner.textContent = "";
   (k && k.viner.length ? k.viner : [{ bokstav: "A" }]).forEach(v => leggTilVin(v));
+}
+
+// Merker vinfeltene som brukes som fasit i gjettingen.
+function markerFasit() {
+  const valgte = [...document.querySelectorAll(".gjett-oppsett")]
+    .filter(r => r.querySelector("input[type=checkbox]").checked).map(r => r.dataset.felt);
+  document.querySelectorAll("#viner .vin-felt .felt").forEach(f => {
+    f.classList.toggle("fasit", valgte.includes(f.querySelector("input").dataset.felt));
+  });
 }
 
 function nesteBokstav() {
@@ -381,6 +421,7 @@ function leggTilVin(v) {
   });
   rad.append(rutenett);
   $("viner").append(rad);
+  markerFasit();
 }
 
 function lesOppsett() {

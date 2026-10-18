@@ -185,6 +185,18 @@ textarea {
 .samling-skjema { margin-top: 1rem; }
 .samling-skjema[hidden], #oppsett[hidden], #live-innhold[hidden] { display: none; }
 .live-under { font-size: 1.1rem; margin: 1.25rem 0 .6rem; }
+.live .mangler { color: var(--sitron); font-size: .85rem; font-weight: 600; }
+.vinner {
+  background: var(--sitron); color: var(--ink); border-radius: var(--radius);
+  padding: .8rem 1rem; margin: 1rem 0 0; font-family: var(--tittel); font-weight: 800; font-size: 1.2rem;
+}
+.vinner[hidden] { display: none; }
+.fasit-merke, .vin-felt .fasit label::after {
+  font-family: var(--brod); font-size: .72rem; font-weight: 600; letter-spacing: .02em;
+  background: var(--sitron); color: var(--ink); border-radius: 999px; padding: .05rem .45rem;
+}
+.vin-felt .fasit label::after { content: "fasit"; margin-left: .4rem; }
+.vin-felt .fasit input { border-color: var(--sitron); }
 .live-knapper { margin-top: 1rem; }
 .vin-felt .bred { grid-column: 1 / -1; }
 .samling-knapper { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }

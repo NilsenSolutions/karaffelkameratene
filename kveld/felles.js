@@ -39,26 +39,60 @@ async function rpc(navn, args) {
   return data;
 }
 
-// Samme poengregel som i databasen, brukt til å vise resultatet per gjetning.
+// Samme regler som normaliser, tall og treffpoeng i databasen.
+const normaliser = t => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim().replace(/\s+/g, " ");
+const tall = t => { const n = parseFloat(String(t).replace(",", ".").replace(/[^0-9.]/g, "")); return isNaN(n) ? null : n; };
+
+// Poeng for én gjetning: 2 for treff, 1 for nesten (årgang ±1, pris innenfor 25 %).
+// Fasit kan ha flere godkjente svar skilt med /, f.eks. «Syrah / Shiraz».
 function treffpoeng(felt, svar, fasit) {
-  const s = String(svar || "").trim().toLowerCase();
-  const f = String(fasit || "").trim().toLowerCase();
-  if (!s || !f) return 0;
-  if (s === f) return 2;
-  if (felt === "aargang" || felt === "pris") {
-    const sn = parseFloat(s.replace(/[^0-9.,]/g, "").replace(",", "."));
-    const fn = parseFloat(f.replace(/[^0-9.,]/g, "").replace(",", "."));
-    if (isNaN(sn) || isNaN(fn)) return 0;
+  const s = normaliser(svar);
+  if (!s) return 0;
+  let best = 0;
+  for (const alt of String(fasit || "").split("/")) {
+    const f = normaliser(alt);
+    if (!f) continue;
+    if (s === f) return 2;
+    if (felt !== "aargang" && felt !== "pris") continue;
+    const sn = tall(s), fn = tall(f);
+    if (sn === null || fn === null) continue;
     if (felt === "aargang") {
       if (sn === fn) return 2;
-      if (Math.abs(sn - fn) === 1) return 1;
+      if (Math.abs(sn - fn) === 1) best = Math.max(best, 1);
     } else if (fn > 0) {
       const avvik = Math.abs(sn - fn) / fn;
       if (avvik <= 0.10) return 2;
-      if (avvik <= 0.25) return 1;
+      if (avvik <= 0.25) best = Math.max(best, 1);
     }
   }
-  return 0;
+  return best;
+}
+
+// Hvem som leder rangeringen (flere ved likt). Brukes når alle viner er avslørt.
+function vinnere(rader) {
+  if (!rader || !rader.length) return [];
+  const topp = rader[0];
+  return rader.filter(r => Number(r.poeng) === Number(topp.poeng) && Number(r.treff) === Number(topp.treff)).map(r => r.navn);
+}
+
+const listeTekst = navn => navn.length <= 1 ? (navn[0] || "") : navn.slice(0, -1).join(", ") + " og " + navn[navn.length - 1];
+
+function visVinkjennere(liste, rader, mittNavn) {
+  liste.textContent = "";
+  if (!rader || !rader.length) {
+    liste.append(el("li", "hjelp", "Tabellen fylles når den første blindsmakingen er avslørt."));
+    return;
+  }
+  rader.forEach((r, i) => {
+    const li = el("li", mittNavn && normaliser(r.navn) === normaliser(mittNavn) ? "meg" : "");
+    li.append(
+      el("span", "plass", i === 0 ? "🏆" : String(i + 1)),
+      el("span", "rang-navn", r.navn),
+      el("span", "rang-meta", r.prosent + " % riktig · " + r.kvelder + (r.kvelder === 1 ? " kveld" : " kvelder")),
+      el("span", "rang-poeng", String(r.score))
+    );
+    liste.append(li);
+  });
 }
 
 function datoTekst(iso) {

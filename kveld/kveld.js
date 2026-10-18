@@ -16,11 +16,22 @@ const AROMAER = {
   "Eik og modning": ["Eik", "Røyk", "Tobakk", "Lær", "Jord", "Sopp", "Tjære", "Smør", "Brød", "Mineral"]
 };
 
+// Forslag mens man skriver. Gir likere stavemåter, og røper ikke fasit.
+const FORSLAG = {
+  land: ["Frankrike", "Italia", "Spania", "Portugal", "Tyskland", "Østerrike", "Ungarn", "Hellas", "Georgia", "USA", "Chile",
+    "Argentina", "Australia", "New Zealand", "Sør-Afrika", "Canada", "Libanon", "Slovenia", "Kroatia", "England", "Uruguay"],
+  drue: ["Cabernet Sauvignon", "Merlot", "Pinot Noir", "Syrah", "Grenache", "Tempranillo", "Sangiovese", "Nebbiolo", "Barbera",
+    "Malbec", "Zinfandel", "Gamay", "Cabernet Franc", "Mourvèdre", "Touriga Nacional", "Pinotage", "Carménère", "Chardonnay",
+    "Sauvignon Blanc", "Riesling", "Chenin Blanc", "Grüner Veltliner", "Pinot Grigio", "Gewürztraminer", "Viognier",
+    "Albariño", "Sémillon", "Muscat", "Garganega", "Verdejo"]
+};
+
 const OPPDATER_MS = 3000;
 
 let kveld = null;        // fra databasen
 let tilstand = null;     // lokale notater for denne kvelden
 let rangering = [];
+let vinkjennere = [];
 const sendKo = {};       // ventende sendinger per vin
 
 // ---------------- Deltaker og lokal lagring ----------------
@@ -136,8 +147,9 @@ async function hentKveld() {
     // Bygg panelet på nytt bare når noe faktisk har endret seg, så fokus ikke hopper mens man skriver.
     byggFaner();
     if (nyKveld || panelBerort(forrige)) visPanel();
-  } else if (tilstand.aktiv === "oppsummering") {
+  } else if (tilstand.aktiv === "oppsummering" && $("toppliste")) {
     visToppliste($("toppliste"), rangering, tilstand.navn);
+    if ($("vinkjennere")) visVinkjennere($("vinkjennere"), vinkjennere, tilstand.navn);
   }
   sendUsendte();
 }
@@ -150,8 +162,12 @@ function panelBerort(forrige) {
 }
 
 async function hentRangering() {
-  try { rangering = await rpc("hent_rangering", { p_smaking: kveld.id }) || []; } catch (e) { /* beholder forrige */ }
+  try {
+    [rangering, vinkjennere] = await Promise.all([rpc("hent_rangering", { p_smaking: kveld.id }), rpc("hent_vinkjennere", {})]);
+  } catch (e) { /* beholder forrige */ }
 }
+
+const alleAvslort = () => kveld.viner.length > 0 && kveld.viner.every(v => v.avslort);
 
 function visTilkobling(tekst) {
   const m = $("melding");
@@ -341,6 +357,13 @@ function byggGjetting(v, n) {
       if (g.felt === "aargang" || g.felt === "pris") inp.inputMode = "numeric";
       inp.addEventListener("input", () => { n.gjett[g.felt] = inp.value; planleggSending(v.bokstav); });
       rad.append(lab, inp);
+      if (FORSLAG[g.felt]) {
+        const liste = el("datalist");
+        liste.id = "forslag-" + g.felt;
+        FORSLAG[g.felt].forEach(f => { const o = el("option"); o.value = f; liste.append(o); });
+        inp.setAttribute("list", liste.id);
+        rad.append(liste);
+      }
     }
     boks.append(rad);
   });
@@ -396,9 +419,14 @@ function byggResultat(v, n) {
 // ---------------- Oppsummering ----------------
 
 function visOppsummering(panel) {
+  const navn = alleAvslort() ? vinnere(rangering) : [];
+  if (navn.length) {
+    const meg = tilstand.navn && navn.some(x => normaliser(x) === normaliser(tilstand.navn));
+    panel.append(el("p", "vinner", "🏆 Kveldens vinkjenner: " + listeTekst(navn) + (meg ? ". Gratulerer!" : "")));
+  }
   if (kveld.viner.some(v => v.avslort)) {
     const rang = el("section", "kort");
-    rang.append(el("h2", "kort-tittel", "Hvem traff best"));
+    rang.append(el("h2", "kort-tittel", alleAvslort() ? "Kveldens resultat" : "Hvem traff best så langt"));
     const liste = el("ol", "toppliste");
     liste.id = "toppliste";
     rang.append(liste);
@@ -437,6 +465,15 @@ function visOppsummering(panel) {
   status.id = "status";
   status.setAttribute("role", "status");
   panel.append(status);
+
+  const vk = el("section", "kort");
+  vk.append(el("h2", "kort-tittel", "Vinkjennerne"));
+  vk.append(el("p", "hjelp", "Alle avslørte kvelder samlet. Vinkjennerpoeng belønner jevn treffsikkerhet over flere kvelder."));
+  const vkListe = el("ol", "toppliste");
+  vkListe.id = "vinkjennere";
+  vk.append(vkListe);
+  panel.append(vk);
+  visVinkjennere(vkListe, vinkjennere, tilstand.navn);
 }
 
 function notatTekst() {

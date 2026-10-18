@@ -60,31 +60,47 @@ revoke all on public.innstillinger, public.smaking, public.vin, public.gjetning 
 
 -- ---------------- Hjelpefunksjoner ----------------
 
--- Poeng for én gjetning: 2 for treff. Årgang ett år unna og pris innenfor 25 % gir 1.
-create or replace function public.treffpoeng(p_felt text, p_svar text, p_fasit text)
-returns int language plpgsql immutable as $$
-declare
-  s text := lower(trim(coalesce(p_svar, '')));
-  f text := lower(trim(coalesce(p_fasit, '')));
-  sn numeric; fn numeric;
+create extension if not exists unaccent with schema extensions;
+
+-- Små bokstaver, uten aksenter og ekstra mellomrom: «Rosé » og «rose» blir like.
+create or replace function public.normaliser(p_tekst text)
+returns text language sql immutable set search_path = public, extensions as $$
+  select regexp_replace(lower(trim(extensions.unaccent('extensions.unaccent'::regdictionary, coalesce(p_tekst, '')))), '\s+', ' ', 'g')
+$$;
+
+create or replace function public.tall(p_tekst text)
+returns numeric language plpgsql immutable as $$
 begin
-  if s = '' or f = '' then return 0; end if;
-  if s = f then return 2; end if;
-  if p_felt in ('aargang', 'pris') then
-    begin
-      sn := regexp_replace(s, '[^0-9.,]', '', 'g')::numeric;
-      fn := regexp_replace(f, '[^0-9.,]', '', 'g')::numeric;
-    exception when others then return 0;
-    end;
-    if p_felt = 'aargang' then
-      if sn = fn then return 2; end if;
-      if abs(sn - fn) = 1 then return 1; end if;
-    elsif fn > 0 then
-      if abs(sn - fn) / fn <= 0.10 then return 2; end if;
-      if abs(sn - fn) / fn <= 0.25 then return 1; end if;
+  return nullif(regexp_replace(replace(p_tekst, ',', '.'), '[^0-9.]', '', 'g'), '')::numeric;
+exception when others then return null;
+end $$;
+
+-- Poeng for én gjetning: 2 for treff. Årgang ett år unna og pris innenfor 25 % gir 1.
+-- Fasit kan ha flere godkjente svar skilt med /, f.eks. «Syrah / Shiraz».
+create or replace function public.treffpoeng(p_felt text, p_svar text, p_fasit text)
+returns int language plpgsql immutable set search_path = public, extensions as $$
+declare
+  s text := normaliser(p_svar);
+  alt text; f text; sn numeric; fn numeric; best int := 0;
+begin
+  if s = '' then return 0; end if;
+  foreach alt in array string_to_array(coalesce(p_fasit, ''), '/') loop
+    f := normaliser(alt);
+    continue when f = '';
+    if s = f then return 2; end if;
+    if p_felt in ('aargang', 'pris') then
+      sn := tall(s); fn := tall(f);
+      continue when sn is null or fn is null;
+      if p_felt = 'aargang' then
+        if sn = fn then return 2; end if;
+        if abs(sn - fn) = 1 then best := greatest(best, 1); end if;
+      elsif fn > 0 then
+        if abs(sn - fn) / fn <= 0.10 then return 2; end if;
+        if abs(sn - fn) / fn <= 0.25 then best := greatest(best, 1); end if;
+      end if;
     end if;
-  end if;
-  return 0;
+  end loop;
+  return best;
 end $$;
 
 create or replace function public.fasit(v public.vin, p_felt text)
@@ -163,6 +179,50 @@ returns jsonb language sql stable security definer set search_path = public as $
   select coalesce(jsonb_agg(jsonb_build_object('navn', coalesce(n.navn, 'Uten navn'), 'poeng', p.sum, 'treff', p.treff)
                             order by p.sum desc, p.treff desc, n.navn), '[]'::jsonb)
   from poeng p left join navn n using (deltaker)
+$$;
+
+-- Vinkjenner-tabellen på tvers av alle kvelder. Personer samles på navn (uavhengig av store/små bokstaver).
+-- Prosent = gjettepoeng delt på mulige poeng for de avslørte vinene på kveldene personen var med.
+-- Slik blir kvelder med mange viner eller mange gjettefelt ikke tyngre enn andre.
+-- Rangeringen bruker vinkjennerpoeng: prosenten trukket mot klubbens snitt med vekt som én vanlig kveld
+-- (24 mulige poeng). Da slår ikke én heldig liten kveld jevn innsats over mange.
+create or replace function public.hent_vinkjennere()
+returns jsonb language sql stable security definer set search_path = public as $$
+  with deltakelse as (
+    select distinct g.smaking_id, normaliser(g.navn) as nokkel
+    from gjetning g where normaliser(g.navn) <> ''),
+  mulig as (
+    select s.id as smaking_id,
+           2 * jsonb_array_length(s.gjett) * (select count(*) from vin v where v.smaking_id = s.id and v.avslort) as maks
+    from smaking s),
+  poeng as (
+    select g.smaking_id, normaliser(g.navn) as nokkel,
+           sum(treffpoeng(f->>'felt', g.svar->>(f->>'felt'), fasit(v, f->>'felt'))) as sum,
+           count(*) filter (where treffpoeng(f->>'felt', g.svar->>(f->>'felt'), fasit(v, f->>'felt')) = 2) as treff
+    from gjetning g
+    join vin v on v.smaking_id = g.smaking_id and v.bokstav = g.bokstav and v.avslort
+    join smaking s on s.id = g.smaking_id
+    cross join lateral jsonb_array_elements(s.gjett) f
+    where normaliser(g.navn) <> ''
+    group by 1, 2),
+  tabell as (
+    select d.nokkel, count(*) as kvelder, coalesce(sum(p.sum), 0) as sum,
+           coalesce(sum(p.treff), 0) as treff, sum(m.maks) as maks
+    from deltakelse d
+    join mulig m using (smaking_id)
+    left join poeng p using (smaking_id, nokkel)
+    where m.maks > 0
+    group by d.nokkel),
+  navn as (
+    select distinct on (normaliser(navn)) normaliser(navn) as nokkel, trim(navn) as navn
+    from gjetning where normaliser(navn) <> '' order by normaliser(navn), oppdatert desc),
+  snitt as (select sum(sum)::numeric / nullif(sum(maks), 0) as m from tabell)
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'navn', n.navn, 'kvelder', t.kvelder, 'poeng', t.sum, 'maks', t.maks, 'treff', t.treff,
+           'prosent', round(100.0 * t.sum / t.maks),
+           'score', round(100 * (t.sum + 24 * s.m) / (t.maks + 24)))
+         order by (t.sum + 24 * s.m) / (t.maks + 24) desc, t.treff desc, t.kvelder desc, n.navn), '[]'::jsonb)
+  from tabell t join navn n using (nokkel) cross join snitt s
 $$;
 
 -- ---------------- For verten (krever PIN) ----------------
@@ -333,7 +393,8 @@ grant execute on function public.hent_kveld(), public.send_gjetning(text, text, 
   public.hent_rangering(text), public.vert_logg_inn(text), public.vert_hent(text),
   public.vert_lagre(text, jsonb), public.vert_avslor(text, text, text, boolean),
   public.hent_samlinger(), public.vert_hent_samlinger(text), public.vert_lagre_samling(text, jsonb),
-  public.vert_slett_samling(text, uuid), public.vert_hent_kveld(text, text), public.vert_aktiver(text, text, boolean) to anon;
+  public.vert_slett_samling(text, uuid), public.vert_hent_kveld(text, text), public.vert_aktiver(text, text, boolean),
+  public.hent_vinkjennere() to anon;
 
 -- =====================================================================
 -- SETT VERTENS PIN: bytt ut DIN-PIN under (minst 6 tegn) og kjør bare denne linjen.

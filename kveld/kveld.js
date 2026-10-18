@@ -1,32 +1,5 @@
-// =====================================================================
-// KVELDENS INNHOLD: rediger her før hver smaking. Vinene under er plassholdere.
-// =====================================================================
-
-const KVELD = {
-  // Endre id for hver ny smaking, så starter alle med blanke ark.
-  id: "2026-11-14",
-  tittel: "Barolo mot Barbaresco",
-  dato: "2026-11-14",
-  sted: "Hos Nilsen",
-  // Hvor "Send poengene til verten" sender e-posten.
-  epost: "post@karaffelkameratene.no",
-  // blind: true skjuler vinene til hver enkelt trykker "Avslør" etter at verten har avslørt.
-  blind: true,
-  // Hva skal gjettes på i blindmodus? Med "valg" blir det knapper, ellers et tekstfelt.
-  gjett: [
-    { felt: "distrikt", etikett: "Barolo eller Barbaresco?", valg: ["Barolo", "Barbaresco"] },
-    { felt: "aargang", etikett: "Årgang" }
-  ],
-  // Fasit for gjettingen ligger i feltene med samme navn som i "gjett".
-  viner: [
-    { bokstav: "A", vin: "Barbaresco", produsent: "Produttori del Barbaresco", drue: "Nebbiolo", land: "Italia", distrikt: "Barbaresco", aargang: "2020", tattMed: "Verten" },
-    { bokstav: "B", vin: "Barolo Albe", produsent: "G.D. Vajra", drue: "Nebbiolo", land: "Italia", distrikt: "Barolo", aargang: "2020", tattMed: "Verten" },
-    { bokstav: "C", vin: "Barbaresco", produsent: "Castello di Neive", drue: "Nebbiolo", land: "Italia", distrikt: "Barbaresco", aargang: "2020", tattMed: "Verten" },
-    { bokstav: "D", vin: "Barolo Serralunga", produsent: "Fontanafredda", drue: "Nebbiolo", land: "Italia", distrikt: "Barolo", aargang: "2019", tattMed: "Verten" }
-  ]
-};
-
-// =====================================================================
+// Kveldsmodus for deltakerne. Verten legger inn viner og avslører på /kveld/vert/.
+// Gjetninger og poeng sendes til databasen. Struktur, aromaer og notat blir på telefonen.
 
 const STRUKTUR = [
   { felt: "syre", navn: "Syre", lav: "Myk", hoy: "Frisk" },
@@ -43,54 +16,160 @@ const AROMAER = {
   "Eik og modning": ["Eik", "Røyk", "Tobakk", "Lær", "Jord", "Sopp", "Tjære", "Smør", "Brød", "Mineral"]
 };
 
-const LAGRING = "karaffel-kveld-" + KVELD.id;
+const OPPDATER_MS = 3000;
 
-const $ = id => document.getElementById(id);
-function el(tag, klasse, tekst) {
-  const e = document.createElement(tag);
-  if (klasse) e.className = klasse;
-  if (tekst !== undefined) e.textContent = tekst;
-  return e;
+let kveld = null;        // fra databasen
+let tilstand = null;     // lokale notater for denne kvelden
+let rangering = [];
+const sendKo = {};       // ventende sendinger per vin
+
+// ---------------- Deltaker og lokal lagring ----------------
+
+function deltakerId() {
+  let id = lesLokalt("karaffel-deltaker");
+  if (!id) {
+    id = (crypto.randomUUID && crypto.randomUUID()) ||
+      "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+    skrivLokalt("karaffel-deltaker", id);
+  }
+  return id;
 }
-const komma = n => String(n).replace(".", ",");
+const DELTAKER = deltakerId();
 
-// ---------------- Lagring ----------------
+const lagringsnokkel = () => "karaffel-kveld-" + kveld.id;
 
 function tomVin() {
-  return { struktur: {}, aromaer: [], notat: "", poeng: null, gjett: {}, avslort: !KVELD.blind };
+  return { struktur: {}, aromaer: [], notat: "", poeng: null, gjett: {}, sendt: true };
 }
 
 function lastTilstand() {
-  let lagret = null;
-  try { lagret = JSON.parse(localStorage.getItem(LAGRING)); } catch (e) { /* privat modus eller blokkert lagring */ }
-  const t = { navn: "", aktiv: KVELD.viner[0].bokstav, viner: {} };
-  if (lagret && typeof lagret === "object") {
-    t.navn = lagret.navn || "";
-    if (lagret.aktiv) t.aktiv = lagret.aktiv;
-    Object.assign(t.viner, lagret.viner || {});
-  }
-  KVELD.viner.forEach(v => { t.viner[v.bokstav] = Object.assign(tomVin(), t.viner[v.bokstav]); });
+  const lagret = lesLokalt(lagringsnokkel()) || {};
+  const t = { navn: lagret.navn || lesLokalt("karaffel-navn") || "", aktiv: lagret.aktiv || null, viner: lagret.viner || {} };
+  kveld.viner.forEach(v => { t.viner[v.bokstav] = Object.assign(tomVin(), t.viner[v.bokstav]); });
+  if (!t.aktiv || (t.aktiv !== "oppsummering" && !vinFor(t.aktiv))) t.aktiv = kveld.viner[0] ? kveld.viner[0].bokstav : "oppsummering";
   return t;
 }
 
-const tilstand = lastTilstand();
+function lagre() { skrivLokalt(lagringsnokkel(), tilstand); }
 
-function lagre() {
-  try { localStorage.setItem(LAGRING, JSON.stringify(tilstand)); } catch (e) { /* ignorer */ }
-}
-
-// ---------------- Hjelpere ----------------
-
-const vinFor = b => KVELD.viner.find(v => v.bokstav === b);
+const vinFor = b => kveld.viner.find(v => v.bokstav === b);
 const notatFor = b => tilstand.viner[b];
 
-function vinNavn(v, avslort) {
-  return avslort ? v.produsent + " " + v.vin + " " + v.aargang : "Vin " + v.bokstav;
+// ---------------- Sending til databasen ----------------
+
+function planleggSending(bokstav) {
+  notatFor(bokstav).sendt = false;
+  lagre();
+  clearTimeout(sendKo[bokstav]);
+  sendKo[bokstav] = setTimeout(() => send(bokstav), 700);
+  visLagreStatus();
 }
 
-function riktig(v, g, svar) {
-  if (!svar) return false;
-  return String(svar).trim().toLowerCase() === String(v[g.felt] || "").trim().toLowerCase();
+async function send(bokstav) {
+  const v = vinFor(bokstav);
+  const n = notatFor(bokstav);
+  if (!v || v.avslort) return;
+  try {
+    await rpc("send_gjetning", {
+      p_smaking: kveld.id, p_bokstav: bokstav, p_deltaker: DELTAKER,
+      p_navn: tilstand.navn, p_svar: n.gjett, p_poeng: n.poeng
+    });
+    n.sendt = true;
+    lagre();
+  } catch (err) {
+    if (/avslørt/i.test(err.message)) { n.sendt = true; await hentKveld(); }
+  }
+  visLagreStatus();
+}
+
+// Sender alt som ikke er bekreftet, f.eks. etter navnebytte eller nettbrudd.
+function sendUsendte() {
+  kveld.viner.forEach(v => {
+    const n = notatFor(v.bokstav);
+    const harData = n.poeng != null || Object.values(n.gjett).some(Boolean);
+    if (!v.avslort && harData && !n.sendt) send(v.bokstav);
+  });
+}
+
+function visLagreStatus() {
+  const s = $("lagre-status");
+  if (!s || !vinFor(tilstand.aktiv)) return;
+  const n = notatFor(tilstand.aktiv);
+  s.textContent = vinFor(tilstand.aktiv).avslort ? "" : (n.sendt ? "Lagret hos verten ✓" : "Sender…");
+}
+
+// ---------------- Henting ----------------
+
+async function hentKveld() {
+  let ny;
+  try {
+    ny = await rpc("hent_kveld", {});
+  } catch (err) {
+    visTilkobling(err.message);
+    return;
+  }
+  visTilkobling("");
+
+  if (!ny || !ny.viner.length) {
+    kveld = null;
+    visIngenKveld();
+    return;
+  }
+
+  const forrige = kveld;
+  const nyKveld = !forrige || forrige.id !== ny.id;
+  const endret = nyKveld ||
+    JSON.stringify(forrige.viner) !== JSON.stringify(ny.viner) ||
+    JSON.stringify(forrige.gjett) !== JSON.stringify(ny.gjett);
+  kveld = ny;
+
+  if (nyKveld) {
+    tilstand = lastTilstand();
+    visIntro();
+    $("navn").value = tilstand.navn;
+    $("innhold").hidden = false;
+    $("ingen").hidden = true;
+  }
+  if (kveld.viner.some(v => v.avslort)) await hentRangering();
+  if (endret) {
+    // Bygg panelet på nytt bare når noe faktisk har endret seg, så fokus ikke hopper mens man skriver.
+    byggFaner();
+    if (nyKveld || panelBerort(forrige)) visPanel();
+  } else if (tilstand.aktiv === "oppsummering") {
+    visToppliste($("toppliste"), rangering, tilstand.navn);
+  }
+  sendUsendte();
+}
+
+function panelBerort(forrige) {
+  if (tilstand.aktiv === "oppsummering") return true;
+  const for_ = forrige.viner.find(v => v.bokstav === tilstand.aktiv);
+  const na = vinFor(tilstand.aktiv);
+  return !for_ || !na || JSON.stringify(for_) !== JSON.stringify(na) || JSON.stringify(forrige.gjett) !== JSON.stringify(kveld.gjett);
+}
+
+async function hentRangering() {
+  try { rangering = await rpc("hent_rangering", { p_smaking: kveld.id }) || []; } catch (e) { /* beholder forrige */ }
+}
+
+function visTilkobling(tekst) {
+  const m = $("melding");
+  m.textContent = tekst ? tekst + " Notatene dine er trygge på telefonen." : "";
+  m.hidden = !tekst;
+}
+
+function visIngenKveld() {
+  $("innhold").hidden = true;
+  $("ingen").hidden = false;
+  $("kveld-tittel").textContent = "Kveldsmodus";
+  $("kveld-info").textContent = "";
+}
+
+function visIntro() {
+  $("kveld-tittel").textContent = kveld.tittel || "Kvelden";
+  $("kveld-info").textContent = [datoTekst(kveld.dato), kveld.sted, kveld.viner.length + " viner i blinde"].filter(Boolean).join(" · ");
+  document.title = (kveld.tittel || "Kvelden") + " – Kveldsmodus";
 }
 
 // ---------------- Faner ----------------
@@ -98,8 +177,7 @@ function riktig(v, g, svar) {
 function byggFaner() {
   const faner = $("faner");
   faner.textContent = "";
-  const alle = KVELD.viner.map(v => v.bokstav).concat("oppsummering");
-  alle.forEach(b => {
+  kveld.viner.map(v => v.bokstav).concat("oppsummering").forEach(b => {
     const knapp = el("button", "fane");
     knapp.type = "button";
     knapp.dataset.fane = b;
@@ -108,10 +186,12 @@ function byggFaner() {
       knapp.textContent = "Min kveld";
       knapp.classList.add("fane-oppsummering");
     } else {
+      const v = vinFor(b);
+      if (v.avslort) knapp.classList.add("fane-avslort");
       knapp.append(el("span", "fane-bokstav", b));
       const p = notatFor(b).poeng;
       knapp.append(el("span", "fane-poeng", p == null ? "–" : komma(p)));
-      knapp.setAttribute("aria-label", "Vin " + b + (p == null ? ", ikke vurdert" : ", " + komma(p) + " poeng"));
+      knapp.setAttribute("aria-label", "Vin " + b + (v.avslort ? ", avslørt" : "") + (p == null ? ", ikke vurdert" : ", " + komma(p) + " poeng"));
     }
     faner.appendChild(knapp);
   });
@@ -131,7 +211,6 @@ function visPanel() {
   const panel = $("panel");
   panel.textContent = "";
   if (tilstand.aktiv === "oppsummering") return visOppsummering(panel);
-  if (!vinFor(tilstand.aktiv)) tilstand.aktiv = KVELD.viner[0].bokstav;
   const v = vinFor(tilstand.aktiv);
   const n = notatFor(v.bokstav);
 
@@ -139,12 +218,14 @@ function visPanel() {
   const hode = el("div", "vin-hode");
   hode.append(el("span", "vin-bokstav", v.bokstav));
   const tittel = el("div");
-  tittel.append(el("h2", "", n.avslort ? v.produsent + " " + v.vin : "Vin " + v.bokstav));
-  tittel.append(el("p", "vin-meta", n.avslort
-    ? [v.aargang, v.drue, v.distrikt || v.land, "tatt med av " + v.tattMed].filter(Boolean).join(" · ")
-    : "Blindsmaking. Hold tunga rett i munnen."));
+  tittel.append(el("h2", "", v.avslort ? vinTittel(v) : "Vin " + v.bokstav));
+  tittel.append(el("p", "vin-meta", v.avslort
+    ? [v.aargang, v.drue, v.distrikt || v.land, v.tatt_med && "tatt med av " + v.tatt_med].filter(Boolean).join(" · ")
+    : "Blindsmaking. Verten avslører når alle har gjettet."));
   hode.append(tittel);
   panel.append(hode);
+
+  if (v.avslort) panel.append(byggResultat(v, n));
 
   // Struktur
   const struktur = el("fieldset", "kort");
@@ -203,27 +284,19 @@ function visPanel() {
   notat.append(nl, ta);
   panel.append(notat);
 
-  // Gjetting
-  if (KVELD.blind && KVELD.gjett.length) panel.append(byggGjetting(v, n));
-
-  // Poeng
-  panel.append(byggPoeng(v, n));
-
-  // Avslør og navigasjon
-  const bunn = el("div", "panel-bunn");
-  if (KVELD.blind && !n.avslort) {
-    const avslor = el("button", "knapp lys-knapp", "Avslør vin " + v.bokstav);
-    avslor.type = "button";
-    avslor.addEventListener("click", () => {
-      if (!confirm("Har verten avslørt vin " + v.bokstav + "? Gjetningene dine låses.")) return;
-      n.avslort = true;
-      lagre();
-      visPanel();
-    });
-    bunn.append(avslor);
+  if (!v.avslort) {
+    if (kveld.gjett.length) panel.append(byggGjetting(v, n));
+    panel.append(byggPoeng(v, n));
+    const status = el("p", "status lagre-status");
+    status.id = "lagre-status";
+    status.setAttribute("role", "status");
+    panel.append(status);
+    visLagreStatus();
   }
-  const indeks = KVELD.viner.indexOf(v);
-  const neste = KVELD.viner[indeks + 1];
+
+  const indeks = kveld.viner.indexOf(v);
+  const neste = kveld.viner[indeks + 1];
+  const bunn = el("div", "panel-bunn");
   const videre = el("button", "knapp", neste ? "Neste: vin " + neste.bokstav : "Se min kveld");
   videre.type = "button";
   videre.addEventListener("click", () => velgFane(neste ? neste.bokstav : "oppsummering"));
@@ -233,19 +306,16 @@ function visPanel() {
 
 function byggGjetting(v, n) {
   const boks = el("fieldset", "kort");
-  boks.append(el("legend", "", n.avslort ? "Gjetningen din" : "Gjett"));
-  KVELD.gjett.forEach(g => {
+  boks.append(el("legend", "", "Gjett"));
+  if (!tilstand.navn) {
+    const varsel = el("p", "varsel", "Skriv navnet ditt øverst for å være med i rangeringen.");
+    boks.append(varsel);
+  }
+  kveld.gjett.forEach(g => {
     const rad = el("div", "gjett-rad");
     const svar = n.gjett[g.felt] || "";
     const id = "g-" + g.felt;
-
-    if (n.avslort) {
-      const ok = riktig(v, g, svar);
-      rad.append(el("span", "gjett-etikett", g.etikett));
-      const res = el("span", "gjett-svar " + (ok ? "ok" : "bom"),
-        (svar || "Ikke gjettet") + (ok ? " ✓" : " – fasit: " + v[g.felt]));
-      rad.append(res);
-    } else if (g.valg) {
+    if (g.valg && g.valg.length) {
       const lab = el("span", "gjett-etikett", g.etikett);
       lab.id = id;
       const valg = el("div", "brikker");
@@ -258,7 +328,7 @@ function byggGjetting(v, n) {
         b.addEventListener("click", () => {
           n.gjett[g.felt] = n.gjett[g.felt] === alt ? "" : alt;
           valg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.textContent === n.gjett[g.felt])));
-          lagre();
+          planleggSending(v.bokstav);
         });
         valg.append(b);
       });
@@ -268,7 +338,8 @@ function byggGjetting(v, n) {
       lab.htmlFor = id;
       const inp = el("input");
       Object.assign(inp, { type: "text", id, value: svar, autocomplete: "off" });
-      inp.addEventListener("input", () => { n.gjett[g.felt] = inp.value; lagre(); });
+      if (g.felt === "aargang" || g.felt === "pris") inp.inputMode = "numeric";
+      inp.addEventListener("input", () => { n.gjett[g.felt] = inp.value; planleggSending(v.bokstav); });
       rad.append(lab, inp);
     }
     boks.append(rad);
@@ -289,8 +360,8 @@ function byggPoeng(v, n) {
     n.poeng = Number(input.value);
     input.dataset.satt = "true";
     tall.textContent = komma(n.poeng);
-    lagre();
     byggFaner();
+    planleggSending(v.bokstav);
   });
   const skala = el("div", "skala");
   skala.append(el("span", "", "1 Vask"), el("span", "", "10 Drømmevin"));
@@ -300,15 +371,45 @@ function byggPoeng(v, n) {
   return boks;
 }
 
+// Fasit, egne treff og bordets snitt for en avslørt vin.
+function byggResultat(v, n) {
+  const boks = el("div", "kort resultat");
+  let sum = 0;
+  kveld.gjett.forEach(g => {
+    const svar = n.gjett[g.felt] || "";
+    const p = treffpoeng(g.felt, svar, v[g.felt]);
+    sum += p;
+    const rad = el("div", "gjett-rad");
+    rad.append(el("span", "gjett-etikett", g.etikett));
+    rad.append(el("span", "gjett-svar " + (p === 2 ? "ok" : p === 1 ? "naer" : "bom"),
+      (svar || "Ikke gjettet") + (p === 2 ? " ✓" : " – fasit: " + (v[g.felt] || "ukjent")) + (p === 1 ? " (nesten, 1 poeng)" : "")));
+    boks.append(rad);
+  });
+  const linje = el("div", "resultat-linje");
+  if (kveld.gjett.length) linje.append(el("span", "", "Du fikk " + sum + " gjettepoeng"));
+  linje.append(el("span", "", "Ditt poeng: " + (n.poeng == null ? "–" : komma(n.poeng))));
+  linje.append(el("span", "", "Bordets snitt: " + (v.snitt == null ? "–" : komma(v.snitt)) + (v.antall ? " (" + v.antall + ")" : "")));
+  boks.append(linje);
+  return boks;
+}
+
 // ---------------- Oppsummering ----------------
 
 function visOppsummering(panel) {
-  panel.append(el("h2", "", tilstand.navn ? tilstand.navn + "s kveld" : "Min kveld"));
+  if (kveld.viner.some(v => v.avslort)) {
+    const rang = el("section", "kort");
+    rang.append(el("h2", "kort-tittel", "Hvem traff best"));
+    const liste = el("ol", "toppliste");
+    liste.id = "toppliste";
+    rang.append(liste);
+    panel.append(rang);
+    visToppliste(liste, rangering, tilstand.navn);
+  }
 
-  const rader = KVELD.viner
+  panel.append(el("h2", "", tilstand.navn ? tilstand.navn + "s kveld" : "Min kveld"));
+  const rader = kveld.viner
     .map(v => ({ v, n: notatFor(v.bokstav) }))
     .sort((a, b) => (b.n.poeng ?? -1) - (a.n.poeng ?? -1));
-
   const liste = el("ol", "rangering");
   rader.forEach(({ v, n }) => {
     const li = el("li");
@@ -316,7 +417,7 @@ function visOppsummering(panel) {
     knapp.type = "button";
     knapp.addEventListener("click", () => velgFane(v.bokstav));
     const tekst = el("span", "rang-tekst");
-    tekst.append(el("span", "rang-navn", vinNavn(v, n.avslort)));
+    tekst.append(el("span", "rang-navn", v.avslort ? vinTittel(v) + " " + v.aargang : "Vin " + v.bokstav));
     const detaljer = n.aromaer.slice(0, 4).join(", ");
     if (detaljer) tekst.append(el("span", "rang-meta", detaljer));
     knapp.append(el("span", "rang-bokstav", v.bokstav), tekst, el("span", "rang-poeng", n.poeng == null ? "–" : komma(n.poeng)));
@@ -325,105 +426,73 @@ function visOppsummering(panel) {
   });
   panel.append(liste);
 
-  if (KVELD.blind && KVELD.gjett.length) {
-    const avslorte = KVELD.viner.filter(v => notatFor(v.bokstav).avslort);
-    if (avslorte.length) {
-      let treff = 0, mulige = 0;
-      avslorte.forEach(v => KVELD.gjett.forEach(g => { mulige++; if (riktig(v, g, notatFor(v.bokstav).gjett[g.felt])) treff++; }));
-      const res = el("p", "treff");
-      res.append(el("strong", "", treff + " av " + mulige), document.createTextNode(" riktige gjetninger så langt."));
-      panel.append(res);
-    }
-  }
-
   const knapper = el("div", "panel-bunn");
   const del = el("button", "knapp", "Del notatene mine");
   del.type = "button";
   del.addEventListener("click", delNotater);
-  const send = el("button", "knapp lys-knapp", "Send poengene til verten");
-  send.type = "button";
-  send.addEventListener("click", sendTilVert);
-  knapper.append(del, send);
+  knapper.append(del);
   panel.append(knapper);
 
   const status = el("p", "status");
   status.id = "status";
   status.setAttribute("role", "status");
   panel.append(status);
-
-  const nullstill = el("button", "lenkeknapp", "Nullstill kvelden på denne telefonen");
-  nullstill.type = "button";
-  nullstill.addEventListener("click", () => {
-    if (!confirm("Slette alle notater og poeng for denne kvelden?")) return;
-    KVELD.viner.forEach(v => { tilstand.viner[v.bokstav] = tomVin(); });
-    tilstand.aktiv = KVELD.viner[0].bokstav;
-    lagre();
-    byggFaner();
-    visPanel();
-  });
-  panel.append(nullstill);
 }
 
 function notatTekst() {
-  const linjer = [KVELD.tittel + " – " + datoTekst() + (tilstand.navn ? " – " + tilstand.navn : ""), ""];
-  KVELD.viner.forEach(v => {
+  const linjer = [(kveld.tittel || "Kvelden") + " – " + datoTekst(kveld.dato) + (tilstand.navn ? " – " + tilstand.navn : ""), ""];
+  kveld.viner.forEach(v => {
     const n = notatFor(v.bokstav);
-    linjer.push(vinNavn(v, n.avslort) + ": " + (n.poeng == null ? "ikke vurdert" : komma(n.poeng) + " poeng"));
+    linjer.push((v.avslort ? vinTittel(v) + " " + v.aargang : "Vin " + v.bokstav) + ": " + (n.poeng == null ? "ikke vurdert" : komma(n.poeng) + " poeng"));
     const struktur = STRUKTUR.filter(s => n.struktur[s.felt]).map(s => s.navn.toLowerCase() + " " + n.struktur[s.felt] + "/5");
     if (struktur.length) linjer.push("  Struktur: " + struktur.join(", "));
     if (n.aromaer.length) linjer.push("  Aromaer: " + n.aromaer.join(", "));
-    if (KVELD.blind) {
-      const g = KVELD.gjett.filter(x => n.gjett[x.felt]).map(x => x.etikett.replace(/\?$/, "") + ": " + n.gjett[x.felt]);
-      if (g.length) linjer.push("  Gjettet: " + g.join(", "));
-    }
+    const g = kveld.gjett.filter(x => n.gjett[x.felt]).map(x => x.etikett.replace(/\?$/, "") + ": " + n.gjett[x.felt]);
+    if (g.length) linjer.push("  Gjettet: " + g.join(", "));
     if (n.notat.trim()) linjer.push("  Notat: " + n.notat.trim());
   });
   return linjer.join("\n");
 }
 
-function visStatus(tekst) {
-  const s = $("status");
-  if (s) s.textContent = tekst;
-}
-
 async function delNotater() {
   const tekst = notatTekst();
+  const status = $("status");
   if (navigator.share) {
-    try { await navigator.share({ title: KVELD.tittel, text: tekst }); return; }
+    try { await navigator.share({ title: kveld.tittel, text: tekst }); return; }
     catch (e) { if (e.name === "AbortError") return; }
   }
   try {
     await navigator.clipboard.writeText(tekst);
-    visStatus("Notatene er kopiert. Lim dem inn der du vil.");
+    status.textContent = "Notatene er kopiert. Lim dem inn der du vil.";
   } catch (e) {
-    visStatus("Kunne ikke dele eller kopiere på denne telefonen.");
+    status.textContent = "Kunne ikke dele eller kopiere på denne telefonen.";
   }
-}
-
-function sendTilVert() {
-  const emne = "Poeng: " + KVELD.tittel + (tilstand.navn ? " fra " + tilstand.navn : "");
-  window.location.href = "mailto:" + KVELD.epost + "?subject=" + encodeURIComponent(emne) + "&body=" + encodeURIComponent(notatTekst());
-}
-
-function datoTekst() {
-  const [a, m, d] = KVELD.dato.split("-").map(Number);
-  return new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "long", year: "numeric" }).format(new Date(a, m - 1, d));
 }
 
 // ---------------- Start ----------------
 
-$("kveld-tittel").textContent = KVELD.tittel;
-$("kveld-info").textContent = datoTekst() + " · " + KVELD.sted + " · " + KVELD.viner.length + " viner" + (KVELD.blind ? " i blinde" : "");
-document.title = KVELD.tittel + " – Kveldsmodus";
+if (!tilkoblet()) {
+  visIngenKveld();
+  $("ingen").textContent = "Kveldsmodus er ikke koblet til ennå.";
+} else {
+  const navn = $("navn");
+  let navnTimer = null;
+  navn.addEventListener("input", () => {
+    if (!tilstand) return;
+    tilstand.navn = navn.value.trim();
+    skrivLokalt("karaffel-navn", tilstand.navn);
+    kveld.viner.forEach(v => { notatFor(v.bokstav).sendt = false; });
+    lagre();
+    clearTimeout(navnTimer);
+    navnTimer = setTimeout(() => { sendUsendte(); if (tilstand.aktiv !== "oppsummering") visPanel(); }, 900);
+  });
 
-const navn = $("navn");
-navn.value = tilstand.navn;
-navn.addEventListener("input", () => { tilstand.navn = navn.value.trim(); lagre(); });
+  $("faner").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (b) velgFane(b.dataset.fane);
+  });
 
-$("faner").addEventListener("click", e => {
-  const b = e.target.closest("button");
-  if (b) velgFane(b.dataset.fane);
-});
-
-byggFaner();
-visPanel();
+  hentKveld();
+  setInterval(() => { if (!document.hidden) hentKveld(); }, OPPDATER_MS);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) hentKveld(); });
+}

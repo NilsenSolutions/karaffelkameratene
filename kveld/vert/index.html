@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Vertsside – Karaffelkameratene</title>
+  <meta name="theme-color" content="#1b1030">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="../kveld.css">
+</head>
+<body class="kveld">
+  <header class="topp">
+    <a class="merke" href="../../">Karaffelkameratene</a>
+    <span class="kveld-merke">Vertsside</span>
+  </header>
+
+  <main>
+    <p class="melding" id="melding" role="status" hidden></p>
+
+    <form class="kort" id="logg-inn" hidden>
+      <h1>Vertsside</h1>
+      <div class="felt">
+        <label for="pin">PIN</label>
+        <input id="pin" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="knapp" type="submit">Logg inn</button>
+      <p class="feil" id="pin-feil" role="alert"></p>
+    </form>
+
+    <div id="vert" hidden>
+      <section>
+        <h1 id="vert-tittel">Kvelden</h1>
+        <p class="kveld-info" id="vert-info"></p>
+      </section>
+
+      <section class="kort" aria-labelledby="live-tittel">
+        <h2 class="kort-tittel" id="live-tittel">Avsløring</h2>
+        <p class="hjelp">Når du avslører en vin, låses gjetningene og fasit vises på alle telefonene.</p>
+        <ul class="live" id="live"></ul>
+      </section>
+
+      <section class="kort" aria-labelledby="rang-tittel">
+        <h2 class="kort-tittel" id="rang-tittel">Hvem traff best</h2>
+        <ol class="toppliste" id="toppliste"></ol>
+      </section>
+
+      <form id="oppsett">
+        <h2>Kveldens oppsett</h2>
+
+        <fieldset class="kort">
+          <legend>Smakingen</legend>
+          <div class="felt"><label for="s-id">Id <span class="valgfri">Ny id gir blanke ark for alle</span></label><input id="s-id" type="text" required></div>
+          <div class="felt"><label for="s-tittel">Tittel</label><input id="s-tittel" type="text"></div>
+          <div class="felt"><label for="s-dato">Dato</label><input id="s-dato" type="date"></div>
+          <div class="felt"><label for="s-sted">Sted</label><input id="s-sted" type="text"></div>
+        </fieldset>
+
+        <fieldset class="kort">
+          <legend>Hva skal gjettes?</legend>
+          <p class="hjelp">Svaralternativer skilles med komma. Uten alternativer får deltakerne et tekstfelt.</p>
+          <div id="gjett-valg"></div>
+        </fieldset>
+
+        <fieldset class="kort">
+          <legend>Viner</legend>
+          <div id="viner"></div>
+          <button class="knapp lys-knapp" type="button" id="ny-vin">Legg til vin</button>
+        </fieldset>
+
+        <div class="panel-bunn">
+          <button class="knapp" type="submit" id="lagre">Lagre og gjør aktiv</button>
+        </div>
+        <p class="status" id="lagre-status" role="status"></p>
+      </form>
+
+      <button class="lenkeknapp" type="button" id="logg-ut">Logg ut</button>
+    </div>
+  </main>
+
+  <script src="../oppsett.js"></script>
+  <script src="../felles.js"></script>
+  <script src="vert.js"></script>
+</body>
+</html>

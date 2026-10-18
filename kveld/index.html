@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Kveldsmodus – Karaffelkameratene</title>
-  <meta name="description" content="Smakeskjema for kvelden: noter aromaer, struktur og poeng for hver vin.">
+  <meta name="description" content="Smakeskjema for kvelden: noter aromaer, struktur og poeng, og gjett vinene i blinde.">
   <meta name="theme-color" content="#1b1030">
   <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,25 +20,34 @@
   </header>
 
   <main>
+    <p class="melding" id="melding" role="status" hidden></p>
+
     <section class="kveld-intro">
-      <h1 id="kveld-tittel">Kvelden</h1>
-      <p class="kveld-info" id="kveld-info"></p>
-      <div class="felt kveld-navn">
-        <label for="navn">Navnet ditt <span class="valgfri">Lagres bare på telefonen din</span></label>
-        <input id="navn" type="text" autocomplete="given-name" placeholder="For eksempel Kari">
-      </div>
+      <h1 id="kveld-tittel">Kveldsmodus</h1>
+      <p class="kveld-info" id="kveld-info">Henter kvelden…</p>
     </section>
 
-    <nav class="faner" aria-label="Viner" id="faner"></nav>
+    <p class="kort" id="ingen" hidden>Ingen smaking er aktiv akkurat nå. Siden oppdaterer seg selv når verten har lagt inn kvelden.</p>
 
-    <section class="panel" id="panel" aria-live="polite"></section>
+    <div id="innhold" hidden>
+      <div class="felt kveld-navn">
+        <label for="navn">Navnet ditt <span class="valgfri">Vises i rangeringen</span></label>
+        <input id="navn" type="text" autocomplete="given-name" maxlength="40" placeholder="For eksempel Kari">
+      </div>
+
+      <nav class="faner" aria-label="Viner" id="faner"></nav>
+
+      <section class="panel" id="panel" aria-live="polite"></section>
+    </div>
   </main>
 
   <footer class="bunn">
-    <p>Notatene lagres bare på denne telefonen.</p>
+    <p>Notater blir på telefonen. Gjetninger og poeng sendes til verten.</p>
     <p>Drikk med måte. Ingen under 18 år.</p>
   </footer>
 
+  <script src="oppsett.js"></script>
+  <script src="felles.js"></script>
   <script src="kveld.js"></script>
 </body>
 </html>

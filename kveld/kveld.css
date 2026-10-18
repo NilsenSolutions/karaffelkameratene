@@ -114,6 +114,57 @@ textarea {
 .rang-navn { font-family: var(--tittel); font-weight: 800; }
 .rang-meta { font-size: .88rem; opacity: .7; }
 .rang-poeng { font-family: var(--tittel); font-weight: 800; font-size: 1.6rem; color: var(--vin); font-variant-numeric: tabular-nums; }
-.treff { font-size: 1.1rem; }
-.treff strong { color: var(--sitron); }
 .status:empty { display: none; }
+.lagre-status { font-size: .9rem; color: var(--lilla-mork); margin-top: -.25rem; }
+
+/* Meldinger */
+.melding { background: var(--vin); border-radius: var(--radius); padding: .75rem 1rem; margin: 0 0 1rem; max-width: none; }
+.melding[hidden] { display: none; }
+.varsel { background: var(--sitron); color: var(--ink); border-radius: 10px; padding: .5rem .75rem; font-weight: 600; font-size: .92rem; }
+#ingen[hidden], #innhold[hidden] { display: none; }
+
+.fane-avslort { border-color: var(--vin); }
+.kort-tittel { font-size: 1.3rem; margin-bottom: .75rem; }
+
+/* Resultat etter avsløring */
+.resultat { border: 2px solid var(--sitron); }
+.gjett-svar.naer { color: var(--sitron); }
+.resultat-linje { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; margin-top: .9rem; font-weight: 600; }
+
+/* Toppliste */
+.toppliste { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.toppliste li {
+  display: grid; grid-template-columns: 2rem 1fr auto auto; gap: .75rem; align-items: center;
+  background: var(--hvit); color: var(--ink); border-radius: 10px; padding: .55rem .85rem;
+}
+.toppliste li.hjelp { display: block; background: none; color: var(--lilla-mork); padding: 0; }
+.toppliste li.meg { outline: 3px solid var(--sitron); }
+.toppliste .plass { font-family: var(--tittel); font-weight: 800; text-align: center; }
+.toppliste .rang-poeng { font-size: 1.3rem; }
+
+/* Vertsside */
+.kveld input[type="password"], .kveld input[type="date"] {
+  width: 100%; font: inherit; color: var(--ink); background: var(--hvit);
+  border: 2px solid transparent; border-radius: 10px; padding: .75rem .9rem;
+}
+#logg-inn[hidden], #vert[hidden] { display: none; }
+#logg-inn h1 { font-size: 2rem; }
+.live { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.live li { display: grid; grid-template-columns: auto 1fr auto; gap: .75rem; align-items: center; background: var(--ink); border-radius: 10px; padding: .6rem .75rem; }
+.live li.hjelp { display: block; background: none; padding: 0; }
+.live li.avslort { outline: 2px solid var(--sitron); }
+.live .knapp { padding: .55rem 1.1rem; }
+.live .rang-meta { opacity: .75; }
+.gjett-oppsett { padding: .6rem 0; border-top: 1px solid var(--ink); }
+.gjett-oppsett:first-of-type { border-top: 0; }
+.avkryss-linje { display: flex; gap: .5rem; align-items: center; font-weight: 600; cursor: pointer; }
+.avkryss-linje input { width: 1.3rem; height: 1.3rem; accent-color: var(--sitron); }
+.gjett-detaljer { display: grid; gap: .5rem; margin-top: .5rem; }
+.gjett-detaljer[hidden] { display: none; }
+.vin-rad { border: 0; padding: 0 0 1rem; margin: 0 0 1rem; border-bottom: 1px solid var(--ink); min-width: 0; }
+.vin-rad-topp { display: flex; justify-content: space-between; align-items: center; }
+.vin-rad legend { float: left; font-family: var(--tittel); font-weight: 800; font-size: 1.15rem; padding: 0; }
+.vin-felt { clear: both; display: grid; grid-template-columns: 1fr 1fr; gap: 0 .75rem; }
+.vin-felt .felt { margin-bottom: .6rem; }
+.vin-felt label { font-size: .9rem; }
+#oppsett h2 { margin-top: 2rem; }

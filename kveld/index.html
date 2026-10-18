@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Kveldsmodus – Karaffelkameratene</title>
+  <meta name="description" content="Smakeskjema for kvelden: noter aromaer, struktur og poeng for hver vin.">
+  <meta name="theme-color" content="#1b1030">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="kveld.css">
+</head>
+<body class="kveld">
+  <header class="topp">
+    <a class="merke" href="../">Karaffelkameratene</a>
+    <span class="kveld-merke">Kveldsmodus</span>
+  </header>
+
+  <main>
+    <section class="kveld-intro">
+      <h1 id="kveld-tittel">Kvelden</h1>
+      <p class="kveld-info" id="kveld-info"></p>
+      <div class="felt kveld-navn">
+        <label for="navn">Navnet ditt <span class="valgfri">Lagres bare på telefonen din</span></label>
+        <input id="navn" type="text" autocomplete="given-name" placeholder="For eksempel Kari">
+      </div>
+    </section>
+
+    <nav class="faner" aria-label="Viner" id="faner"></nav>
+
+    <section class="panel" id="panel" aria-live="polite"></section>
+  </main>
+
+  <footer class="bunn">
+    <p>Notatene lagres bare på denne telefonen.</p>
+    <p>Drikk med måte. Ingen under 18 år.</p>
+  </footer>
+
+  <script src="kveld.js"></script>
+</body>
+</html>

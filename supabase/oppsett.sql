@@ -11,6 +11,8 @@ create table if not exists public.innstillinger (
   id int primary key default 1 check (id = 1),
   pin_hash text not null
 );
+-- Utseendet på forsiden: «kveld» (mørkt, standard) eller «kamerater» (lyst og håndtegnet).
+alter table public.innstillinger add column if not exists tema text not null default 'kveld';
 
 create table if not exists public.smaking (
   id text primary key,
@@ -486,6 +488,21 @@ begin
   delete from samling where id = p_id;
 end $$;
 
+-- ---------------- Tema på forsiden ----------------
+
+create or replace function public.hent_tema()
+returns text language sql stable security definer set search_path = public as $$
+  select coalesce((select tema from innstillinger where id = 1), 'kveld')
+$$;
+
+create or replace function public.vert_sett_tema(p_pin text, p_tema text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  if p_tema is null or p_tema not in ('kveld', 'kamerater') then raise exception 'Ukjent tema'; end if;
+  update innstillinger set tema = p_tema where id = 1;
+end $$;
+
 -- Hvem som kan kalle hva.
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function public.hent_kveld(), public.send_gjetning(text, text, uuid, text, jsonb, numeric),
@@ -495,7 +512,8 @@ grant execute on function public.hent_kveld(), public.send_gjetning(text, text, 
   public.vert_slett_samling(text, uuid), public.vert_hent_kveld(text, text), public.vert_aktiver(text, text, boolean),
   public.hent_vinkjennere(), public.vert_nullstill(text, text),
   public.meld_pa(uuid, text, text), public.vert_hent_pameldinger(text, uuid),
-  public.vert_legg_til_pamelding(text, uuid, text, text), public.vert_fjern_pamelding(text, uuid) to anon;
+  public.vert_legg_til_pamelding(text, uuid, text, text), public.vert_fjern_pamelding(text, uuid),
+  public.hent_tema(), public.vert_sett_tema(text, text) to anon;
 
 -- =====================================================================
 -- SETT VERTENS PIN: bytt ut DIN-PIN under (minst 6 tegn) og kjør bare denne linjen.

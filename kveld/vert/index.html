@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../style.css?v=20261018f">
-  <link rel="stylesheet" href="../kveld.css?v=20261018f">
+  <link rel="stylesheet" href="../../style.css?v=20261018g">
+  <link rel="stylesheet" href="../kveld.css?v=20261018g">
 </head>
 <body class="kveld">
   <header class="topp">
@@ -64,6 +64,27 @@
         <ol class="toppliste" id="vinkjennere"></ol>
       </section>
 
+      <section class="kort" aria-labelledby="tema-tittel">
+        <h2 class="kort-tittel" id="tema-tittel">Utseende på forsiden</h2>
+        <p class="hjelp">Velg hvordan forsiden ser ut for alle som besøker den. Forhåndsvis gjerne før du tar det i bruk.</p>
+        <fieldset class="tema-valg">
+          <legend>Tema</legend>
+          <label class="tema-alt">
+            <input type="radio" name="tema" value="kveld">
+            <span><strong>Kveld</strong>Mørkt med vinrosa og sitron.</span>
+          </label>
+          <label class="tema-alt">
+            <input type="radio" name="tema" value="kamerater">
+            <span><strong>Kamerater</strong>Lyst og håndtegnet, med de to strekfigurene som skjenker.</span>
+          </label>
+        </fieldset>
+        <div class="samling-knapper">
+          <button class="knapp" type="button" id="lagre-tema">Bruk på forsiden</button>
+          <a class="knapp lys-knapp" id="forhandsvis-tema" href="../../?tema=kveld" target="_blank" rel="noopener">Forhåndsvis</a>
+        </div>
+        <p class="status" id="tema-status" role="status"></p>
+      </section>
+
       <form id="oppsett" hidden>
         <h2 id="oppsett-tittel">Kvelden</h2>
         <p class="kveld-info" id="oppsett-info"></p>
@@ -93,8 +114,8 @@
     </div>
   </main>
 
-  <script src="../oppsett.js?v=20261018f"></script>
-  <script src="../felles.js?v=20261018f"></script>
-  <script src="vert.js?v=20261018f"></script>
+  <script src="../oppsett.js?v=20261018g"></script>
+  <script src="../felles.js?v=20261018g"></script>
+  <script src="vert.js?v=20261018g"></script>
 </body>
 </html>

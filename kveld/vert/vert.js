@@ -89,8 +89,44 @@ async function start() {
     if (/PIN/.test(err.message)) return loggUt();
     melding(err.message);
   }
+  hentTema();
   clearInterval(timer);
   timer = setInterval(() => hentLive().catch(err => melding(err.message)), 4000);
+}
+
+// ---------------- Tema på forsiden ----------------
+
+const valgtTema = () => (document.querySelector('input[name="tema"]:checked') || {}).value || "kveld";
+
+function oppdaterForhandsvisning() {
+  $("forhandsvis-tema").href = "../../?tema=" + valgtTema();
+}
+
+async function hentTema() {
+  try {
+    const tema = await rpc("hent_tema", {});
+    document.querySelectorAll('input[name="tema"]').forEach(r => { r.checked = r.value === tema; });
+    $("lagre-tema").disabled = false;
+    $("tema-status").textContent = "";
+  } catch (err) {
+    $("lagre-tema").disabled = true;
+    $("tema-status").textContent = "Temavalget finnes ikke i databasen ennå. Kjør supabase/oppsett.sql på nytt i Supabase.";
+  }
+  oppdaterForhandsvisning();
+}
+
+async function lagreTema() {
+  const tema = valgtTema();
+  const status = $("tema-status");
+  $("lagre-tema").disabled = true;
+  status.textContent = "Lagrer…";
+  try {
+    await rpc("vert_sett_tema", { p_pin: pin, p_tema: tema });
+    status.textContent = "Forsiden bruker nå " + (tema === "kamerater" ? "Kamerater" : "Kveld") + ".";
+  } catch (err) {
+    status.textContent = "Ble ikke lagret: " + err.message;
+  }
+  $("lagre-tema").disabled = false;
 }
 
 // ---------------- Aktiv kveld: avsløring og rangering ----------------
@@ -569,6 +605,8 @@ if (!tilkoblet()) {
 } else {
   $("logg-inn").addEventListener("submit", loggInn);
   $("logg-ut").addEventListener("click", loggUt);
+  $("lagre-tema").addEventListener("click", lagreTema);
+  document.querySelectorAll('input[name="tema"]').forEach(r => r.addEventListener("change", oppdaterForhandsvisning));
   $("ny-samling").addEventListener("click", nySamling);
   $("ny-vin").addEventListener("click", () => leggTilVin({}));
   $("oppsett").addEventListener("submit", e => { e.preventDefault(); lagreOppsett(false); });

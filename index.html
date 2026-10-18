@@ -12,8 +12,17 @@
   <meta name="theme-color" content="#1b1030">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261018f">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&family=Permanent+Marker&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    // Velg tema før siden tegnes, så den ikke blinker. ?tema=kamerater forhåndsviser uten å lagre.
+    (function () {
+      var t = null;
+      try { t = new URLSearchParams(location.search).get("tema") || localStorage.getItem("karaffel-tema"); } catch (e) {}
+      if (t === "kamerater") document.documentElement.setAttribute("data-tema", t);
+    })();
+  </script>
+  <link rel="stylesheet" href="style.css?v=20261018g">
+  <link rel="stylesheet" href="tema.css?v=20261018g">
 </head>
 <body>
   <a class="skip" href="#pamelding">Hopp til påmelding</a>
@@ -23,7 +32,25 @@
   </a>
 
   <header class="topp">
-    <a class="merke" href="#">Karaffelkameratene</a>
+    <a class="merke" href="#"><span class="merke-ikon" aria-hidden="true"><svg width="44" height="48" focusable="false" viewBox="105 150 190 205" aria-hidden="true">
+<g fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+<g transform="rotate(8 160 210) translate(28 147)">
+<path d="M108 78 C110 96 122 104 132 104 C144 104 156 96 158 78" stroke="#2F5BA8"></path>
+<path d="M117 66 C120 60 124 60 127 66 M139 65 C142 59 146 59 149 65 M122 84 C128 96 140 96 146 83" stroke="#2F5BA8"></path>
+<path d="M104 62 C102 38 118 26 134 27 C152 28 162 44 160 64 C158 86 146 100 130 99 C113 98 106 82 104 62 Z" stroke="#2F5BA8"></path>
+<path d="M102 50 C96 40 104 30 110 34 C108 22 122 18 126 26 C130 14 146 18 144 28 C154 22 164 32 158 42 C168 46 164 58 158 56" stroke="#2F5BA8"></path>
+</g>
+<g transform="rotate(-8 240 215) translate(-90 125)">
+<path d="M306 90 C304 68 316 56 331 56 C348 57 356 72 354 92 C352 112 342 124 328 123 C314 122 308 108 306 90 Z" stroke="#2F5BA8"></path>
+<path d="M312 72 C318 64 326 68 332 61 C338 68 346 66 351 73 M320 107 C324 101 330 103 332 106 C334 103 340 101 344 107 M316 92 C319 86 323 86 326 92 M336 91 C339 85 343 85 346 91 M322 112 C328 120 336 120 342 111" stroke="#2F5BA8"></path>
+</g>
+<g transform="translate(200 302)">
+<path d="M-7 -52 L7 -52 L6 -46 L5 -18 C14 -12 30 -2 30 18 C30 36 18 46 0 46 C-18 46 -30 36 -30 18 C-30 -2 -14 -12 -5 -18 L-6 -46 Z" fill="#FFFFFF" stroke="none"></path>
+<path d="M-28 20 C-18 16 -8 24 0 20 C10 16 18 24 28 20 C26 38 16 44 0 44 C-16 44 -26 38 -28 20 Z" fill="#B3263E" stroke="none"></path>
+<path d="M-7 -52 L7 -52 L6 -46 L5 -18 C14 -12 30 -2 30 18 C30 36 18 46 0 46 C-18 46 -30 36 -30 18 C-30 -2 -14 -12 -5 -18 L-6 -46 Z" stroke="#2F5BA8"></path>
+</g>
+</g>
+</svg></span>Karaffelkameratene</a>
     <nav aria-label="Hovedmeny">
       <a href="kveld/">Kveldsmodus</a>
       <a href="#pamelding">Påmelding</a>
@@ -39,6 +66,53 @@
         <h1>Vi tar en karaffel til.</h1>
         <p class="ingress">Karaffelkameratene er en vinklubb. Vi møtes, smaker blindt, krangler høflig om druer og går hjem litt senere enn planlagt.</p>
         <p><a class="knapp" href="#pamelding">Meld deg på neste smaking</a></p>
+      </div>
+
+      <div class="hero-kamerater" aria-hidden="true">
+        <svg viewBox="50 0 370 335" focusable="false">
+<g fill="none" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+<path d="M60 324 C150 318 280 330 400 322" stroke="#2F5BA8"></path>
+<path d="M100 228 L96 304 L118 304 L120 228" stroke="#2F5BA8"></path>
+<path d="M140 228 L142 304 L164 304 L160 228" stroke="#2F5BA8"></path>
+<path d="M90 304 C82 306 80 318 92 318 L124 318 C126 310 122 304 116 304" stroke="#2F5BA8"></path>
+<path d="M140 304 C138 312 140 318 148 318 L178 318 C186 316 182 304 166 304" stroke="#2F5BA8"></path>
+<path d="M123 112 C104 114 92 124 90 150 L88 226 C110 230 150 230 172 226 L170 150 C168 124 156 114 139 112 M123 112 C128 119 134 119 139 112" stroke="#2E7D4F"></path>
+<path d="M112 150 L112 190 M150 160 C146 170 152 176 156 172" stroke="#2E7D4F"></path>
+<path d="M124 99 L123 112 M138 99 L139 112" stroke="#2F5BA8"></path>
+<path d="M104 62 C102 38 118 26 134 27 C152 28 162 44 160 64 C158 86 146 100 130 99 C113 98 106 82 104 62 Z" stroke="#2F5BA8"></path>
+<path d="M102 50 C96 40 104 30 110 34 C108 22 122 18 126 26 C130 14 146 18 144 28 C154 22 164 32 158 42 C168 46 164 58 158 56" stroke="#2F5BA8"></path>
+<path d="M117 66 C120 60 124 60 127 66 M139 65 C142 59 146 59 149 65 M133 68 C130 76 132 79 136 78" stroke="#2F5BA8"></path>
+<path d="M122 83 C128 86 140 86 146 82 C144 95 126 96 122 83 Z" fill="#FFFFFF" stroke="#2F5BA8"></path>
+<path d="M108 78 C110 96 122 104 132 104 C144 104 156 96 158 78" stroke="#2F5BA8"></path>
+<path d="M92 140 C82 170 80 196 84 214 M104 156 C98 176 96 196 98 214" stroke="#2E7D4F"></path>
+<path d="M82 214 C78 222 86 230 94 228 C102 226 102 216 98 212" stroke="#2F5BA8"></path>
+<path d="M168 128 C184 136 194 144 200 150 C206 140 208 130 210 122 M170 148 C182 154 194 162 204 160 C212 152 218 138 222 124" stroke="#2E7D4F"></path>
+<g transform="translate(228 104) rotate(115)">
+<path d="M-28 20 C-18 16 -8 24 0 20 C10 16 18 24 28 20 C26 38 16 44 0 44 C-16 44 -26 38 -28 20 Z" fill="#B3263E" stroke="none" transform="translate(3 2)"></path>
+<path d="M-7 -52 L7 -52 L6 -46 L5 -18 C14 -12 30 -2 30 18 C30 36 18 46 0 46 C-18 46 -30 36 -30 18 C-30 -2 -14 -12 -5 -18 L-6 -46 Z" stroke="#2F5BA8"></path>
+</g>
+<path d="M206 124 C202 114 212 106 220 110 C228 116 224 126 216 128" stroke="#2F5BA8"></path>
+<path d="M281 136 C292 142 299 152 300 168" stroke="#B3263E"></path>
+<path d="M302 232 L306 306 L326 306 L330 242 L334 306 L354 306 L358 232" stroke="#2E7D4F"></path>
+<path d="M304 306 C294 308 294 320 306 320 L326 320 C328 312 324 306 320 306" stroke="#2F5BA8"></path>
+<path d="M338 306 C336 314 338 320 346 320 L366 320 C374 318 370 306 356 306" stroke="#2F5BA8"></path>
+<path d="M321 134 C304 136 296 148 294 170 L292 232 C316 236 344 236 368 232 L366 170 C364 148 354 136 337 134 M321 134 L329 146 L337 134" stroke="#DDA829"></path>
+<path d="M330 158 L330 159 M330 180 L330 181 M330 202 L330 203" stroke="#2F5BA8" stroke-width="7"></path>
+<path d="M322 123 L321 134 M336 123 L337 134" stroke="#2F5BA8"></path>
+<path d="M306 90 C304 68 316 56 331 56 C348 57 356 72 354 92 C352 112 342 124 328 123 C314 122 308 108 306 90 Z" stroke="#2F5BA8"></path>
+<path d="M308 80 C304 62 318 52 332 54 C346 54 356 64 354 82 M312 72 C318 64 326 68 332 61 C338 68 346 66 351 73 M318 56 L314 48 M334 54 L336 45 M346 58 L352 51" stroke="#2F5BA8"></path>
+<path d="M316 92 C319 86 323 86 326 92 M336 91 C339 85 343 85 346 91 M331 94 C329 101 331 104 334 103" stroke="#2F5BA8"></path>
+<path d="M321 110 C328 113 336 113 343 109 C341 121 323 122 321 110 Z" fill="#FFFFFF" stroke="#2F5BA8" stroke-width="4"></path>
+<path d="M320 107 C324 101 330 103 332 106 C334 103 340 101 344 107" stroke="#2F5BA8"></path>
+<path d="M362 150 C376 170 382 194 378 214 M352 162 C362 180 366 198 364 214" stroke="#DDA829"></path>
+<path d="M364 214 C362 224 372 230 378 224 C384 218 382 212 378 212" stroke="#2F5BA8"></path>
+<path d="M285 182 C294 179 306 184 316 181 C314 192 308 196 300 196 C292 196 287 190 285 182 Z" fill="#B3263E" stroke="none" transform="translate(2 2)"></path>
+<path d="M282 166 C281 186 289 198 300 198 C311 198 319 186 318 166 C306 165 294 167 282 166 Z M300 198 L300 222 M290 224 C296 221 304 221 310 224" stroke="#DDA829"></path>
+<path d="M298 148 C288 168 284 190 292 208 M310 160 C302 178 300 194 306 204" stroke="#DDA829"></path>
+<path d="M292 208 C290 200 302 198 306 204 C310 212 302 218 296 216 C290 214 290 210 292 208 Z" stroke="#2F5BA8"></path>
+<path d="M326 160 L334 152 M274 158 L266 152 M322 176 L330 178" stroke="#DDA829"></path>
+</g>
+</svg>
       </div>
 
       <div class="nedtelling" id="nedtelling" aria-live="off">
@@ -151,7 +225,7 @@
     <p>Drikk med måte. Ingen under 18 år.</p>
   </footer>
 
-  <script src="kveld/oppsett.js?v=20261018f"></script>
-  <script src="script.js?v=20261018f"></script>
+  <script src="kveld/oppsett.js?v=20261018g"></script>
+  <script src="script.js?v=20261018g"></script>
 </body>
 </html>

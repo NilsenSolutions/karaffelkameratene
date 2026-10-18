@@ -39,6 +39,19 @@ Resten ligger øverst i `script.js`:
 
 Etter endringer i skript eller stiler: øk versjonsnummeret (`?v=…`) i de tre HTML-filene, så nettleserne henter nye filer.
 
+## Tema på forsiden
+
+Forsiden har to utseender:
+
+- **Kveld** (standard): mørkt med vinrosa og sitron. Ligger i `style.css`.
+- **Kamerater**: lyst og håndtegnet, med de to strekfigurene som skjenker. Ligger i `tema.css` og slås på med `data-tema="kamerater"` på `<html>`.
+
+Vertskapet bytter tema på `/kveld/vert/` under «Utseende på forsiden». Valget lagres i databasen og gjelder alle som besøker siden. Nettleseren husker siste tema, så siden tegnes riktig med en gang ved neste besøk.
+
+Forhåndsvis et tema uten å endre noe for andre med `?tema=kamerater` eller `?tema=kveld` bak adressen.
+
+Temavalget krever at `supabase/oppsett.sql` er kjørt på nytt etter at temaet ble lagt til. Til det er gjort, viser forsiden Kveld.
+
 ## Kveldsmodus
 
 Verten styrer alt fra `/kveld/vert/`:

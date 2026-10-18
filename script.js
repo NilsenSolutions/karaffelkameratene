@@ -369,8 +369,39 @@ async function lastSmakinger() {
   }
 }
 
+// ---------------- Tema ----------------
+
+// Vertskapet velger tema på /kveld/vert/. Valget huskes i nettleseren, så neste besøk
+// tegnes riktig med en gang. ?tema=kveld eller ?tema=kamerater forhåndsviser uten å lagre.
+const TEMAER = ["kveld", "kamerater"];
+const TEMA_NOKKEL = "karaffel-tema";
+const TEMA_FARGE = { kveld: "#1b1030", kamerater: "#eef3ea" };
+
+function brukTema(tema) {
+  if (!TEMAER.includes(tema)) tema = "kveld";
+  if (tema === "kveld") document.documentElement.removeAttribute("data-tema");
+  else document.documentElement.setAttribute("data-tema", tema);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", TEMA_FARGE[tema]);
+}
+
+async function lastTema() {
+  let forhandsvis = null;
+  try { forhandsvis = new URLSearchParams(location.search).get("tema"); } catch (e) { /* gammel nettleser */ }
+  if (TEMAER.includes(forhandsvis)) return brukTema(forhandsvis);
+  try {
+    const tema = await kall("hent_tema", {});
+    brukTema(tema);
+    try { localStorage.setItem(TEMA_NOKKEL, TEMAER.includes(tema) ? tema : "kveld"); } catch (e) { /* blokkert lagring */ }
+  } catch (err) {
+    // Databasen har ikke temavalget ennå, eller er utilgjengelig: behold det siden alt viser.
+  }
+}
+
 // ---------------- Start ----------------
 
+brukTema(document.documentElement.getAttribute("data-tema") || "kveld");
+lastTema();
 lastSmakinger();
 byggMarquee();
 byggFilter();

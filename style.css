@@ -50,6 +50,8 @@ a { color: inherit; }
   padding: 1.25rem clamp(1rem, 5vw, 3rem);
 }
 .merke { font-family: var(--tittel); font-weight: 800; font-size: 1.3rem; text-decoration: none; }
+/* Vises bare i kamerat-temaet (tema.css). */
+.merke-ikon, .hero-kamerater { display: none; }
 .topp nav { display: flex; flex-wrap: wrap; gap: .25rem 1.5rem; }
 .topp nav a { text-decoration: none; font-weight: 500; border-bottom: 2px solid transparent; padding: .2rem 0; }
 .topp nav a:hover { border-color: var(--vin); }

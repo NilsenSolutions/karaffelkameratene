@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Hjemskjerm (iPhone/Android): helt fylt bakgrunn, telefonen runder hjørnene selv. Kilde for ikon-*.png. -->
+  <rect width="512" height="512" fill="#eef3ea"/>
+  <g transform="translate(256 262) scale(1.85) translate(-200 -252.5)" fill="none" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="rotate(8 160 210) translate(28 147)">
+      <path d="M108 78 C110 96 122 104 132 104 C144 104 156 96 158 78" stroke="#2F5BA8"/>
+      <path d="M117 66 C120 60 124 60 127 66 M139 65 C142 59 146 59 149 65 M122 84 C128 96 140 96 146 83" stroke="#2F5BA8"/>
+      <path d="M104 62 C102 38 118 26 134 27 C152 28 162 44 160 64 C158 86 146 100 130 99 C113 98 106 82 104 62 Z" stroke="#2F5BA8"/>
+      <path d="M102 50 C96 40 104 30 110 34 C108 22 122 18 126 26 C130 14 146 18 144 28 C154 22 164 32 158 42 C168 46 164 58 158 56" stroke="#2F5BA8"/>
+    </g>
+    <g transform="rotate(-8 240 215) translate(-90 125)">
+      <path d="M306 90 C304 68 316 56 331 56 C348 57 356 72 354 92 C352 112 342 124 328 123 C314 122 308 108 306 90 Z" stroke="#2F5BA8"/>
+      <path d="M312 72 C318 64 326 68 332 61 C338 68 346 66 351 73 M320 107 C324 101 330 103 332 106 C334 103 340 101 344 107 M316 92 C319 86 323 86 326 92 M336 91 C339 85 343 85 346 91 M322 112 C328 120 336 120 342 111" stroke="#2F5BA8"/>
+    </g>
+    <g transform="translate(200 302)">
+      <path d="M-7 -52 L7 -52 L6 -46 L5 -18 C14 -12 30 -2 30 18 C30 36 18 46 0 46 C-18 46 -30 36 -30 18 C-30 -2 -14 -12 -5 -18 L-6 -46 Z" fill="#FFFFFF" stroke="none"/>
+      <path d="M-28 20 C-18 16 -8 24 0 20 C10 16 18 24 28 20 C26 38 16 44 0 44 C-16 44 -26 38 -28 20 Z" fill="#B3263E" stroke="none"/>
+      <path d="M-7 -52 L7 -52 L6 -46 L5 -18 C14 -12 30 -2 30 18 C30 36 18 46 0 46 C-18 46 -30 36 -30 18 C-30 -2 -14 -12 -5 -18 L-6 -46 Z" stroke="#2F5BA8"/>
+    </g>
+  </g>
+</svg>

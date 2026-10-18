@@ -189,7 +189,7 @@ function visIngenKveld() {
 
 function visIntro() {
   $("kveld-tittel").textContent = kveld.tittel || "Kvelden";
-  $("kveld-info").textContent = [datoTekst(kveld.dato), kveld.sted, kveld.viner.length + " viner i blinde"].filter(Boolean).join(" · ");
+  $("kveld-info").textContent = [datoTekst(kveld.dato), kveld.sted, kveld.viner.length + (kveld.viner.length === 1 ? " vin" : " viner") + " i blinde"].filter(Boolean).join(" · ");
   document.title = (kveld.tittel || "Kvelden") + " – Kveldsmodus";
 }
 

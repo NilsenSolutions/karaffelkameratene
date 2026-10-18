@@ -5,9 +5,7 @@
 const CONFIG = {
   // Påmeldinger lagres i databasen og vises for vertskapet på /kveld/vert/.
   // Påmeldingen stenger så mange timer før start.
-  stengerTimerFoer: 24,
-  // Antall plasser igjen der status går fra "Ledige plasser" til "Få plasser igjen".
-  faaPlasser: 3
+  stengerTimerFoer: 24
 };
 
 // Planlagte smakinger hentes fra databasen og redigeres på vertssiden (/kveld/vert/).
@@ -56,20 +54,14 @@ function kommende(naa) {
     .sort((a, b) => startTid(a) - startTid(b));
 }
 
-// Status for påmelding: ledig, faa, fullt eller stengt.
+// Status for påmelding: apen eller stengt. Det er ingen plassgrense.
 function pameldingStatus(s, naa) {
   const stenger = new Date(startTid(s).getTime() - CONFIG.stengerTimerFoer * 3600 * 1000);
-  if (naa >= stenger) return "stengt";
-  const igjen = s.plasser - s.paameldte;
-  if (igjen <= 0) return "fullt";
-  if (igjen <= CONFIG.faaPlasser) return "faa";
-  return "ledig";
+  return naa >= stenger ? "stengt" : "apen";
 }
 
 const STATUS_TEKST = {
-  ledig: "Ledige plasser",
-  faa: "Få plasser igjen",
-  fullt: "Fullt, venteliste åpen",
+  apen: "Påmeldingen er åpen",
   stengt: "Påmeldingen er stengt"
 };
 
@@ -155,7 +147,7 @@ function visPamelding(s) {
   visSenere(s);
 }
 
-// Status, antall påmeldte, plassmåler og knappetekst. Returnerer status.
+// Status og antall påmeldte. Returnerer status.
 function visPlasser(s) {
   const status = pameldingStatus(s, new Date());
   const badge = $("pm-status-badge");
@@ -163,15 +155,7 @@ function visPlasser(s) {
   badge.textContent = STATUS_TEKST[status];
 
   $("plasser-blokk").hidden = false;
-  const antall = s.paameldte > 0 ? s.paameldte + " påmeldt" : "Ingen påmeldt ennå";
-  const vente = s.venteliste > 0 ? ", " + s.venteliste + " på venteliste" : "";
-  $("plasser-tekst").textContent = status === "fullt"
-    ? antall + vente + ". Det er fullt, men du kan melde deg på ventelisten."
-    : antall + vente + ".";
-  const prosent = s.plasser > 0 ? Math.min(100, Math.round((s.paameldte / s.plasser) * 100)) : 100;
-  requestAnimationFrame(() => { $("meter-fyll").style.width = prosent + "%"; });
-
-  $("send-knapp").textContent = status === "fullt" ? "Sett meg på venteliste" : "Meld meg på";
+  $("plasser-tekst").textContent = s.paameldte > 0 ? s.paameldte + " påmeldt." : "Ingen påmeldt ennå.";
   return status;
 }
 
@@ -207,12 +191,8 @@ function visBekreftelse(svar, navn) {
   $("skjema").hidden = true;
   const b = $("bekreftelse");
   b.hidden = false;
-  $("bekreftelse-tittel").textContent = svar.venteliste
-    ? "Du står på ventelisten" + (svar.plass ? " som nummer " + svar.plass : "")
-    : (svar.allerede ? "Du er allerede påmeldt, " + navn : "Takk, " + navn + ". Du er påmeldt");
-  $("bekreftelse-tekst").textContent = svar.venteliste
-    ? "Du får plassen hvis noen melder seg av. Vertskapet sier fra."
-    : "Vi gleder oss til å se deg. Legg datoen i kalenderen under.";
+  $("bekreftelse-tittel").textContent = svar.allerede ? "Du er allerede påmeldt, " + navn : "Takk, " + navn + ". Du er påmeldt";
+  $("bekreftelse-tekst").textContent = "Vi gleder oss til å se deg. Legg datoen i kalenderen under.";
   b.focus();
 }
 

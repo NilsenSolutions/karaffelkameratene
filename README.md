@@ -7,7 +7,7 @@ Ren HTML, CSS og JavaScript. Ingen byggesteg og ingen avhengigheter utenom Googl
 ## Hva siden gjør
 
 - **Nedtelling** til neste smaking, med en stripe øverst som følger med når du scroller.
-- **Påmelding** med navn og hva man tar med, lagret i databasen. Status: ledige plasser, få plasser igjen, fullt (venteliste) og stengt. Forsiden viser bare antallet, aldri navn.
+- **Påmelding** med navn og hva man tar med, lagret i databasen. Ingen plassgrense og ingen venteliste: påmeldingen er åpen til 24 timer før start. Forsiden viser bare antallet, aldri navn.
 - **Legg i kalenderen**: laster ned en `.ics`-fil for smakingen.
 - **Vinlogg** som kan filtreres på vintype og sorteres på dato eller poeng.
 - **Kveldsmodus** på `/kveld/`: smakeskjema på mobilen under selve smakingen, med struktur, aromaer, notat, poeng og blindgjetting. Verten avslører vinene og ser hvem som traff best.
@@ -28,14 +28,14 @@ Ren HTML, CSS og JavaScript. Ingen byggesteg og ingen avhengigheter utenom Googl
 
 ## Oppdatere innhold
 
-**Planlagte samlinger** redigeres på vertssiden `/kveld/vert/` (logg inn med PIN) under «Planlagte samlinger»: dato, klokkeslett, tittel, sted, tema og antall plasser. Forsiden henter dem fra databasen. Passerte smakinger ignoreres, og nedtellingen hopper videre til neste.
+**Planlagte samlinger** redigeres på vertssiden `/kveld/vert/` (logg inn med PIN) under «Planlagte samlinger»: dato, klokkeslett, tittel, sted og tema. Forsiden henter dem fra databasen. Passerte smakinger ignoreres, og nedtellingen hopper videre til neste.
 
-**Påmeldte** ligger under «Påmeldte (N)» på hver samling: navn, hva de tar med og når de meldte seg på, og ventelisten i rekkefølge. Verten kan legge til noen som har meldt seg muntlig og fjerne folk. Når noen fjernes, eller verten øker antall plasser, flyttes de første på ventelisten opp automatisk. Samme navn to ganger på samme samling gir ikke dobbel påmelding.
+**Påmeldte** ligger under «Påmeldte (N)» på hver samling: navn, hva de tar med og når de meldte seg på. Verten kan legge til noen som har meldt seg muntlig og fjerne folk. Samme navn to ganger på samme samling gir ikke dobbel påmelding.
 
 Resten ligger øverst i `script.js`:
 
 - `VINLOGG`: vin, land, type (`rod`, `hvit`, `rose`, `musserende`), dato og poeng.
-- `CONFIG`: når påmeldingen stenger (standard 24 timer før start) og hvor mange plasser som regnes som «få».
+- `CONFIG`: når påmeldingen stenger (standard 24 timer før start).
 
 Etter endringer i skript eller stiler: øk versjonsnummeret (`?v=…`) i de tre HTML-filene, så nettleserne henter nye filer.
 

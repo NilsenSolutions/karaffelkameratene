@@ -30,8 +30,7 @@ const SAMLINGSFELT = [
   { felt: "tid", navn: "Klokkeslett", type: "time" },
   { felt: "tittel", navn: "Tittel", type: "text", bred: true },
   { felt: "sted", navn: "Sted", type: "text" },
-  { felt: "tema", navn: "Tema", type: "text" },
-  { felt: "plasser", navn: "Plasser", type: "number" }
+  { felt: "tema", navn: "Tema", type: "text", bred: true }
 ];
 const PIN_NOKKEL = "karaffel-vert-pin";
 
@@ -212,7 +211,7 @@ function byggSamling(s) {
   const topp = el("div", "samling-topp");
   const tekst = el("div");
   tekst.append(el("h3", "samling-navn", s.id ? (s.tittel || "Uten tittel") : "Ny samling"));
-  if (s.id) tekst.append(el("p", "rang-meta", [kortDato(s.dato, s.tid), s.sted, s.paameldte + " påmeldt" + (s.venteliste ? ", " + s.venteliste + " på venteliste" : "")].filter(Boolean).join(" · ")));
+  if (s.id) tekst.append(el("p", "rang-meta", [kortDato(s.dato, s.tid), s.sted, s.paameldte + " påmeldt"].filter(Boolean).join(" · ")));
   topp.append(tekst);
   if (s.id) {
     const merke = s.aktiv ? "Kveldsmodus på" : s.viner ? "Kveld klar · " + s.viner + " viner" : "Kveld ikke konfigurert";
@@ -244,7 +243,7 @@ function byggSamling(s) {
       });
       knapper.append(pa);
     }
-    const visListe = el("button", "lenkeknapp", "Påmeldte (" + (s.paameldte + (s.venteliste || 0)) + ")");
+    const visListe = el("button", "lenkeknapp", "Påmeldte (" + s.paameldte + ")");
     visListe.type = "button";
     knapper.append(visListe);
     const endre = el("button", "lenkeknapp", "Endre detaljer");
@@ -296,34 +295,27 @@ async function visPameldinger(s, boks) {
   }
   boks.textContent = "";
 
-  const pameldt = rader.filter(r => !r.venteliste);
-  const vente = rader.filter(r => r.venteliste);
-  const seksjon = (tittel, liste, nummerert) => {
-    boks.append(el("h4", "pameldte-tittel", tittel));
-    if (!liste.length) { boks.append(el("p", "hjelp", "Ingen ennå.")); return; }
-    const ol = el("ol", "pameldte-liste");
-    liste.forEach((r, i) => {
-      const li = el("li");
-      const tekst = el("span", "rang-tekst");
-      tekst.append(el("span", "rang-navn", (nummerert ? (i + 1) + ". " : "") + r.navn));
-      tekst.append(el("span", "rang-meta", [r.vin && "Tar med " + r.vin, klokke(r.opprettet)].filter(Boolean).join(" · ")));
-      const fjern = el("button", "lenkeknapp", "Fjern");
-      fjern.type = "button";
-      fjern.addEventListener("click", async () => {
-        if (!(await bekreft("Fjerne " + r.navn + " fra «" + (s.tittel || "samlingen") + "»?" +
-          (r.venteliste ? "" : " Første på ventelisten får plassen."), "Fjern"))) return;
-        try {
-          await rpc("vert_fjern_pamelding", { p_pin: pin, p_id: r.id });
-          await hentSamlinger();
-        } catch (err) { melding(err.message); }
-      });
-      li.append(tekst, fjern);
-      ol.append(li);
+  boks.append(el("h4", "pameldte-tittel", "Påmeldt (" + rader.length + ")"));
+  if (!rader.length) boks.append(el("p", "hjelp", "Ingen ennå."));
+  const ol = el("ol", "pameldte-liste");
+  rader.forEach(r => {
+    const li = el("li");
+    const tekst = el("span", "rang-tekst");
+    tekst.append(el("span", "rang-navn", r.navn));
+    tekst.append(el("span", "rang-meta", [r.vin && "Tar med " + r.vin, klokke(r.opprettet)].filter(Boolean).join(" · ")));
+    const fjern = el("button", "lenkeknapp", "Fjern");
+    fjern.type = "button";
+    fjern.addEventListener("click", async () => {
+      if (!(await bekreft("Fjerne " + r.navn + " fra «" + (s.tittel || "samlingen") + "»?", "Fjern"))) return;
+      try {
+        await rpc("vert_fjern_pamelding", { p_pin: pin, p_id: r.id });
+        await hentSamlinger();
+      } catch (err) { melding(err.message); }
     });
-    boks.append(ol);
-  };
-  seksjon("Påmeldt (" + pameldt.length + " av " + s.plasser + " plasser)", pameldt, false);
-  if (vente.length) seksjon("Venteliste (" + vente.length + ")", vente, true);
+    li.append(tekst, fjern);
+    ol.append(li);
+  });
+  if (rader.length) boks.append(ol);
 
   // Legg til noen som har meldt seg på muntlig.
   const ny = el("form", "legg-til");

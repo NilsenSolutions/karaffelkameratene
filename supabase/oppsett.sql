@@ -373,13 +373,15 @@ begin
   end if;
 end $$;
 
--- Påmelding fra forsiden. Samme navn to ganger på samme samling oppdaterer i stedet for å lage en ny.
+-- Påmelding fra forsiden. Ingen plassgrense og ingen venteliste: alle som melder seg på, er med.
+-- Samme navn to ganger på samme samling oppdaterer i stedet for å lage en ny.
+-- (Kolonnene plasser og venteliste står igjen fra før, men brukes ikke.)
 create or replace function public.meld_pa(p_samling uuid, p_navn text, p_vin text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   v_navn text := left(regexp_replace(trim(coalesce(p_navn, '')), '\s+', ' ', 'g'), 60);
   v_vin text := left(trim(coalesce(p_vin, '')), 120);
-  s samling; eks pamelding; v_vente boolean; v_plass int;
+  s samling; eks pamelding;
 begin
   if v_navn = '' then raise exception 'Skriv inn navnet ditt'; end if;
   select * into s from samling where id = p_samling;
@@ -388,18 +390,13 @@ begin
   select * into eks from pamelding where samling_id = p_samling and normaliser(navn) = normaliser(v_navn);
   if found then
     update pamelding set vin = case when v_vin <> '' then v_vin else vin end where id = eks.id;
-    v_vente := eks.venteliste;
   else
     if (select count(*) from pamelding where samling_id = p_samling) >= 200 then raise exception 'For mange påmeldinger'; end if;
-    v_vente := (select count(*) from pamelding where samling_id = p_samling and not venteliste) >= s.plasser;
-    insert into pamelding (samling_id, navn, vin, venteliste) values (p_samling, v_navn, v_vin, v_vente);
+    insert into pamelding (samling_id, navn, vin) values (p_samling, v_navn, v_vin);
   end if;
-  if v_vente then
-    select count(*) into v_plass from pamelding
-    where samling_id = p_samling and venteliste and opprettet <= coalesce(eks.opprettet, clock_timestamp());
-  end if;
-  return jsonb_build_object('venteliste', v_vente, 'plass', v_plass, 'allerede', eks.id is not null);
+  return jsonb_build_object('allerede', eks.id is not null);
 end $$;
+update public.pamelding set venteliste = false where venteliste;
 
 -- Kommende samlinger til forsiden, med antall påmeldte (ikke navn). Forsiden skjuler selv de som har startet.
 create or replace function public.hent_samlinger()

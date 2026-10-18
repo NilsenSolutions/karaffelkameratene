@@ -18,6 +18,30 @@ function skrivLokalt(nokkel, verdi) {
   try { localStorage.setItem(nokkel, JSON.stringify(verdi)); } catch (e) { /* privat modus eller blokkert lagring */ }
 }
 
+// Bekreftelse som vises i selve siden. window.confirm svarer «nei» uten å vise noe
+// i mange innebygde nettlesere (Facebook, Messenger, app-nettlesere).
+function bekreft(tekst, ja = "OK") {
+  return new Promise(svar => {
+    const d = el("dialog", "bekreft");
+    d.setAttribute("aria-label", "Bekreft");
+    d.append(el("p", "", tekst));
+    const knapper = el("div", "bekreft-knapper");
+    const nei = el("button", "knapp lys-knapp", "Avbryt");
+    nei.type = "button";
+    const jaKnapp = el("button", "knapp", ja);
+    jaKnapp.type = "button";
+    knapper.append(nei, jaKnapp);
+    d.append(knapper);
+    const ferdig = verdi => { if (d.open) d.close(); d.remove(); svar(verdi); };
+    nei.addEventListener("click", () => ferdig(false));
+    jaKnapp.addEventListener("click", () => ferdig(true));
+    d.addEventListener("cancel", e => { e.preventDefault(); ferdig(false); });
+    document.body.append(d);
+    if (typeof d.showModal === "function") d.showModal(); else d.setAttribute("open", "");
+    nei.focus();
+  });
+}
+
 const tilkoblet = () => Boolean(window.KARAFFEL && KARAFFEL.url && KARAFFEL.nokkel);
 
 // Kaller en databasefunksjon. Kaster en Error med lesbar melding ved feil.

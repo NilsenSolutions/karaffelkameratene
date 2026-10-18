@@ -153,10 +153,10 @@ function visLive() {
 }
 
 async function avslor(v, verdi, knapp) {
-  if (!verdi && !confirm("Skjule vin " + v.bokstav + " igjen? Deltakerne kan da endre gjetningene sine.")) return;
+  if (!verdi && !(await bekreft("Skjule vin " + v.bokstav + " igjen? Deltakerne kan da endre gjetningene sine.", "Skjul"))) return;
   const mangler = verdi ? manglerFasit(v, live.gjett) : [];
-  if (mangler.length && !confirm("Vin " + v.bokstav + " mangler fasit for " + listeTekst(mangler) +
-    ". Ingen får poeng for det. Fyll inn under «Endre kvelden» først, eller avslør likevel?")) return;
+  if (mangler.length && !(await bekreft("Vin " + v.bokstav + " mangler fasit for " + listeTekst(mangler) +
+    ". Ingen får poeng for det. Fyll inn under «Endre kvelden» først, eller avslør likevel?", "Avslør likevel"))) return;
   knapp.disabled = true;
   try {
     await rpc("vert_avslor", { p_pin: pin, p_smaking: live.id, p_bokstav: v.bokstav, p_avslort: verdi });
@@ -181,8 +181,8 @@ async function aktiver(id, verdi) {
 
 // Sletter alle gjetninger og poeng for kvelden og skjuler vinene igjen. Vinene og fasit beholdes.
 async function nullstill(id, tittel) {
-  if (!confirm("Nullstille «" + tittel + "»?\n\nAlle gjetninger og poeng slettes, og alle vinene skjules igjen. " +
-    "Vinene og fasit beholdes. Telefonene starter med blanke ark. Dette kan ikke angres.")) return;
+  if (!(await bekreft("Nullstille «" + tittel + "»?\n\nAlle gjetninger og poeng slettes, og alle vinene skjules igjen. " +
+    "Vinene og fasit beholdes. Telefonene starter med blanke ark. Dette kan ikke angres.", "Nullstill"))) return;
   try {
     await rpc("vert_nullstill", { p_pin: pin, p_id: id });
     await Promise.all([hentLive(), hentSamlinger(), hentVinkjennere()]);
@@ -231,14 +231,16 @@ function byggSamling(s) {
     if (s.aktiv) {
       const av = el("button", "knapp lys-knapp", "Avslutt kveldsmodus");
       av.type = "button";
-      av.addEventListener("click", () => { if (confirm("Avslutte kveldsmodus for «" + s.tittel + "»? Telefonene viser da at ingen smaking er aktiv.")) aktiver(s.id, false); });
+      av.addEventListener("click", async () => {
+        if (await bekreft("Avslutte kveldsmodus for «" + s.tittel + "»? Telefonene viser da at ingen smaking er aktiv.", "Avslutt")) aktiver(s.id, false);
+      });
       knapper.append(av);
     } else if (s.viner) {
       const pa = el("button", "knapp lys-knapp", "Aktiver kveldsmodus");
       pa.type = "button";
-      pa.addEventListener("click", () => {
+      pa.addEventListener("click", async () => {
         const annen = samlinger.find(x => x.aktiv && x.id !== s.id);
-        if (annen && !confirm("«" + annen.tittel + "» er aktiv nå. Bytte til «" + s.tittel + "»?")) return;
+        if (annen && !(await bekreft("«" + annen.tittel + "» er aktiv nå. Bytte til «" + s.tittel + "»?", "Bytt"))) return;
         aktiver(s.id, true);
       });
       knapper.append(pa);
@@ -314,7 +316,7 @@ function byggSamlingsskjema(s) {
     if (!s.id) { boks.closest(".samling-rad").remove(); return; }
     const advarsel = "Slette «" + (s.tittel || "samlingen") + "»? Den forsvinner fra forsiden" +
       (s.viner ? ", og kveldsoppsettet med vinene og alle gjetningene slettes også." : ".");
-    if (!confirm(advarsel)) return;
+    if (!(await bekreft(advarsel, "Slett"))) return;
     try {
       await rpc("vert_slett_samling", { p_pin: pin, p_id: s.id });
       if (redigerer && redigerer.id === s.id) lukkOppsett();
@@ -421,8 +423,8 @@ function leggTilVin(v) {
   topp.append(el("legend", "", "Vin " + bokstav));
   const fjern = el("button", "lenkeknapp", "Fjern");
   fjern.type = "button";
-  fjern.addEventListener("click", () => {
-    if (confirm("Fjerne vin " + bokstav + "? Gjetningene for den slettes når du lagrer.")) rad.remove();
+  fjern.addEventListener("click", async () => {
+    if (await bekreft("Fjerne vin " + bokstav + "? Gjetningene for den slettes når du lagrer.", "Fjern")) rad.remove();
   });
   topp.append(fjern);
   rad.append(topp);
@@ -470,7 +472,7 @@ async function lagreOppsett(ogAktiver) {
     await rpc("vert_lagre", { p_pin: pin, p_data: ny });
     if (ogAktiver) {
       const annen = samlinger.find(x => x.aktiv && x.id !== ny.id);
-      if (annen && !confirm("«" + annen.tittel + "» er aktiv nå. Bytte til «" + ny.tittel + "»?")) {
+      if (annen && !(await bekreft("«" + annen.tittel + "» er aktiv nå. Bytte til «" + ny.tittel + "»?", "Bytt"))) {
         status.textContent = "Lagret, men ikke aktivert.";
       } else if (await aktiver(ny.id, true)) {
         lukkOppsett();
@@ -498,8 +500,8 @@ if (!tilkoblet()) {
   $("lagre-aktiver").addEventListener("click", () => lagreOppsett(true));
   $("lukk-oppsett").addEventListener("click", lukkOppsett);
   $("nullstill").addEventListener("click", () => { if (live) nullstill(live.id, live.tittel || "kvelden"); });
-  $("avslutt").addEventListener("click", () => {
-    if (live && confirm("Avslutte kveldsmodus for «" + live.tittel + "»? Telefonene viser da at ingen smaking er aktiv.")) aktiver(live.id, false);
+  $("avslutt").addEventListener("click", async () => {
+    if (live && await bekreft("Avslutte kveldsmodus for «" + live.tittel + "»? Telefonene viser da at ingen smaking er aktiv.", "Avslutt")) aktiver(live.id, false);
   });
   pin = lesPin();
   if (pin) start(); else $("logg-inn").hidden = false;

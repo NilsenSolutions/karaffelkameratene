@@ -185,6 +185,16 @@ textarea {
 .samling-skjema { margin-top: 1rem; }
 .samling-skjema[hidden], #oppsett[hidden], #live-innhold[hidden] { display: none; }
 .live-under { font-size: 1.1rem; margin: 1.25rem 0 .6rem; }
+
+/* Bekreftelse i siden */
+dialog.bekreft {
+  width: min(92vw, 420px); border: 0; border-radius: var(--radius); padding: 1.25rem;
+  background: var(--ink-lys); color: var(--hvit); box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+dialog.bekreft::backdrop { background: rgba(10, 5, 20, .7); }
+dialog.bekreft p { white-space: pre-line; margin: 0 0 1.25rem; }
+.bekreft-knapper { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: flex-end; }
+.bekreft-knapper .knapp { padding: .65rem 1.2rem; }
 .live .mangler { color: var(--sitron); font-size: .85rem; font-weight: 600; }
 .vinner {
   background: var(--sitron); color: var(--ink); border-radius: var(--radius);

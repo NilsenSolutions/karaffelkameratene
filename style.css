@@ -53,6 +53,11 @@ a { color: inherit; }
 .topp nav { display: flex; flex-wrap: wrap; gap: .25rem 1.5rem; }
 .topp nav a { text-decoration: none; font-weight: 500; border-bottom: 2px solid transparent; padding: .2rem 0; }
 .topp nav a:hover { border-color: var(--vin); }
+.topp nav { align-items: center; }
+.topp nav .vert-knapp {
+  border: 2px solid var(--sitron); border-radius: 999px; padding: .2rem .9rem; color: var(--sitron);
+}
+.topp nav .vert-knapp:hover { background: var(--sitron); color: var(--ink); border-color: var(--sitron); }
 
 /* Knapper */
 .knapp {

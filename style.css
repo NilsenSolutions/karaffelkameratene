@@ -222,3 +222,28 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 .logg li.samling-hode:first-child { padding-top: 0; }
 .logg li.samling-hode .navn { display: block; font-size: 1.4rem; }
 .logg li.samling-hode .meta { display: block; }
+
+/* Dansegulvet: én kamerat per påmeldt, som danser og drikker av karaffelen. */
+.dansegulv { padding: 1.5rem clamp(1rem, 5vw, 3rem) 2rem; text-align: center; }
+.dansegulv[hidden] { display: none; }
+.dansegulv-tekst { margin: 0 auto 1rem; font-weight: 600; }
+.dansere { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem .5rem; max-width: 1100px; margin: 0 auto; }
+.danser { display: block; width: clamp(44px, 6vw, 64px); }
+.danser svg { display: block; width: 100%; height: auto; overflow: visible; }
+.danser :is(.kropp, .bein, .arm-fri, .arm-karaffel) { transform-box: view-box; }
+.danser .kropp { transform-origin: 30px 102px; animation: dans-hopp var(--takt) ease-in-out var(--forsinkelse) infinite alternate; }
+.danser .bein-v { transform-origin: 30px 70px; animation: dans-bein var(--takt) ease-in-out var(--forsinkelse) infinite alternate; }
+.danser .bein-h { transform-origin: 30px 70px; animation: dans-bein var(--takt) ease-in-out var(--forsinkelse) infinite alternate-reverse; }
+.danser .arm-fri { transform-origin: 30px 40px; animation: dans-vink calc(var(--takt) * 2) ease-in-out var(--forsinkelse) infinite alternate; }
+.danser .arm-karaffel { transform-origin: 30px 40px; animation: dans-slurk var(--slurk) ease-in-out var(--forsinkelse) infinite; }
+@keyframes dans-hopp { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-8px) rotate(6deg); } }
+@keyframes dans-bein { from { transform: rotate(-10deg); } to { transform: rotate(14deg); } }
+@keyframes dans-vink { from { transform: rotate(-20deg); } to { transform: rotate(35deg); } }
+/* Karaffelen løftes til munnen, holdes et øyeblikk og senkes igjen. */
+@keyframes dans-slurk {
+  0%, 55% { transform: rotate(0deg); }
+  70%, 85% { transform: rotate(-100deg); }
+  100% { transform: rotate(0deg); }
+}
+.dansegulv:is(.pause, .pause-skjult) .danser * { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .danser * { animation: none !important; } }

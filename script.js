@@ -112,6 +112,7 @@ function visIGang() {
 function startNedtelling() {
   const naa = new Date();
   neste = kommende(naa)[0] || null;
+  byggDansegulv(neste ? neste.paameldte : 0);
 
   if (!neste) {
     $("nt-tittel").textContent = "Ingen smaking er planlagt";
@@ -223,7 +224,7 @@ async function sendSkjema(e) {
     // Oppdater antall påmeldte og status uten å skjule bekreftelsen.
     SMAKINGER = await kall("hent_samlinger", {});
     const oppdatert = SMAKINGER.find(s => s.id === neste.id);
-    if (oppdatert) { neste = oppdatert; visPlasser(neste); }
+    if (oppdatert) { neste = oppdatert; visPlasser(neste); byggDansegulv(neste.paameldte); }
   } catch (err) {
     feil("feil-navn", "navn", "Påmeldingen ble ikke lagret: " + err.message + ". Prøv igjen.");
   }
@@ -503,9 +504,70 @@ function styrDrikking() {
   oppdater();
 }
 
+// ---------------- Dansegulvet ----------------
+// Én kamerat per påmeldt til neste (eller pågående) samling. Alle danser og drikker av karaffelen i sin egen takt.
+
+const DANS_FARGER = ["#2f5ba8", "#2e7d4f", "#dda829", "#b3263e"];
+const MAKS_DANSERE = 40;
+
+function kameratSvg(i) {
+  const farge = DANS_FARGER[i % DANS_FARGER.length];
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 64 112");
+  svg.setAttribute("focusable", "false");
+  svg.innerHTML =
+    '<g fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">' +
+      '<g class="kropp">' +
+        '<circle cx="30" cy="18" r="11" stroke="#2f5ba8"/>' +
+        '<circle cx="26" cy="16" r="1.4" fill="#2f5ba8" stroke="none"/><circle cx="34" cy="16" r="1.4" fill="#2f5ba8" stroke="none"/>' +
+        '<path d="M25 21 Q30 26 35 21" stroke="#2f5ba8"/>' +
+        '<path d="M30 29 L30 70" stroke="' + farge + '"/>' +
+        '<path class="bein bein-v" d="M30 70 L20 102" stroke="#2f5ba8"/>' +
+        '<path class="bein bein-h" d="M30 70 L40 102" stroke="#2f5ba8"/>' +
+        '<path class="arm-fri" d="M30 40 L14 28" stroke="' + farge + '"/>' +
+        '<g class="arm-karaffel">' +
+          '<path d="M30 40 L46 52" stroke="' + farge + '"/>' +
+          '<path d="M46 62 C46 58 50 57 50 54 L50 47 M54 47 L54 54 C54 57 58 58 58 62 C60 70 44 70 46 62 Z" stroke="#2b2b2b" stroke-width="2.5"/>' +
+          '<path d="M46.5 63 C47 67 57 67 57.5 63 Z" fill="#b3263e" stroke="none"/>' +
+        '</g>' +
+      '</g>' +
+    '</g>';
+  return svg;
+}
+
+function byggDansegulv(antall) {
+  const gulv = $("dansegulv");
+  const n = Math.min(Math.max(0, antall || 0), MAKS_DANSERE);
+  gulv.hidden = n === 0;
+  if (!n) return;
+  $("dansegulv-tekst").textContent = antall === 1 ? "1 kamerat er påmeldt" : antall + " kamerater er påmeldt";
+  const dansere = $("dansere");
+  if (dansere.children.length === n) return;
+  dansere.textContent = "";
+  for (let i = 0; i < n; i++) {
+    const d = el("span", "danser");
+    // Hver får sitt eget tempo og sin egen fase, så de ikke danser i takt.
+    d.style.setProperty("--takt", (0.8 + Math.random() * 0.6).toFixed(2) + "s");
+    d.style.setProperty("--forsinkelse", (-Math.random() * 3).toFixed(2) + "s");
+    d.style.setProperty("--slurk", (3 + Math.random() * 3).toFixed(2) + "s");
+    d.append(kameratSvg(i));
+    dansere.append(d);
+  }
+}
+
+// Stopp dansen når gulvet ikke vises.
+function styrDans() {
+  const gulv = $("dansegulv");
+  if (!("IntersectionObserver" in window)) return;
+  new IntersectionObserver(([e]) => gulv.classList.toggle("pause", !e.isIntersecting)).observe(gulv);
+  document.addEventListener("visibilitychange", () => gulv.classList.toggle("pause-skjult", document.hidden));
+}
+
 // ---------------- Start ----------------
 
 styrDrikking();
+styrDans();
 
 lastTema();
 lastSmakinger();

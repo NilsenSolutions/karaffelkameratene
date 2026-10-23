@@ -29,8 +29,8 @@
       if (t === "kamerater") document.documentElement.setAttribute("data-tema", t);
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=20261023a">
-  <link rel="stylesheet" href="tema.css?v=20261023a">
+  <link rel="stylesheet" href="style.css?v=20261023b">
+  <link rel="stylesheet" href="tema.css?v=20261023b">
 </head>
 <body>
   <a class="skip" href="#pamelding">Hopp til påmelding</a>
@@ -100,7 +100,7 @@
 <path d="M-7 -52 L7 -52 L6 -46 L5 -18 C14 -12 30 -2 30 18 C30 36 18 46 0 46 C-18 46 -30 36 -30 18 C-30 -2 -14 -12 -5 -18 L-6 -46 Z" stroke="#2F5BA8"></path>
 </g>
 <path d="M206 124 C202 114 212 106 220 110 C228 116 224 126 216 128" stroke="#2F5BA8"></path>
-<path d="M281 136 C292 142 299 152 300 168" stroke="#B3263E"></path>
+<path d="M281 136 C292 142 299 152 300 168" stroke="#B3263E"><animate class="drikk" attributeName="opacity" dur="3s" repeatCount="indefinite" keyTimes="0;0.12;0.35;0.62;0.8;1" values="1;0;0;0;1;1"></animate></path>
 <path d="M302 232 L306 306 L326 306 L330 242 L334 306 L354 306 L358 232" stroke="#2E7D4F"></path>
 <path d="M304 306 C294 308 294 320 306 320 L326 320 C328 312 324 306 320 306" stroke="#2F5BA8"></path>
 <path d="M338 306 C336 314 338 320 346 320 L366 320 C374 318 370 306 356 306" stroke="#2F5BA8"></path>
@@ -114,11 +114,21 @@
 <path d="M320 107 C324 101 330 103 332 106 C334 103 340 101 344 107" stroke="#2F5BA8"></path>
 <path d="M362 150 C376 170 382 194 378 214 M352 162 C362 180 366 198 364 214" stroke="#DDA829"></path>
 <path d="M364 214 C362 224 372 230 378 224 C384 218 382 212 378 212" stroke="#2F5BA8"></path>
-<path d="M285 182 C294 179 306 184 316 181 C314 192 308 196 300 196 C292 196 287 190 285 182 Z" fill="#B3263E" stroke="none" transform="translate(2 2)"></path>
+<!-- Kameraten med glasset løfter, drikker, setter ned og får påfyll, i loop hvert 3. sekund. Styres av script.js. -->
+<path d="M298 148 C288 168 284 190 292 208 M310 160 C302 178 300 194 306 204" stroke="#DDA829"><animate class="drikk" attributeName="d" dur="3s" repeatCount="indefinite" keyTimes="0;0.12;0.35;0.62;0.8;1" calcMode="spline" keySplines="0 0 1 1;.4 0 .2 1;0 0 1 1;.4 0 .2 1;0 0 1 1" values="M298 148 C288 168 284 190 292 208 M310 160 C302 178 300 194 306 204;M298 148 C288 168 284 190 292 208 M310 160 C302 178 300 194 306 204;M298 148 C280 170 296 182 314 160 M310 160 C300 176 314 180 326 164;M298 148 C280 170 296 182 314 160 M310 160 C300 176 314 180 326 164;M298 148 C288 168 284 190 292 208 M310 160 C302 178 300 194 306 204;M298 148 C288 168 284 190 292 208 M310 160 C302 178 300 194 306 204"></animate></path>
+<g>
+<animateTransform class="drikk" attributeName="transform" type="translate" dur="3s" repeatCount="indefinite" keyTimes="0;0.12;0.35;0.62;0.8;1" calcMode="spline" keySplines="0 0 1 1;.4 0 .2 1;0 0 1 1;.4 0 .2 1;0 0 1 1" values="0 0;0 0;24 -50;24 -50;0 0;0 0"></animateTransform>
+<g>
+<animateTransform class="drikk" attributeName="transform" type="rotate" dur="3s" repeatCount="indefinite" keyTimes="0;0.12;0.35;0.62;0.8;1" calcMode="spline" keySplines="0 0 1 1;.4 0 .2 1;0 0 1 1;.4 0 .2 1;0 0 1 1" values="0 300 200;0 300 200;-28 300 200;-42 300 200;0 300 200;0 300 200"></animateTransform>
+<g transform="translate(300 198)"><g>
+<animateTransform class="drikk" attributeName="transform" type="scale" dur="3s" repeatCount="indefinite" keyTimes="0;0.12;0.35;0.62;0.8;1" values="1 1;1 1;1 1;1 0.5;1 0.5;1 1"></animateTransform>
+<path d="M285 182 C294 179 306 184 316 181 C314 192 308 196 300 196 C292 196 287 190 285 182 Z" fill="#B3263E" stroke="none" transform="translate(-298 -196)"></path>
+</g></g>
 <path d="M282 166 C281 186 289 198 300 198 C311 198 319 186 318 166 C306 165 294 167 282 166 Z M300 198 L300 222 M290 224 C296 221 304 221 310 224" stroke="#DDA829"></path>
-<path d="M298 148 C288 168 284 190 292 208 M310 160 C302 178 300 194 306 204" stroke="#DDA829"></path>
 <path d="M292 208 C290 200 302 198 306 204 C310 212 302 218 296 216 C290 214 290 210 292 208 Z" stroke="#2F5BA8"></path>
-<path d="M326 160 L334 152 M274 158 L266 152 M322 176 L330 178" stroke="#DDA829"></path>
+</g>
+</g>
+<path d="M326 160 L334 152 M274 158 L266 152 M322 176 L330 178" stroke="#DDA829"><animate class="drikk" attributeName="opacity" dur="3s" repeatCount="indefinite" keyTimes="0;0.12;0.35;0.62;0.8;1" values="1;0;0;0;1;1"></animate></path>
 </g>
 </svg>
       </div>
@@ -233,7 +243,7 @@
     <p>Drikk med måte. Ingen under 18 år.</p>
   </footer>
 
-  <script src="kveld/oppsett.js?v=20261023a"></script>
-  <script src="script.js?v=20261023a"></script>
+  <script src="kveld/oppsett.js?v=20261023b"></script>
+  <script src="script.js?v=20261023b"></script>
 </body>
 </html>

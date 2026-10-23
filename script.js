@@ -411,7 +411,30 @@ async function lastTema() {
   }
 }
 
+// ---------------- Kameraten drikker ----------------
+
+// SVG-animasjonen i forsiden: står stille ved «reduser bevegelse», og pauser når fanen
+// ikke er synlig eller tegningen er rullet ut av skjermen.
+function styrDrikking() {
+  const svg = document.querySelector(".hero-kamerater svg");
+  if (!svg || typeof svg.pauseAnimations !== "function") return;
+  const rolig = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let synlig = true;
+  const oppdater = () => {
+    if (rolig.matches) { svg.pauseAnimations(); svg.setCurrentTime(0); return; }
+    if (document.hidden || !synlig) svg.pauseAnimations(); else svg.unpauseAnimations();
+  };
+  document.addEventListener("visibilitychange", oppdater);
+  if (rolig.addEventListener) rolig.addEventListener("change", oppdater);
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(([e]) => { synlig = e.isIntersecting; oppdater(); }).observe(svg);
+  }
+  oppdater();
+}
+
 // ---------------- Start ----------------
+
+styrDrikking();
 
 lastTema();
 lastSmakinger();

@@ -35,3 +35,11 @@
 .vinrangering li.beste { outline: 3px solid var(--k-gul, var(--sitron)); }
 .vinrangering li { grid-template-columns: 2rem 1fr auto; }
 .vinrangering .rang-tekst { display: grid; min-width: 0; }
+
+/* Fasit med lagets gjetning ved siden av */
+.fasit-tabell { width: 100%; border-collapse: collapse; margin: 0 0 .5rem; table-layout: fixed; }
+.fasit-tabell th, .fasit-tabell td { text-align: left; vertical-align: top; padding: .35rem .4rem; border-bottom: 1px solid rgba(0, 0, 0, .1); overflow-wrap: anywhere; }
+.fasit-tabell tr:first-child th { font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
+.fasit-tabell th:first-child { width: 26%; font-weight: 700; }
+.fasit-tabell td { font-weight: 600; }
+.fasit-tabell td.gjettet { font-weight: 400; }

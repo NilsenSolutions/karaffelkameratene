@@ -290,17 +290,41 @@ function visFasit(h, r) {
   boks.append(el("h2", "kort-tittel", "Fasit: " + r.lag));
   boks.append(el("p", "hjelp", "Poengene regnes ut og vises først til slutt."));
   h.append(boks);
-  r.viner.forEach(v => h.append(fasitkort(v, "Vin " + v.bokstav)));
+  const gjetninger = r.gjetninger || {};
+  r.viner.forEach(v => h.append(fasitkort(v, "Vin " + v.bokstav, r.mitt ? null : gjetninger[v.id] || {})));
 }
 
-function fasitkort(v, overskrift) {
+// Fasiten, og lagets egen gjetning ved siden av når den finnes (ikke for laget som presenterer).
+function fasitkort(v, overskrift, gjett) {
   const k = el("div", "kort fasit-kort");
   k.append(el("p", "fasit-bokstav", overskrift));
   k.append(el("h3", "", [v.produsent, v.navn].filter(Boolean).join(" ") || "Uten navn"));
-  const dl = el("dl", "fasit-liste");
-  [["Land", v.land], ["Distrikt", v.distrikt], ["Drue", v.drue], ["Årgang", v.aargang], ["Type", v.type],
-   ["Pris", v.pris && v.pris + " kr"]].forEach(([n, t]) => { if (t) dl.append(el("dt", "", n), el("dd", "", t)); });
-  k.append(dl);
+  const kr = t => t ? t + " kr" : "";
+  const rader = [["Land", v.land, "land"], ["Distrikt", v.distrikt, "distrikt"], ["Drue", v.drue, "drue"],
+    ["Årgang", v.aargang, "aargang"], ["Type", v.type, null], ["Pris", kr(v.pris), "pris"]];
+  if (!gjett) {
+    const dl = el("dl", "fasit-liste");
+    rader.forEach(([n, t]) => { if (t) dl.append(el("dt", "", n), el("dd", "", t)); });
+    k.append(dl);
+    return k;
+  }
+  const tabell = el("table", "fasit-tabell");
+  const hode = el("tr");
+  ["", "Fasit", "Dere gjettet"].forEach(t => hode.append(el("th", "", t)));
+  tabell.append(hode);
+  rader.forEach(([n, t, felt]) => {
+    if (!t) return;
+    const svar = felt ? (felt === "pris" ? kr(gjett.pris) : gjett[felt]) : "";
+    const tr = el("tr");
+    tr.append(el("th", "", n), el("td", "", t), el("td", "gjettet", felt ? svar || "–" : ""));
+    tabell.append(tr);
+  });
+  if (gjett.score != null) {
+    const tr = el("tr");
+    tr.append(el("th", "", "Score"), el("td", "", ""), el("td", "gjettet", String(gjett.score)));
+    tabell.append(tr);
+  }
+  k.append(tabell);
   return k;
 }
 

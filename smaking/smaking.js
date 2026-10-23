@@ -171,7 +171,7 @@ function visVenter(h) {
   }
   const intro = el("div", "kort");
   intro.append(el("h2", "kort-tittel", "Vinene deres"));
-  intro.append(el("p", "hjelp", "Registrer de to vinene dere har med. Ingen andre ser dem før admin avslører dem. Dere kan endre fram til runden deres starter."));
+  intro.append(el("p", "hjelp", "Registrer de to vinene dere har med. Ingen andre ser dem før admin avslører dem. Dere kan endre fram til runden deres starter. Fortell om vinene muntlig når det er deres tur."));
   h.append(intro);
   ["A", "B"].forEach(b => h.append(byggVinskjema(b, m.viner.find(v => v.bokstav === b) || {})));
 }
@@ -180,7 +180,7 @@ function byggVinskjema(bokstav, v) {
   const boks = el("fieldset", "kort vinskjema");
   boks.append(el("legend", "", "Vin " + bokstav));
   const verdier = { navn: v.navn || "", produsent: v.produsent || "", land: v.land || "", distrikt: v.distrikt || "",
-    drue: v.drue || "", aargang: v.aargang || "", type: v.type || "", pris: v.pris || "", notater: v.notater || "" };
+    drue: v.drue || "", aargang: v.aargang || "", type: v.type || "", pris: v.pris || "" };
   const status = el("p", "status lagre-status");
   status.setAttribute("role", "status");
   const lagre = () => planlegg("vin-" + bokstav, async () => {
@@ -200,14 +200,7 @@ function byggVinskjema(bokstav, v) {
   rad.append(tekstfelt("v" + bokstav + "-pris", "Pris (kr)", verdier, "pris", lagre, { numerisk: true, plass: "299" }));
   boks.append(rad);
   boks.append(velgfelt("v" + bokstav + "-type", "Type", TYPER, verdier, "type", lagre));
-  const nf = el("div", "felt");
-  const nl = el("label", "", "Notater");
-  nl.htmlFor = "v" + bokstav + "-notater";
-  const ta = el("textarea");
-  Object.assign(ta, { id: "v" + bokstav + "-notater", rows: 2, value: verdier.notater, maxLength: 500, placeholder: "Det dere vil fortelle når vinen avsløres" });
-  ta.addEventListener("input", () => { verdier.notater = ta.value; lagre(); });
-  nf.append(nl, ta);
-  boks.append(nf, status);
+  boks.append(status);
   return boks;
 }
 
@@ -285,7 +278,6 @@ function fasitkort(v, overskrift) {
   [["Land", v.land], ["Distrikt", v.distrikt], ["Drue", v.drue], ["Årgang", v.aargang], ["Type", v.type],
    ["Pris", v.pris && v.pris + " kr"]].forEach(([n, t]) => { if (t) dl.append(el("dt", "", n), el("dd", "", t)); });
   k.append(dl);
-  if (v.notater) k.append(el("p", "hjelp", v.notater));
   return k;
 }
 

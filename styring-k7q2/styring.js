@@ -4,7 +4,7 @@ const PIN_NOKKEL = "karaffel-vert-pin";
 const FASE_TEKST = { venter: "Venter på neste runde", gjetting: "Gjetting åpen", lukket: "Gjetting lukket", avslort: "Vinene avslørt" };
 const STEG_TEKST = ["Ingen resultater vist", "Vinrangering og beste vin vises", "Poeng per lag vises", "Beste vinkjenner er kåret"];
 const VINFELT = [["navn", "Vin"], ["produsent", "Produsent"], ["land", "Land"], ["distrikt", "Distrikt"], ["drue", "Drue"],
-  ["aargang", "Årgang"], ["type", "Type"], ["pris", "Pris"], ["notater", "Notater"]];
+  ["aargang", "Årgang"], ["type", "Type"], ["pris", "Pris"]];
 
 let pin = "";
 let data = null;

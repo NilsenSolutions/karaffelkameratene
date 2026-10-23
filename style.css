@@ -85,6 +85,7 @@ a { color: inherit; }
 }
 .nt-tittel { font-family: var(--tittel); font-weight: 800; font-size: 1.15rem; margin-bottom: .75rem; }
 .nt-tall { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
+.nt-tall[hidden] { display: none; }
 .nt-tall div { text-align: center; }
 .nt-tall b {
   display: block; font-family: var(--tittel); font-weight: 800;

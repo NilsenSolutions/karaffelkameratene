@@ -5,7 +5,9 @@
 const CONFIG = {
   // Påmeldinger lagres i databasen og vises for vertskapet på /kveld/vert/.
   // Påmeldingen stenger så mange timer før start.
-  stengerTimerFoer: 24
+  stengerTimerFoer: 24,
+  // Samlingen står på forsiden som «i gang» så mange timer etter start.
+  varerTimer: 8
 };
 
 // Planlagte smakinger hentes fra databasen og redigeres på vertssiden (/kveld/vert/).
@@ -43,9 +45,12 @@ function datoTekst(d) {
 }
 const klokkeTekst = s => "kl. " + s.tid.replace(":", ".");
 
+const sluttTid = s => new Date(startTid(s).getTime() + CONFIG.varerTimer * 3600 * 1000);
+
+// Kommende og pågående: en samling blir stående hele kvelden etter at den har startet.
 function kommende(naa) {
   return SMAKINGER
-    .filter(s => !s.dato_avtales && startTid(s) > naa)
+    .filter(s => !s.dato_avtales && sluttTid(s) > naa)
     .sort((a, b) => startTid(a) - startTid(b));
 }
 // Samlinger der datoen ikke er bestemt ennå. De får ingen nedtelling eller påmelding.
@@ -72,10 +77,13 @@ function tikk() {
   if (!neste) return;
   let ms = startTid(neste) - naa;
   if (ms <= 0) {
+    if (naa < sluttTid(neste)) return visIGang();
     clearInterval(timer);
     startNedtelling();
     return;
   }
+  $("nt-tall").hidden = false;
+  $("nt-tittel").textContent = "Neste smaking: " + neste.tittel;
   const sek = Math.floor(ms / 1000);
   const d = Math.floor(sek / 86400);
   const t = Math.floor((sek % 86400) / 3600);
@@ -93,6 +101,14 @@ function tikk() {
     "Neste smaking om " + (d > 0 ? d + " d " : "") + t + " t " + (d === 0 ? m + " min" : "") + ". Meld deg på.";
 }
 
+// Etter start: ingen nedtelling, men samlingen står igjen med sted og påmeldte.
+function visIGang() {
+  $("nt-tittel").textContent = "I gang nå: " + neste.tittel;
+  $("nt-tall").hidden = true;
+  $("stripe").hidden = false;
+  $("stripe-tekst").textContent = neste.tittel + " er i gang nå. Skål!";
+}
+
 function startNedtelling() {
   const naa = new Date();
   neste = kommende(naa)[0] || null;
@@ -101,6 +117,7 @@ function startNedtelling() {
     $("nt-tittel").textContent = "Ingen smaking er planlagt";
     $("nt-info").textContent = "Neste dato er ikke satt ennå. Kom tilbake snart.";
     ["nt-d", "nt-t", "nt-m", "nt-s"].forEach(id => $(id).textContent = "–");
+    $("nt-tall").hidden = false;
     $("stripe").hidden = true;
     visPamelding(null);
     return;

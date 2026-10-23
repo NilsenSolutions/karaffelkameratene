@@ -498,7 +498,7 @@ function druefelt(id, verdier, lagre) {
     lagre();
   });
   annet.addEventListener("input", () => { verdier.drue = annet.value.trim(); lagre(); });
-  f.append(l, s, annet, el("p", "hjelp", "Blanding av flere druer? Velg den dominerende druen."));
+  f.append(l, s, annet);
   return f;
 }
 

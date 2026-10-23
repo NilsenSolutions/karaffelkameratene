@@ -260,6 +260,7 @@ function byggLoddtrekning(k, lag) {
   } else {
     boks.append(el("p", "hjelp", "Trekker en tilfeldig rekkefølge blant lagene som ikke er ferdige. Lagene under sorteres etter den."));
   }
+  boks.append(el("p", "hjelp", "Rekkefølgen er bare et forslag. Du kan starte hvilket som helst lag som ikke er ferdig, med «Start runden» i listen under."));
 
   const rad = el("div", "samling-knapper");
   const b = knapp(rekkefolge.length ? "Trekk på nytt" : "Trekk hvem som starter", rekkefolge.length ? "knapp lys-knapp" : "knapp", async () => {

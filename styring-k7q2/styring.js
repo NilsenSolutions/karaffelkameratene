@@ -324,7 +324,9 @@ function byggLag(l, k, aktivt, lesemodus) {
   boks.append(topp);
 
   const rad = el("div", "samling-knapper");
-  if (!lesemodus && !aktivt && !l.ferdig && k.resultat_steg === 0) {
+  // Neste lag kan startes rett etter avsløringen, uten å trykke «Ferdig, til neste lag» først.
+  const ledig = !aktivt || (k.fase === "avslort" && aktivt.id !== l.id);
+  if (!lesemodus && ledig && !l.ferdig && k.resultat_steg === 0) {
     rad.append(knapp("Start runden", "knapp", () => handling("lk_admin_start_lag", { p_lag: l.id }), !l.viner.length));
   }
   const nokkel = "lag-" + l.id;

@@ -235,3 +235,6 @@ dialog.bekreft p { white-space: pre-line; margin: 0 0 1.25rem; }
 .tema-alt input { width: 1.2rem; height: 1.2rem; margin: .2rem 0 0; accent-color: var(--sitron); }
 .tema-alt span { font-size: .95rem; color: var(--lilla-mork); }
 .tema-alt strong { display: block; font-family: var(--tittel); font-weight: 800; font-size: 1.1rem; color: var(--hvit); }
+
+/* Lenke mellom styringssiden og vertssiden, til høyre i toppen. */
+.topp .side-lenke { margin-left: auto; font-size: .9rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }

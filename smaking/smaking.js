@@ -315,12 +315,15 @@ function visResultater(h) {
     h.append(el("p", "vinner", "🏆 Kveldens vinkjennere: " + listeTekst(vinnere.map(l => l.lag + (l.medlemmer ? " (" + l.medlemmer + ")" : ""))) + (meg ? ". Gratulerer!" : "")));
   }
   if (steg >= 2 && data.lagpoeng) {
+    // Steg 2 viser bare poengene. Lagnavnene kommer først med kåringen i steg 3.
+    const navnSynlig = steg >= 3;
     const boks = el("section", "kort");
-    boks.append(el("h2", "kort-tittel", "Poeng per lag"));
+    boks.append(el("h2", "kort-tittel", navnSynlig ? "Poeng per lag" : "Poengene – hvem er hvem?"));
+    if (!navnSynlig) boks.append(el("p", "hjelp", "Lagnavnene avsløres når vinnerne kåres."));
     const ol = el("ol", "toppliste");
     data.lagpoeng.forEach((l, i) => {
-      const li = el("li", l.lag === data.mitt_lag.navn ? "meg" : "");
-      li.append(el("span", "plass", String(i + 1)), el("span", "rang-navn", l.lag), el("span", "rang-meta", l.treff + " fulltreff"), el("span", "rang-poeng", String(l.poeng)));
+      const li = el("li", navnSynlig && l.lag === data.mitt_lag.navn ? "meg" : "");
+      li.append(el("span", "plass", String(i + 1)), el("span", "rang-navn", navnSynlig ? l.lag : "Lag ?"), el("span", "rang-meta", l.treff + " fulltreff"), el("span", "rang-poeng", String(l.poeng)));
       ol.append(li);
     });
     boks.append(ol);

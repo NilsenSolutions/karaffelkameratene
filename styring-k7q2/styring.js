@@ -2,7 +2,7 @@
 
 const PIN_NOKKEL = "karaffel-vert-pin";
 const FASE_TEKST = { venter: "Venter på neste runde", gjetting: "Gjetting åpen", lukket: "Gjetting lukket", avslort: "Vinene avslørt" };
-const STEG_TEKST = ["Ingen resultater vist", "Vinrangering og beste vin vises", "Poeng per lag vises", "Beste vinkjenner er kåret"];
+const STEG_TEKST = ["Ingen resultater vist", "Vinrangering og beste vin vises", "Poengene vises uten lagnavn", "Vinnerne er kåret med lagnavn"];
 const VINFELT = [["navn", "Vin"], ["produsent", "Produsent"], ["land", "Land"], ["distrikt", "Distrikt"], ["drue", "Drue"],
   ["aargang", "Årgang"], ["type", "Type"], ["pris", "Pris"]];
 
@@ -140,7 +140,7 @@ function vis() {
   const ferdige = lag.filter(l => l.ferdig).length;
   if (ferdige < lag.length) res.append(el("p", "varsel", ferdige + " av " + lag.length + " lag er ferdige."));
   const rad = el("div", "samling-knapper");
-  [[1, "1. Vis vinrangering og beste vin"], [2, "2. Vis poeng per lag"], [3, "3. Kår beste vinkjenner"]].forEach(([s, t]) => {
+  [[1, "1. Vis vinrangering og beste vin"], [2, "2. Vis poengene (uten lagnavn)"], [3, "3. Kår vinnerne og vis lagnavnene"]].forEach(([s, t]) => {
     rad.append(knapp(t, s === k.resultat_steg + 1 ? "knapp" : "knapp lys-knapp", () => handling("lk_admin_resultat", { p_steg: s }), s > k.resultat_steg + 1));
   });
   if (k.resultat_steg > 0) rad.append(knapp("Skjul resultatene", "lenkeknapp", () => handling("lk_admin_resultat", { p_steg: 0 })));

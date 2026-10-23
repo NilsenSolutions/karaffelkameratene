@@ -238,7 +238,13 @@ begin
   end if;
 
   if k.resultat_steg >= 1 then r := r || jsonb_build_object('vinrangering', lk_vinrangering(s.id)); end if;
-  if k.resultat_steg >= 2 then r := r || jsonb_build_object('lagpoeng', lk_lagpoeng(s.id)); end if;
+  -- Steg 2: bare poengene, uten lagnavn. Steg 3: med lagnavn (kåringen).
+  if k.resultat_steg = 2 then
+    r := r || jsonb_build_object('lagpoeng', (select coalesce(jsonb_agg(x.e - 'lag' - 'medlemmer' order by x.n), '[]'::jsonb)
+                                              from jsonb_array_elements(lk_lagpoeng(s.id)) with ordinality x(e, n)));
+  elsif k.resultat_steg >= 3 then
+    r := r || jsonb_build_object('lagpoeng', lk_lagpoeng(s.id));
+  end if;
   return r;
 end $$;
 

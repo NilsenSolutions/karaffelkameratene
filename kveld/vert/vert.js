@@ -27,6 +27,7 @@ const STANDARD_GJETT = [
 ];
 const SAMLINGSFELT = [
   { felt: "dato", navn: "Dato", type: "date" },
+  { felt: "dato_avtales", navn: "Dato avtales (vises ikke)", type: "checkbox" },
   { felt: "tid", navn: "Klokkeslett", type: "time" },
   { felt: "tittel", navn: "Tittel", type: "text", bred: true },
   { felt: "sted", navn: "Sted", type: "text" },
@@ -249,7 +250,7 @@ function byggSamling(s) {
   const topp = el("div", "samling-topp");
   const tekst = el("div");
   tekst.append(el("h3", "samling-navn", s.id ? (s.tittel || "Uten tittel") : "Ny samling"));
-  if (s.id) tekst.append(el("p", "rang-meta", [kortDato(s.dato, s.tid), s.sted, s.paameldte + " påmeldt"].filter(Boolean).join(" · ")));
+  if (s.id) tekst.append(el("p", "rang-meta", [s.dato_avtales ? "Dato avtales" : kortDato(s.dato, s.tid), s.sted, s.paameldte + " påmeldt"].filter(Boolean).join(" · ")));
   topp.append(tekst);
   if (s.id) {
     const merke = s.aktiv ? "Kveldsmodus på" : s.viner ? "Kveld klar · " + s.viner + " viner" : "Kveld ikke konfigurert";
@@ -391,6 +392,7 @@ function byggSamlingsskjema(s) {
     lab.htmlFor = id;
     const inp = el("input");
     Object.assign(inp, { type: f.type, id, value: s[f.felt] != null ? s[f.felt] : "" });
+    if (f.type === "checkbox") { inp.checked = Boolean(s[f.felt]); felt.classList.add("avkryss"); }
     if (f.type === "number") { inp.min = 0; inp.inputMode = "numeric"; }
     inp.dataset.felt = f.felt;
     felt.append(lab, inp);
@@ -410,8 +412,8 @@ function byggSamlingsskjema(s) {
 
   lagreKnapp.addEventListener("click", async () => {
     const d = { id: s.id || "" };
-    boks.querySelectorAll("input").forEach(i => { d[i.dataset.felt] = i.value.trim(); });
-    if (!d.dato) { status.textContent = "Velg en dato."; return; }
+    boks.querySelectorAll("input").forEach(i => { d[i.dataset.felt] = i.type === "checkbox" ? i.checked : i.value.trim(); });
+    if (!d.dato && !d.dato_avtales) { status.textContent = "Velg en dato, eller kryss av for at datoen avtales."; return; }
     if (!d.tid) d.tid = "18:00";
     lagreKnapp.disabled = true;
     status.textContent = "Lagrer…";

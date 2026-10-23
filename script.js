@@ -45,9 +45,11 @@ const klokkeTekst = s => "kl. " + s.tid.replace(":", ".");
 
 function kommende(naa) {
   return SMAKINGER
-    .filter(s => startTid(s) > naa)
+    .filter(s => !s.dato_avtales && startTid(s) > naa)
     .sort((a, b) => startTid(a) - startTid(b));
 }
+// Samlinger der datoen ikke er bestemt ennå. De får ingen nedtelling eller påmelding.
+const uavklarte = () => SMAKINGER.filter(s => s.dato_avtales);
 
 // Status for påmelding: apen eller stengt. Det er ingen plassgrense.
 function pameldingStatus(s, naa) {
@@ -155,14 +157,14 @@ function visPlasser(s) {
 }
 
 function visSenere(naaverende) {
-  const rest = kommende(new Date()).filter(s => s !== naaverende);
+  const rest = kommende(new Date()).filter(s => s !== naaverende).concat(uavklarte());
   const blokk = $("senere-blokk");
   const liste = $("senere-liste");
   liste.textContent = "";
   blokk.hidden = rest.length === 0;
   rest.forEach(s => {
     const li = el("li");
-    li.append(el("strong", "", s.tittel), el("span", "", " – " + datoTekst(startTid(s)) + ", " + s.sted));
+    li.append(el("strong", "", s.tittel), el("span", "", " – " + [s.dato_avtales ? "Dato avtales" : datoTekst(startTid(s)), s.sted].filter(Boolean).join(", ")));
     liste.appendChild(li);
   });
 }

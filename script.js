@@ -598,6 +598,120 @@ function byggDansegulv(antall, tekst) {
   }
 }
 
+// ---------------- Påskeegg: kveldens rangering ----------------
+// Klikk på dansegulvet (eller skriv «skål») etter at vinnerne er kåret: kameratene får navn og plassering,
+// vinnerne får krone, og alle hopper rundt på skjermen.
+
+let RESULTAT = null;
+const rolig = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+async function lastResultat() {
+  try { RESULTAT = await kall("hent_kveldens_resultat", {}); } catch (e) { RESULTAT = null; }
+  $("dansegulv").classList.toggle("har-hemmelighet", Boolean(RESULTAT && RESULTAT.lag && RESULTAT.lag.length));
+}
+
+// Én person per navn i lagene, med lagets plassering. Delt plass ved likt poeng og like mange fulltreff.
+function kveldensPersoner() {
+  const lag = RESULTAT.lag;
+  const ut = [];
+  lag.forEach(l => {
+    const plass = 1 + lag.findIndex(x => x.poeng === l.poeng && x.treff === l.treff);
+    (l.medlemmer || l.lag).split("&").map(n => n.trim()).filter(Boolean)
+      .forEach(navn => ut.push({ navn, lag: l.lag, plass, vinner: plass === 1 }));
+  });
+  return ut;
+}
+
+let hoppeland = null;
+
+function startHopp() {
+  if (hoppeland || !RESULTAT || !RESULTAT.lag || !RESULTAT.lag.length) return;
+  const personer = kveldensPersoner();
+  hoppeland = el("div", "hoppeland");
+  hoppeland.setAttribute("role", "dialog");
+  hoppeland.setAttribute("aria-label", "Kveldens rangering");
+
+  const tavle = el("div", "hoppe-tavle");
+  tavle.append(el("p", "hoppe-tittel", "👑 Kveldens rangering"));
+  tavle.append(el("p", "hoppe-under", RESULTAT.tittel));
+  const ol = el("ol");
+  RESULTAT.lag.forEach(l => ol.append(el("li", "", l.lag + (l.medlemmer ? " (" + l.medlemmer + ")" : "") + " – " + l.poeng + " poeng")));
+  const lukk = el("button", "knapp hoppe-lukk", "Lukk");
+  lukk.type = "button";
+  tavle.append(ol, lukk);
+  hoppeland.append(tavle);
+
+  const figurer = personer.map((p, i) => {
+    const f = el("div", "hopper" + (p.vinner ? " hopper-vinner" : ""));
+    f.style.setProperty("--takt", (0.5 + Math.random() * 0.4).toFixed(2) + "s");
+    f.style.setProperty("--forsinkelse", (-Math.random() * 2).toFixed(2) + "s");
+    f.style.setProperty("--slurk", (2.5 + Math.random() * 2).toFixed(2) + "s");
+    if (p.vinner) f.append(el("span", "krone", "👑"));
+    f.append(kameratSvg(i), el("span", "hopper-navn", p.plass + ". " + p.navn));
+    hoppeland.append(f);
+    return { f, x: Math.random() * Math.max(1, innerWidth - 90), y: 120 + Math.random() * Math.max(1, innerHeight - 300),
+      vx: (Math.random() < .5 ? -1 : 1) * (1.2 + Math.random() * 2.3), vy: (Math.random() < .5 ? -1 : 1) * (0.8 + Math.random() * 1.8),
+      fase: Math.random() * 6.28 };
+  });
+  document.body.append(hoppeland);
+
+  let ramme = 0;
+  const start = performance.now();
+  const steg = t => {
+    const w = innerWidth - 90, h = innerHeight - 170;
+    figurer.forEach(o => {
+      o.x += o.vx; o.y += o.vy;
+      if (o.x < 0 || o.x > w) { o.vx = -o.vx; o.x = Math.max(0, Math.min(w, o.x)); }
+      if (o.y < 20 || o.y > h) { o.vy = -o.vy; o.y = Math.max(20, Math.min(h, o.y)); }
+      const hopp = Math.abs(Math.sin((t - start) / 230 + o.fase)) * 45;
+      o.f.style.transform = "translate(" + o.x.toFixed(1) + "px," + (o.y - hopp).toFixed(1) + "px)";
+    });
+    ramme = requestAnimationFrame(steg);
+  };
+  if (rolig()) {
+    // Uten bevegelse: stå pent på rekke nederst.
+    figurer.forEach((o, i) => { o.f.style.transform = "translate(" + (16 + (i % 8) * 90) + "px," + (innerHeight - 190 - Math.floor(i / 8) * 150) + "px)"; });
+  } else {
+    ramme = requestAnimationFrame(steg);
+  }
+
+  const stopp = () => {
+    cancelAnimationFrame(ramme);
+    clearTimeout(tidsfrist);
+    document.removeEventListener("keydown", esc);
+    if (hoppeland) hoppeland.remove();
+    hoppeland = null;
+  };
+  const esc = e => { if (e.key === "Escape") stopp(); };
+  const tidsfrist = setTimeout(stopp, 60000);   // en PC som står på forsiden går tilbake av seg selv
+  hoppeland.addEventListener("click", e => { if (!tavle.contains(e.target) || e.target === lukk) stopp(); });
+  document.addEventListener("keydown", esc);
+  lukk.focus();
+}
+
+// Skriv «skål» hvor som helst på siden (utenfor skjemafelt).
+function lyttEtterSkal() {
+  let buffer = "";
+  document.addEventListener("keydown", e => {
+    if (e.target.closest && e.target.closest("input, textarea, select")) return;
+    if (e.key.length !== 1) return;
+    buffer = (buffer + e.key.toLowerCase()).slice(-4);
+    if (buffer === "skål" || buffer === "skal") startHopp();
+  });
+}
+
+// ---------------- Påskeegg: miniraveparty hvert femte minutt ----------------
+
+function rave() {
+  if (document.hidden || rolig() || document.body.classList.contains("rave")) return;
+  const fest = el("div", "rave-fest");
+  fest.setAttribute("aria-hidden", "true");
+  fest.append(el("div", "rave-lys"), el("span", "diskokule"), el("p", "rave-tekst", "Rave! 🍷🎶"));
+  document.body.append(fest);
+  document.body.classList.add("rave");
+  setTimeout(() => { fest.remove(); document.body.classList.remove("rave"); }, 10000);
+}
+
 // Stopp dansen når gulvet ikke vises.
 function styrDans() {
   const gulv = $("dansegulv");
@@ -613,8 +727,13 @@ styrDans();
 
 lastTema();
 lastSmakinger();
+lastResultat();
 // Hent samlingene på nytt hvert minutt, så en PC som står på forsiden bytter til neste samling når kvelden avsluttes.
-setInterval(() => { if (!document.hidden) lastSmakinger(); }, 60000);
+setInterval(() => { if (!document.hidden) { lastSmakinger(); lastResultat(); } }, 60000);
+$("dansere").addEventListener("click", startHopp);
+lyttEtterSkal();
+setInterval(rave, 5 * 60 * 1000);
+if (/[?&]rave\b/.test(location.search)) setTimeout(rave, 1500);   // ?rave for å se festen med en gang
 byggFilter();
 lastVinlogg();
 $("skjema").addEventListener("submit", sendSkjema);

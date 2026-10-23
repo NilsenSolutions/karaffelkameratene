@@ -230,12 +230,12 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 .dansere { display: flex; flex-wrap: wrap; gap: .25rem .4rem; }
 .danser { display: block; width: clamp(40px, 4.2vw, 56px); }
 .danser svg { display: block; width: 100%; height: auto; overflow: visible; }
-.danser :is(.kropp, .bein, .arm-fri, .arm-karaffel) { transform-box: view-box; }
-.danser .kropp { transform-origin: 30px 102px; animation: dans-hopp var(--takt) ease-in-out var(--forsinkelse) infinite alternate; }
-.danser .bein-v { transform-origin: 30px 70px; animation: dans-bein var(--takt) ease-in-out var(--forsinkelse) infinite alternate; }
-.danser .bein-h { transform-origin: 30px 70px; animation: dans-bein var(--takt) ease-in-out var(--forsinkelse) infinite alternate-reverse; }
-.danser .arm-fri { transform-origin: 30px 40px; animation: dans-vink calc(var(--takt) * 2) ease-in-out var(--forsinkelse) infinite alternate; }
-.danser .arm-karaffel { transform-origin: 30px 40px; animation: dans-slurk var(--slurk) ease-in-out var(--forsinkelse) infinite; }
+:is(.danser, .hopper) :is(.kropp, .bein, .arm-fri, .arm-karaffel) { transform-box: view-box; }
+:is(.danser, .hopper) .kropp { transform-origin: 30px 102px; animation: dans-hopp var(--takt) ease-in-out var(--forsinkelse) infinite alternate; }
+:is(.danser, .hopper) .bein-v { transform-origin: 30px 70px; animation: dans-bein var(--takt) ease-in-out var(--forsinkelse) infinite alternate; }
+:is(.danser, .hopper) .bein-h { transform-origin: 30px 70px; animation: dans-bein var(--takt) ease-in-out var(--forsinkelse) infinite alternate-reverse; }
+:is(.danser, .hopper) .arm-fri { transform-origin: 30px 40px; animation: dans-vink calc(var(--takt) * 2) ease-in-out var(--forsinkelse) infinite alternate; }
+:is(.danser, .hopper) .arm-karaffel { transform-origin: 30px 40px; animation: dans-slurk var(--slurk) ease-in-out var(--forsinkelse) infinite; }
 @keyframes dans-hopp { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-8px) rotate(6deg); } }
 @keyframes dans-bein { from { transform: rotate(-10deg); } to { transform: rotate(14deg); } }
 @keyframes dans-vink { from { transform: rotate(-20deg); } to { transform: rotate(35deg); } }
@@ -246,4 +246,47 @@ input[aria-invalid="true"] { border-color: var(--vin); }
   100% { transform: rotate(0deg); }
 }
 .dansegulv:is(.pause, .pause-skjult) .danser * { animation-play-state: paused; }
-@media (prefers-reduced-motion: reduce) { .danser * { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { :is(.danser, .hopper) * { animation: none !important; } }
+
+/* Påskeegg: kveldens rangering, kameratene hopper rundt på hele skjermen. */
+.dansegulv.har-hemmelighet .dansere { cursor: pointer; }
+.hoppeland { position: fixed; inset: 0; z-index: 60; overflow: hidden; background: rgba(238, 243, 234, .9); cursor: pointer; }
+.hopper { position: absolute; left: 0; top: 0; width: 76px; text-align: center; will-change: transform; pointer-events: none; }
+.hopper svg { display: block; width: 100%; height: auto; overflow: visible; }
+.krone { position: absolute; top: -24px; left: 0; width: 94%; text-align: center; font-size: 30px; line-height: 1; transform: rotate(-8deg); }
+.hopper-navn {
+  display: inline-block; margin-top: .1rem; white-space: nowrap; font-weight: 700; font-size: .85rem; color: #2b2b2b;
+  background: #fff; border: 2px solid #2f5ba8; border-radius: 999px; padding: .1rem .55rem;
+}
+.hopper.hopper-vinner .hopper-navn { background: #fff4c2; border-color: #dda829; }
+.hoppe-tavle {
+  position: absolute; z-index: 1; top: 1rem; left: 50%; transform: translateX(-50%); width: min(520px, 92vw);
+  background: #fff; color: #2b2b2b; border: 3px solid #2f5ba8; border-radius: 18px; padding: 1rem 1.25rem; cursor: default;
+}
+.hoppe-tittel { margin: 0; font-family: "Permanent Marker", cursive; font-size: 1.6rem; color: #2f5ba8; }
+.hoppe-under { margin: 0 0 .4rem; font-size: .9rem; opacity: .75; }
+.hoppe-tavle ol { margin: 0 0 .75rem; padding-left: 1.4rem; font-size: .95rem; line-height: 1.45; }
+.hoppe-tavle ol li:first-child { font-weight: 700; }
+.hoppe-lukk { padding: .5rem 1.2rem; }
+
+/* Påskeegg: miniraveparty hvert femte minutt. Myke lys, ingen harde blink. */
+.rave-fest { position: fixed; inset: 0; z-index: 55; pointer-events: none; overflow: hidden; }
+.rave-lys { position: absolute; inset: -50%; mix-blend-mode: multiply; opacity: .55;
+  background: conic-gradient(from 0deg, #ff3d7f, #ffd23f, #3dd6ff, #7dff6a, #c56bff, #ff3d7f);
+  animation: rave-snurr 2.4s linear infinite, rave-puls .6s ease-in-out infinite alternate; }
+.diskokule { position: absolute; top: 12vh; left: 50%; width: clamp(56px, 7vw, 96px); aspect-ratio: 1; border-radius: 50%; transform: translateX(-50%);
+  background: radial-gradient(circle at 35% 30%, #fff 0 8%, transparent 22%), repeating-linear-gradient(0deg, #9aa3ad 0 3px, transparent 3px 11px), repeating-linear-gradient(90deg, #9aa3ad 0 3px, #e9edf1 3px 11px);
+  box-shadow: 0 0 24px #fff, 0 0 48px #c56bff;
+  animation: kule-ned .8s cubic-bezier(.2, .9, .3, 1.3) both, kule-sving 1.6s ease-in-out .8s infinite alternate; }
+.rave-tekst { position: absolute; left: 0; right: 0; bottom: 10%; margin: 0; text-align: center; max-width: none;
+  font-family: "Permanent Marker", cursive; font-size: clamp(2.5rem, 9vw, 7rem); color: #fff;
+  text-shadow: 0 0 12px #ff3d7f, 0 0 24px #3dd6ff; animation: rave-hopp .45s ease-in-out infinite alternate; }
+body.rave :is(.danser, .hopper) .kropp { animation-duration: .28s; }
+body.rave :is(.danser, .hopper) :is(.bein-v, .bein-h) { animation-duration: .28s; }
+body.rave :is(.danser, .hopper) .arm-fri { animation-duration: .4s; }
+@keyframes rave-snurr { to { transform: rotate(360deg); } }
+@keyframes rave-puls { from { opacity: .35; } to { opacity: .65; } }
+@keyframes kule-ned { from { transform: translate(-50%, -40vh); } to { transform: translate(-50%, 0); } }
+@keyframes kule-sving { from { transform: translate(-50%, 0) rotate(-12deg); } to { transform: translate(-50%, 0) rotate(12deg); } }
+@keyframes rave-hopp { from { transform: translateY(0) scale(1); } to { transform: translateY(-14px) scale(1.06); } }
+.diskokule::before { content: ""; position: absolute; left: 50%; bottom: 100%; width: 2px; height: 60vh; background: #555; }

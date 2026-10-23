@@ -285,6 +285,10 @@ begin
   select * into k from lk_kveld where samling_id = l.samling_id;
   if l.ferdig or k.aktivt_lag = l.id then raise exception 'Runden deres har startet. Spør admin om å rette vinen.'; end if;
   if p_bokstav not in ('A', 'B') then raise exception 'Ukjent vin'; end if;
+  if exists (select 1 from unnest(array['navn', 'produsent', 'land', 'distrikt', 'drue', 'aargang', 'pris', 'type']) f
+             where trim(coalesce(p_data->>f, '')) = '') then
+    raise exception 'Fyll ut alle feltene før vinen lagres';
+  end if;
   insert into lk_vin (lag_id, bokstav, navn, produsent, land, distrikt, drue, aargang, type, pris, notater)
   values (l.id, p_bokstav, left(coalesce(p_data->>'navn', ''), 120), left(coalesce(p_data->>'produsent', ''), 120),
           left(coalesce(p_data->>'land', ''), 60), left(coalesce(p_data->>'distrikt', ''), 80), left(coalesce(p_data->>'drue', ''), 120),

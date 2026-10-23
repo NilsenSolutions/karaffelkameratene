@@ -171,7 +171,7 @@ function visVenter(h) {
   }
   const intro = el("div", "kort");
   intro.append(el("h2", "kort-tittel", "Vinene deres"));
-  intro.append(el("p", "hjelp", "Registrer de to vinene dere har med. Ingen andre ser dem før admin avslører dem. Dere kan endre fram til runden deres starter. Fortell om vinene muntlig når det er deres tur."));
+  intro.append(el("p", "hjelp", "Registrer de to vinene dere har med. Fyll ut alle feltene og trykk «Lagre vin». Ingen andre ser dem før admin avslører dem. Dere kan endre og lagre på nytt fram til runden deres starter. Fortell om vinene muntlig når det er deres tur."));
   h.append(intro);
   ["A", "B"].forEach(b => h.append(byggVinskjema(b, m.viner.find(v => v.bokstav === b) || {})));
 }
@@ -183,13 +183,9 @@ function byggVinskjema(bokstav, v) {
     drue: v.drue || "", aargang: v.aargang || "", type: v.type || "", pris: v.pris || "" };
   const status = el("p", "status lagre-status");
   status.setAttribute("role", "status");
-  const lagre = () => planlegg("vin-" + bokstav, async () => {
-    status.textContent = "Lagrer…";
-    try {
-      await rpc("lk_lagre_vin", { p_token: lesToken(), p_bokstav: bokstav, p_data: verdier });
-      status.textContent = "Lagret ✓";
-    } catch (err) { status.textContent = "Ikke lagret: " + err.message; }
-  });
+  status.textContent = v.id ? "Lagret ✓" : "Ikke lagret ennå";
+  // Endringer lagres først når laget trykker «Lagre vin», og bare når alle feltene er fylt ut.
+  const lagre = () => { status.textContent = "Endret, ikke lagret. Trykk «Lagre vin " + bokstav + "»."; };
 
   boks.append(tekstfelt("v" + bokstav + "-navn", "Vinens navn", verdier, "navn", lagre));
   boks.append(tekstfelt("v" + bokstav + "-produsent", "Produsent", verdier, "produsent", lagre));
@@ -200,9 +196,37 @@ function byggVinskjema(bokstav, v) {
   rad.append(tekstfelt("v" + bokstav + "-pris", "Pris (kr)", verdier, "pris", lagre, { numerisk: true, plass: "299" }));
   boks.append(rad);
   boks.append(velgfelt("v" + bokstav + "-type", "Type", TYPER, verdier, "type", lagre));
-  boks.append(status);
+
+  const knapp = el("button", "knapp", "Lagre vin " + bokstav);
+  knapp.type = "button";
+  const feil = el("p", "feil");
+  feil.setAttribute("role", "alert");
+  knapp.addEventListener("click", async () => {
+    const mangler = PAKREVD.filter(([felt]) => !String(verdier[felt] || "").trim()).map(([, navn]) => navn);
+    if (mangler.length) {
+      feil.textContent = "Fyll ut " + listeTekst(mangler.map(n => n.toLowerCase())) + " før dere lagrer.";
+      return;
+    }
+    feil.textContent = "";
+    knapp.disabled = true;
+    status.textContent = "Lagrer…";
+    try {
+      await rpc("lk_lagre_vin", { p_token: lesToken(), p_bokstav: bokstav, p_data: verdier });
+      status.textContent = "Lagret ✓";
+      hent();
+    } catch (err) {
+      status.textContent = "";
+      feil.textContent = "Ikke lagret: " + err.message;
+    }
+    knapp.disabled = false;
+  });
+  boks.append(feil, knapp, status);
   return boks;
 }
+
+// Alle feltene må være fylt ut før en vin kan lagres.
+const PAKREVD = [["navn", "Vinens navn"], ["produsent", "Produsent"], ["land", "Land"], ["distrikt", "Distrikt"],
+  ["drue", "Drue"], ["aargang", "Årgang"], ["pris", "Pris"], ["type", "Type"]];
 
 // Runden der laget selv presenterer.
 function visPresenterer(h, r) {

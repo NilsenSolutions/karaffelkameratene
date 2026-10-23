@@ -260,10 +260,24 @@ function lastNedKalender() {
 
 // ---------------- Marquee ----------------
 
+// Fast liste, ikke hentet fra påmeldte viner, så båndet aldri røper kveldens flasker.
+const BAND = [
+  "Rød", "Hvit", "Rosé", "Musserende", "Oransje", "Sterkvin", "Dessertvin",
+  "Nebbiolo", "Riesling", "Grenache", "Chenin Blanc", "Tempranillo", "Grüner Veltliner", "Syrah", "Albariño",
+  "Barolo", "Rioja", "Mosel", "Bordeaux", "Douro", "Wachau", "Barossa", "Mendoza", "Marlborough", "Jerez",
+  "Krug", "Bollinger", "Gaja", "Vega Sicilia", "Penfolds", "Trimbach", "Guigal", "Dr. Loosen", "Antinori", "Catena",
+  "Blindt", "Karaffel", "Tanniner", "Syre", "Terroir", "Eik", "Kork"
+];
+
 function byggMarquee() {
   const spor = $("marquee");
   spor.textContent = "";
-  const navn = VINLOGG.length ? VINLOGG.slice(0, 12).map(v => v.vin) : ["Rød", "Hvit", "Rosé", "Musserende", "Blindt"];
+  // Ny rekkefølge for hvert besøk.
+  const navn = BAND.slice();
+  for (let i = navn.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [navn[i], navn[j]] = [navn[j], navn[i]];
+  }
   navn.push("Skål");
   const enRunde = () => {
     const frag = document.createDocumentFragment();
@@ -272,6 +286,8 @@ function byggMarquee() {
   };
   // To like halvdeler gjør at animasjonen kan gå sømløst i løkke.
   spor.append(enRunde(), enRunde());
+  // Rundt 50 piksler i sekundet, uansett hvor langt båndet er.
+  spor.style.animationDuration = Math.max(20, Math.round(spor.scrollWidth / 2 / 50)) + "s";
 }
 
 // ---------------- Vinlogg ----------------

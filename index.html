@@ -29,8 +29,8 @@
       if (t === "kamerater") document.documentElement.setAttribute("data-tema", t);
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=20261023j">
-  <link rel="stylesheet" href="tema.css?v=20261023j">
+  <link rel="stylesheet" href="style.css?v=20261023k">
+  <link rel="stylesheet" href="tema.css?v=20261023k">
 </head>
 <body>
   <a class="skip" href="#pamelding">Hopp til påmelding</a>
@@ -150,11 +150,10 @@
       <div class="innpakning to-kol">
         <div>
           <h2>Påmelding</h2>
-          <div class="lagkveld-blokk" id="lagkveld-blokk" hidden>
-            <p id="lagkveld-tekst"></p>
-            <a class="knapp" href="smaking/">Registrer lag og vin</a>
+          <div class="pm-rad">
+            <p id="pm-status-badge" class="badge" data-status="">Laster…</p>
+            <a class="knapp" id="lagkveld-knapp" href="smaking/" hidden>Registrer lag og vin</a>
           </div>
-          <p id="pm-status-badge" class="badge" data-status="">Laster…</p>
           <dl class="detaljer" id="detaljer"></dl>
 
           <div class="plasser" id="plasser-blokk" hidden>
@@ -224,7 +223,7 @@
     <a class="bunn-vert" href="styring-k7q2/">For vertskapet</a>
   </footer>
 
-  <script src="kveld/oppsett.js?v=20261023j"></script>
-  <script src="script.js?v=20261023j"></script>
+  <script src="kveld/oppsett.js?v=20261023k"></script>
+  <script src="script.js?v=20261023k"></script>
 </body>
 </html>

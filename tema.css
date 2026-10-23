@@ -189,5 +189,3 @@ html[data-tema="kamerater"] .tema-alt strong { color: var(--k-tekst); font-weigh
 html[data-tema="kamerater"] dialog.bekreft { border: 3px solid var(--k-blaa); }
 html[data-tema="kamerater"] dialog.bekreft::backdrop { background: rgba(31, 63, 120, .35); }
 
-/* «Registrer lag og vin», samme stil som nedtellingen. */
-html[data-tema="kamerater"] .lagkveld-blokk { background: var(--k-kort); color: var(--k-tekst); border: 3px solid var(--k-blaa); }

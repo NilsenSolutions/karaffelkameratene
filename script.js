@@ -374,9 +374,7 @@ async function kall(navn, args) {
 // Når lagkvelden for en samling er i gang, kan lagene registrere seg og vinene sine.
 // Vises også etter starttidspunktet, når samlingen ikke lenger er «neste».
 function visLagkveld() {
-  const s = SMAKINGER.find(x => x.lagkveld_aktiv);
-  $("lagkveld-blokk").hidden = !s;
-  if (s) $("lagkveld-tekst").textContent = "Lagkvelden «" + s.tittel + "» er i gang. Ett lag, én mobil.";
+  $("lagkveld-knapp").hidden = !SMAKINGER.some(x => x.lagkveld_aktiv);
 }
 
 async function lastSmakinger() {

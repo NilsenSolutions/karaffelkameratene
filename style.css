@@ -224,11 +224,11 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 .logg li.samling-hode .meta { display: block; }
 
 /* Dansegulvet: én kamerat per påmeldt, som danser og drikker av karaffelen. */
-.dansegulv { padding: 1.5rem clamp(1rem, 5vw, 3rem) 2rem; text-align: center; }
+.dansegulv { margin-top: 1.5rem; }
 .dansegulv[hidden] { display: none; }
-.dansegulv-tekst { margin: 0 auto 1rem; font-weight: 600; }
-.dansere { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem .5rem; max-width: 1100px; margin: 0 auto; }
-.danser { display: block; width: clamp(44px, 6vw, 64px); }
+.dansegulv-tekst { margin: 0 0 .5rem; font-weight: 600; }
+.dansere { display: flex; flex-wrap: wrap; gap: .25rem .4rem; }
+.danser { display: block; width: clamp(40px, 4.2vw, 56px); }
 .danser svg { display: block; width: 100%; height: auto; overflow: visible; }
 .danser :is(.kropp, .bein, .arm-fri, .arm-karaffel) { transform-box: view-box; }
 .danser .kropp { transform-origin: 30px 102px; animation: dans-hopp var(--takt) ease-in-out var(--forsinkelse) infinite alternate; }

@@ -47,11 +47,22 @@ const klokkeTekst = s => "kl. " + s.tid.replace(":", ".");
 
 const sluttTid = s => new Date(startTid(s).getTime() + CONFIG.varerTimer * 3600 * 1000);
 
-// Kommende og pågående: en samling blir stående hele kvelden etter at den har startet.
+// Lagkvelden er avsluttet fra styringssiden: da er samlingen ferdig, selv om det er samme kveld.
+const avsluttet = s => s.lagkveld && !s.lagkveld_aktiv;
+
+// Kommende og pågående: en samling blir stående hele kvelden etter at den har startet,
+// til lagkvelden avsluttes eller det har gått CONFIG.varerTimer timer.
 function kommende(naa) {
   return SMAKINGER
-    .filter(s => !s.dato_avtales && sluttTid(s) > naa)
+    .filter(s => !s.dato_avtales && (startTid(s) > naa || (sluttTid(s) > naa && !avsluttet(s))))
     .sort((a, b) => startTid(a) - startTid(b));
+}
+
+// Kveldens samling: den som startet sist, innen et døgn. Dansegulvet viser de påmeldte derfra.
+function kveldens(naa) {
+  return SMAKINGER
+    .filter(s => !s.dato_avtales && startTid(s) <= naa && naa - startTid(s) < 24 * 3600 * 1000)
+    .sort((a, b) => startTid(b) - startTid(a))[0] || null;
 }
 // Samlinger der datoen ikke er bestemt ennå. De får ingen nedtelling eller påmelding.
 const uavklarte = () => SMAKINGER.filter(s => s.dato_avtales);
@@ -109,14 +120,27 @@ function visIGang() {
   $("stripe-tekst").textContent = neste.tittel + " er i gang nå. Skål!";
 }
 
+// Dansegulvet: kveldens påmeldte så lenge kvelden varer (også etter at den er avsluttet), ellers neste samling.
+function oppdaterDansegulv(naa) {
+  const iKveld = kveldens(naa);
+  if (!iKveld) return byggDansegulv(neste ? neste.paameldte : 0);
+  const n = iKveld.paameldte;
+  byggDansegulv(n, n + (n === 1 ? " kamerat " : " kamerater ") + (iKveld === neste ? "er med i kveld" : "var med i kveld"));
+}
+
 function startNedtelling() {
   const naa = new Date();
   neste = kommende(naa)[0] || null;
-  byggDansegulv(neste ? neste.paameldte : 0);
+
+  oppdaterDansegulv(naa);
 
   if (!neste) {
-    $("nt-tittel").textContent = "Ingen smaking er planlagt";
-    $("nt-info").textContent = "Neste dato er ikke satt ennå. Kom tilbake snart.";
+    // Ingen datert samling: vis den neste uten dato hvis det finnes en.
+    const udatert = uavklarte()[0];
+    $("nt-tittel").textContent = udatert ? "Neste smaking: " + udatert.tittel : "Ingen smaking er planlagt";
+    $("nt-info").textContent = udatert
+      ? ["Dato avtales", udatert.sted, udatert.tema].filter(Boolean).join(" · ") + "."
+      : "Neste dato er ikke satt ennå. Kom tilbake snart.";
     ["nt-d", "nt-t", "nt-m", "nt-s"].forEach(id => $(id).textContent = "–");
     $("nt-tall").hidden = false;
     $("stripe").hidden = true;
@@ -224,7 +248,7 @@ async function sendSkjema(e) {
     // Oppdater antall påmeldte og status uten å skjule bekreftelsen.
     SMAKINGER = await kall("hent_samlinger", {});
     const oppdatert = SMAKINGER.find(s => s.id === neste.id);
-    if (oppdatert) { neste = oppdatert; visPlasser(neste); byggDansegulv(neste.paameldte); }
+    if (oppdatert) { neste = oppdatert; visPlasser(neste); oppdaterDansegulv(new Date()); }
   } catch (err) {
     feil("feil-navn", "navn", "Påmeldingen ble ikke lagret: " + err.message + ". Prøv igjen.");
   }
@@ -446,6 +470,7 @@ async function lastSmakinger() {
     startNedtelling();
     visLagkveld();
   } catch (err) {
+    if (SMAKINGER.length) return;   // behold det vi har ved en midlertidig feil
     startNedtelling();
     $("nt-tittel").textContent = "Smakingene kunne ikke hentes";
     $("nt-info").textContent = "Prøv å laste siden på nytt om litt.";
@@ -536,12 +561,12 @@ function kameratSvg(i) {
   return svg;
 }
 
-function byggDansegulv(antall) {
+function byggDansegulv(antall, tekst) {
   const gulv = $("dansegulv");
   const n = Math.min(Math.max(0, antall || 0), MAKS_DANSERE);
   gulv.hidden = n === 0;
   if (!n) return;
-  $("dansegulv-tekst").textContent = antall === 1 ? "1 kamerat er påmeldt" : antall + " kamerater er påmeldt";
+  $("dansegulv-tekst").textContent = tekst || (antall === 1 ? "1 kamerat er påmeldt" : antall + " kamerater er påmeldt");
   const dansere = $("dansere");
   if (dansere.children.length === n) return;
   dansere.textContent = "";
@@ -571,6 +596,8 @@ styrDans();
 
 lastTema();
 lastSmakinger();
+// Hent samlingene på nytt hvert minutt, så en PC som står på forsiden bytter til neste samling når kvelden avsluttes.
+setInterval(() => { if (!document.hidden) lastSmakinger(); }, 60000);
 byggFilter();
 lastVinlogg();
 $("skjema").addEventListener("submit", sendSkjema);

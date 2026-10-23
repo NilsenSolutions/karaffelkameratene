@@ -337,7 +337,7 @@ function forhandsvisning() {
 const POENGREGLER = [
   ["Land", "2", "Riktig land."],
   ["Distrikt", "0–5", "5 for riktig distrikt. Ellers etter avstand: under 100 km 3, under 300 km 2, under 600 km 1. Feil land gir 0."],
-  ["Drue", "2", "Riktig drue. Druer med to navn (Syrah / Shiraz) gir treff på begge."],
+  ["Drue", "2", "Riktig drue. Ved blanding gjelder den dominerende druen. Druer med to navn (Syrah / Shiraz) gir treff på begge."],
   ["Årgang", "0–3", "Riktig 3, ett år unna 2, to år unna 1."],
   ["Pris", "0–3", "Innenfor 10 % 3, innenfor 25 % 2, innenfor 50 % 1."]
 ];

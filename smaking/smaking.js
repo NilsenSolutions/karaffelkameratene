@@ -12,8 +12,7 @@ const DRUER = {
     "Sangiovese", "Syrah / Shiraz", "Tempranillo / Tinta Roriz", "Touriga Nacional", "Zinfandel / Primitivo", "Zweigelt"],
   "Hvite druer": ["Albariño", "Assyrtiko", "Chardonnay", "Chenin Blanc", "Furmint", "Garganega", "Gewürztraminer", "Glera",
     "Godello", "Grüner Veltliner", "Marsanne", "Melon de Bourgogne", "Muscat / Moscato", "Pinot Blanc", "Pinot Grigio / Pinot Gris",
-    "Riesling", "Roussanne", "Sauvignon Blanc", "Sémillon", "Trebbiano", "Verdejo", "Verdicchio", "Vermentino", "Viognier"],
-  "Blanding": ["Blanding (flere druer)"]
+    "Riesling", "Roussanne", "Sauvignon Blanc", "Sémillon", "Trebbiano", "Verdejo", "Verdicchio", "Vermentino", "Viognier"]
 };
 const ALLE_DRUER = Object.values(DRUER).flat();
 const TOKEN_NOKKEL = "karaffel-lag-token";
@@ -470,6 +469,7 @@ function landOgDistrikt(id, verdier, lagre) {
 }
 
 // Drue som nedtrekksliste, gruppert i røde og hvite. «Annet» gir et tekstfelt.
+// Blandinger registreres og gjettes med den dominerende druen.
 function druefelt(id, verdier, lagre) {
   const f = el("div", "felt");
   const l = el("label", "", "Drue");
@@ -498,7 +498,7 @@ function druefelt(id, verdier, lagre) {
     lagre();
   });
   annet.addEventListener("input", () => { verdier.drue = annet.value.trim(); lagre(); });
-  f.append(l, s, annet);
+  f.append(l, s, annet, el("p", "hjelp", "Blanding av flere druer? Velg den dominerende druen."));
   return f;
 }
 

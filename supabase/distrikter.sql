@@ -200,7 +200,16 @@ insert into public.lk_distrikt (land, navn, lat, lon) values
 ('New Zealand', 'Nelson', -41.27, 173.28),
 ('New Zealand', 'Waipara', -43.06, 172.75),
 ('New Zealand', 'Gisborne', -38.66, 178.02),
-('New Zealand', 'Auckland', -36.85, 174.76)
+('New Zealand', 'Auckland', -36.85, 174.76),
+-- England
+('England', 'Hampshire', 51.10, -1.20),
+('England', 'Sussex', 50.92, -0.30),
+('England', 'Kent', 51.25, 0.75),
+('England', 'Surrey', 51.25, -0.40),
+('England', 'Essex', 51.75, 0.60),
+('England', 'Dorset', 50.75, -2.30),
+('England', 'Devon', 50.70, -3.70),
+('England', 'Cornwall', 50.30, -5.00)
 on conflict (land, navn) do update set lat = excluded.lat, lon = excluded.lon;
 
 select land, count(*) from public.lk_distrikt group by land order by land;

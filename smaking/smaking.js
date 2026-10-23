@@ -1,7 +1,7 @@
 // Lagkveld på mobil: ett lag per mobil. Laget registrerer egne viner, gjetter de andre lagenes
 // viner med score 0–100, ser fasit etter hver runde og resultatene når admin viser dem.
 
-const LAND = ["Frankrike", "Italia", "Spania", "Tyskland", "Portugal", "Østerrike", "USA", "Chile",
+const LAND = ["Frankrike", "Italia", "Spania", "Tyskland", "Portugal", "Østerrike", "England", "USA", "Chile",
   "Argentina", "Australia", "Sør-Afrika", "New Zealand"];
 const TYPER = ["Rød", "Hvit", "Rosé", "Musserende", "Oransje", "Søt / dessert", "Sterkvin"];
 // Druer i nedtrekkslisten. Druer med to navn står som ett valg («Syrah / Shiraz») og gir treff på begge.

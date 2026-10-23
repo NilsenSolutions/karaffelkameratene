@@ -1,12 +1,14 @@
 // Adminside for lagkvelden. Brukes fra PC. Styrer det som skjer på mobilene.
 
 const PIN_NOKKEL = "karaffel-vert-pin";
+const VALGT_NOKKEL = "karaffel-valgt-samling";
 const FASE_TEKST = { venter: "Venter på neste runde", gjetting: "Gjetting åpen", lukket: "Gjetting lukket", avslort: "Vinene avslørt" };
 const STEG_TEKST = ["Ingen resultater vist", "Vinrangering og beste vin vises", "Poengene vises uten lagnavn", "Vinnerne er kåret med lagnavn"];
 const VINFELT = [["navn", "Vin"], ["produsent", "Produsent"], ["land", "Land"], ["distrikt", "Distrikt"], ["drue", "Drue"],
   ["aargang", "Årgang"], ["type", "Type"], ["pris", "Pris"]];
 
 let pin = "";
+let valgt = "";    // id-en til arrangementet som er åpnet, tom = oversikten
 let data = null;
 let timer = null;
 const apne = new Set();   // åpne redigeringsfelt, så de ikke lukkes ved oppdatering
@@ -18,6 +20,17 @@ function melding(tekst) {
 }
 const lesPin = () => { try { return sessionStorage.getItem(PIN_NOKKEL) || ""; } catch (e) { return ""; } };
 const lagrePin = p => { try { p ? sessionStorage.setItem(PIN_NOKKEL, p) : sessionStorage.removeItem(PIN_NOKKEL); } catch (e) { /* ignorer */ } };
+const lesValgt = () => { try { return sessionStorage.getItem(VALGT_NOKKEL) || ""; } catch (e) { return ""; } };
+
+function velg(id) {
+  valgt = id || "";
+  try { valgt ? sessionStorage.setItem(VALGT_NOKKEL, valgt) : sessionStorage.removeItem(VALGT_NOKKEL); } catch (e) { /* ignorer */ }
+  apne.clear();
+  data = null;
+  $("innhold").textContent = "";
+  window.scrollTo(0, 0);
+  hent();
+}
 
 // ---------------- Innlogging ----------------
 
@@ -51,10 +64,14 @@ function start() {
 
 async function hent() {
   try {
-    data = await rpc("lk_admin_hent", { p_pin: pin });
+    const id = valgt;
+    const svar = id ? await rpc("lk_admin_samling", { p_pin: pin, p_samling: id }) : await rpc("lk_admin_samlinger", { p_pin: pin });
+    if (id !== valgt) return;   // byttet side mens vi ventet
+    data = svar;
     melding("");
   } catch (err) {
     if (/PIN/.test(err.message)) return loggUt();
+    if (/Finner ikke arrangementet/.test(err.message)) return velg("");
     melding(err.message);
     return;
   }
@@ -88,19 +105,46 @@ function knapp(tekst, klasse, fn, deaktivert) {
 function vis() {
   const rot = $("innhold");
   rot.textContent = "";
-  if (!data.kveld) return visVelgKveld(rot);
+  if (!valgt) return visOversikt(rot);
 
   const k = data.kveld;
   const lag = data.lag;
   const aktivt = lag.find(l => l.id === k.aktivt_lag);
   const andre = aktivt ? lag.filter(l => l.id !== aktivt.id).length : 0;
 
+  const tilbake = knapp("← Alle arrangementer", "lenkeknapp tilbake", () => velg(""));
+  rot.append(tilbake);
+
   // Topp
   const topp = el("section", "kort");
   topp.append(el("h1", "", k.tittel || "Lagkveld"));
-  topp.append(el("p", "kveld-info", [datoTekst(k.dato), k.sted, lag.length + " lag", FASE_TEKST[k.fase], STEG_TEKST[k.resultat_steg]].filter(Boolean).join(" · ")));
-  topp.append(el("p", "hjelp", "Lagene bruker karaffelkameratene.no/smaking/ på mobilen."));
+  topp.append(el("p", "kveld-info", [datoTekst(k.dato), k.sted, lag.length + " lag",
+    k.aktiv ? FASE_TEKST[k.fase] : "Lagkvelden er ikke i gang", k.aktiv ? STEG_TEKST[k.resultat_steg] : ""].filter(Boolean).join(" · ")));
+  if (k.aktiv) {
+    topp.append(el("p", "hjelp", "Lagene bruker karaffelkameratene.no/smaking/ på mobilen."));
+  } else {
+    topp.append(el("p", "hjelp", data.annen_aktiv
+      ? "«" + data.annen_aktiv.tittel + "» er i gang nå. Starter du her, avsluttes den (data beholdes)."
+      : "Når du starter lagkvelden, kan lagene melde seg inn på karaffelkameratene.no/smaking/."));
+    topp.append(knapp(lag.length ? "Start lagkvelden igjen" : "Start lagkveld her", "knapp", () => handling("lk_admin_aktiver", { p_samling: k.samling_id },
+      data.annen_aktiv ? "Avslutte «" + data.annen_aktiv.tittel + "» og starte lagkvelden for «" + k.tittel + "»?" : "", "Start")));
+  }
   rot.append(topp);
+
+  // Styringen virker bare på kvelden som er i gang. Ellers vises lagene og stillingen.
+  if (!k.aktiv) {
+    if (lag.length) {
+      const lagboks = el("section", "kort");
+      lagboks.append(el("h2", "kort-tittel", "Lagene"));
+      lag.forEach(l => lagboks.append(byggLag(l, k, null, true)));
+      rot.append(lagboks);
+      const res = el("section", "kort");
+      res.append(el("h2", "kort-tittel", "Resultater"));
+      res.append(forhandsvisning());
+      rot.append(res);
+    }
+    return;
+  }
 
   // Pågående runde
   const runde = el("section", "kort runde");
@@ -167,21 +211,32 @@ function vis() {
   rot.append(verk);
 }
 
-function visVelgKveld(rot) {
+// Oversikten: velg hvilket arrangement du vil styre.
+function visOversikt(rot) {
   const boks = el("section", "kort");
-  boks.append(el("h1", "", "Start lagkveld"));
-  boks.append(el("p", "hjelp", "Velg samlingen lagkvelden hører til. Lagene kan melde seg inn på mobilen med en gang."));
-  if (!data.samlinger.length) boks.append(el("p", "", "Ingen samlinger er planlagt. Legg inn en på vertssiden først."));
-  data.samlinger.forEach(s => {
+  boks.append(el("h1", "", "Velg arrangement"));
+  boks.append(el("p", "hjelp", "Åpne arrangementet du vil styre. Bare ett kan ha lagkveld i gang om gangen."));
+  if (!data.length) boks.append(el("p", "", "Ingen arrangementer de siste 60 dagene eller fremover. Legg inn et på vertssiden først."));
+  data.forEach(s => {
     const rad = el("div", "samling-rad");
-    rad.append(el("p", "rang-navn", s.tittel + " · " + datoTekst(s.dato) + (s.sted ? " · " + s.sted : "")));
-    rad.append(knapp("Start lagkveld", "knapp", () => handling("lk_admin_aktiver", { p_samling: s.id })));
+    const topp = el("div", "samling-topp");
+    const t = el("div");
+    t.append(el("h3", "samling-navn", s.tittel));
+    t.append(el("p", "rang-meta", [datoTekst(s.dato), s.tid ? String(s.tid).slice(0, 5) : "", s.sted,
+      s.pameldte + " påmeldt", s.lagkveld ? s.lag + " lag" : ""].filter(Boolean).join(" · ")));
+    topp.append(t);
+    const status = s.aktiv ? "I gang nå" : s.resultat_steg === 3 ? "Ferdig" : s.lagkveld ? "Startet tidligere" : "Ikke startet";
+    topp.append(el("span", "status-merke" + (s.aktiv ? " pa" : s.resultat_steg === 3 ? " klar" : ""), status));
+    rad.append(topp);
+    const knapper = el("div", "samling-knapper");
+    knapper.append(knapp("Åpne", s.aktiv ? "knapp" : "knapp lys-knapp", () => velg(s.id)));
+    rad.append(knapper);
     boks.append(rad);
   });
   rot.append(boks);
 }
 
-function byggLag(l, k, aktivt) {
+function byggLag(l, k, aktivt, lesemodus) {
   const boks = el("div", "samling-rad lag-rad" + (aktivt && aktivt.id === l.id ? " aktiv" : ""));
   const topp = el("div", "samling-topp");
   const t = el("div");
@@ -193,7 +248,7 @@ function byggLag(l, k, aktivt) {
   boks.append(topp);
 
   const rad = el("div", "samling-knapper");
-  if (!aktivt && !l.ferdig && k.resultat_steg === 0) {
+  if (!lesemodus && !aktivt && !l.ferdig && k.resultat_steg === 0) {
     rad.append(knapp("Start runden", "knapp", () => handling("lk_admin_start_lag", { p_lag: l.id }), !l.viner.length));
   }
   const nokkel = "lag-" + l.id;
@@ -203,7 +258,7 @@ function byggLag(l, k, aktivt) {
   });
   const vis_ = () => { visDetaljer(); };
   rad.append(vis);
-  rad.append(knapp("Slett laget", "lenkeknapp", () => handling("lk_admin_slett_lag", { p_lag: l.id },
+  if (!lesemodus) rad.append(knapp("Slett laget", "lenkeknapp", () => handling("lk_admin_slett_lag", { p_lag: l.id },
     "Slette laget «" + l.navn + "» med vinene og gjetningene? Dette kan ikke angres.", "Slett")));
   boks.append(rad);
 
@@ -318,5 +373,6 @@ if (!tilkoblet()) {
   $("logg-inn").addEventListener("submit", loggInn);
   $("logg-ut").addEventListener("click", loggUt);
   pin = lesPin();
+  valgt = lesValgt();
   if (pin) start(); else $("logg-inn").hidden = false;
 }

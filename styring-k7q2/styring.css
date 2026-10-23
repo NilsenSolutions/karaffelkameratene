@@ -13,3 +13,8 @@
 .forhandsvisning { margin: 1rem 0; }
 .forhandsvisning summary { cursor: pointer; font-weight: 700; }
 .samling-knapper .knapp:disabled { opacity: .45; }
+
+/* Arrangementsvalget */
+.styring #innhold h1 { overflow-wrap: anywhere; hyphens: auto; }
+.styring .tilbake { margin: 0 0 .75rem; }
+@media (max-width: 520px) { .styring #innhold h1 { font-size: clamp(1.8rem, 9vw, 2.6rem); } }

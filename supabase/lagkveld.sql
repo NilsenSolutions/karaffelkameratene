@@ -353,6 +353,46 @@ begin
     'lagpoeng', lk_lagpoeng(s.id));
 end $$;
 
+-- Alle arrangementer admin kan velge mellom, med status for lagkvelden.
+create or replace function public.lk_admin_samlinger(p_pin text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  return (select coalesce(jsonb_agg(jsonb_build_object('id', s.id, 'tittel', s.tittel, 'dato', s.dato, 'tid', s.tid, 'sted', s.sted,
+            'lagkveld', k.samling_id is not null, 'aktiv', coalesce(k.aktiv, false), 'resultat_steg', coalesce(k.resultat_steg, 0),
+            'lag', (select count(*) from lk_lag l where l.samling_id = s.id),
+            'pameldte', (select count(*) from pamelding p where p.samling_id = s.id))
+          order by s.dato, s.tid), '[]'::jsonb)
+          from samling s left join lk_kveld k on k.samling_id = s.id
+          where s.dato >= current_date - 60);
+end $$;
+
+-- Kontrollpanelet for ett arrangement, aktivt eller ikke.
+create or replace function public.lk_admin_samling(p_pin text, p_samling uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare k lk_kveld; s samling;
+begin
+  if not pin_ok(p_pin) then raise exception 'Feil PIN'; end if;
+  select * into s from samling where id = p_samling;
+  if not found then raise exception 'Finner ikke arrangementet'; end if;
+  select * into k from lk_kveld where samling_id = s.id;
+  return jsonb_build_object(
+    'kveld', jsonb_build_object('samling_id', s.id, 'tittel', s.tittel, 'dato', s.dato, 'sted', s.sted,
+      'fase', coalesce(k.fase, 'venter'), 'resultat_steg', coalesce(k.resultat_steg, 0), 'aktivt_lag', k.aktivt_lag,
+      'i_vinlogg', coalesce(k.i_vinlogg, false), 'aktiv', coalesce(k.aktiv, false)),
+    'annen_aktiv', (select jsonb_build_object('id', s2.id, 'tittel', s2.tittel) from lk_kveld k2 join samling s2 on s2.id = k2.samling_id
+                    where k2.aktiv and k2.samling_id <> s.id limit 1),
+    'lag', (select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'navn', l.navn, 'medlem1', l.medlem1, 'medlem2', l.medlem2,
+              'kode', l.kode, 'ferdig', l.ferdig,
+              'viner', (select coalesce(jsonb_agg(lk_vin_full(v) || jsonb_build_object(
+                          'gjetninger', (select count(*) from lk_gjetning g where g.vin_id = v.id),
+                          'scoret', (select count(*) from lk_gjetning g where g.vin_id = v.id and g.score is not null))
+                        order by v.bokstav), '[]'::jsonb) from lk_vin v where v.lag_id = l.id))
+            order by l.opprettet), '[]'::jsonb) from lk_lag l where l.samling_id = s.id),
+    'vinrangering', lk_vinrangering(s.id),
+    'lagpoeng', lk_lagpoeng(s.id));
+end $$;
+
 create or replace function public.lk_admin_aktiver(p_pin text, p_samling uuid)
 returns void language plpgsql security definer set search_path = public as $$
 begin
@@ -497,4 +537,5 @@ grant execute on function public.hent_kveld(), public.send_gjetning(text, text, 
   public.lk_admin_start_lag(text, uuid), public.lk_admin_fase(text, text), public.lk_admin_neste(text),
   public.lk_admin_resultat(text, int), public.lk_admin_lagre_vin(text, uuid, jsonb), public.lk_admin_slett_lag(text, uuid),
   public.lk_admin_distrikt(text, text, text, double precision, double precision), public.lk_admin_til_vinlogg(text),
-  public.lk_admin_nullstill(text), public.hent_vinlogg() to anon;
+  public.lk_admin_nullstill(text), public.hent_vinlogg(),
+  public.lk_admin_samlinger(text), public.lk_admin_samling(text, uuid) to anon;

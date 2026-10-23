@@ -1,0 +1,61 @@
+/* Storskjerm for kåringen, i kamerat-temaet. Skalerer med skjermbredden. */
+:root {
+  --bakgrunn: #eef3ea;
+  --kort: #ffffff;
+  --tekst: #2b2b2b;
+  --dempet: #4a4a4a;
+  --linje: #d6dfd1;
+  --blaa: #2f5ba8;
+  --gul: #dda829;
+  --rod: #b3263e;
+  --tittel: "Permanent Marker", cursive;
+  --brod: "Space Grotesk", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--bakgrunn); color: var(--tekst); font-family: var(--brod); font-size: clamp(16px, 1.6vw, 34px); }
+
+main { max-width: 1500px; margin: 0 auto; padding: 4vh 5vw; }
+.kveld { margin: 0 0 1vh; font-size: .9em; color: var(--dempet); text-transform: uppercase; letter-spacing: .08em; }
+h1 { font-family: var(--tittel); font-weight: 400; color: var(--blaa); font-size: 3em; line-height: 1.05; margin: 0 0 3vh; transform: rotate(-1deg); }
+h1.stor { font-size: 4em; margin-top: 20vh; text-align: center; }
+.under { font-size: 1.2em; color: var(--dempet); margin: 0 0 3vh; }
+.vent { font-size: 1.5em; text-align: center; margin-top: 35vh; color: var(--dempet); }
+h1.stor + .under { text-align: center; font-size: 3em; }
+
+.beste, .vinner {
+  background: var(--kort); border: 4px solid var(--blaa); border-radius: 24px;
+  padding: 3vh 3vw; margin: 0 0 3vh; text-align: center;
+  animation: inn .8s cubic-bezier(.2, .9, .3, 1.3) both;
+}
+.vinner { border-color: var(--gul); background: #fff8e1; }
+.merke { margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--rod); }
+.beste-navn { font-family: var(--tittel); font-size: 2.4em; line-height: 1.1; margin: 1vh 0; color: var(--blaa); }
+.vinner-navn { font-family: var(--tittel); font-size: 3.6em; line-height: 1.05; margin: 1vh 0; color: var(--blaa); }
+.beste-meta { margin: 0; font-size: 1.1em; color: var(--dempet); }
+
+.liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.2vh; }
+.liste li {
+  display: grid; grid-template-columns: 2.2em 1fr auto auto; align-items: center; gap: 1.5vw;
+  background: var(--kort); border: 2px solid var(--linje); border-radius: 16px; padding: 1.4vh 2vw;
+  animation: inn .5s ease both;
+}
+.liste li:nth-child(2) { animation-delay: .08s; } .liste li:nth-child(3) { animation-delay: .16s; }
+.liste li:nth-child(4) { animation-delay: .24s; } .liste li:nth-child(5) { animation-delay: .32s; }
+.liste li:nth-child(6) { animation-delay: .4s; } .liste li:nth-child(n+7) { animation-delay: .48s; }
+.liste li.forste { border-color: var(--gul); background: #fff8e1; }
+.plass { font-family: var(--tittel); font-size: 1.4em; color: var(--blaa); text-align: center; }
+.navn { font-weight: 700; font-size: 1.15em; }
+.treff { color: var(--dempet); font-size: .85em; }
+.poeng { font-family: var(--tittel); font-size: 1.6em; color: var(--blaa); min-width: 2.5em; text-align: right; }
+.liste:not(.lagliste) li { grid-template-columns: 2.2em 1fr auto; }
+
+.fullskjerm {
+  position: fixed; right: 1rem; bottom: 1rem; font: inherit; font-size: 14px; font-weight: 700;
+  background: var(--blaa); color: #fff; border: 0; border-radius: 999px; padding: .6rem 1.1rem; cursor: pointer; opacity: .7;
+}
+.fullskjerm:hover { opacity: 1; }
+.fullskjerm[hidden] { display: none; }
+
+@keyframes inn { from { opacity: 0; transform: translateY(20px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .beste, .vinner, .liste li { animation: none; } }

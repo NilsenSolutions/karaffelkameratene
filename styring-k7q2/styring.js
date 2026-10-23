@@ -187,6 +187,9 @@ function vis() {
   const res = el("section", "kort");
   res.append(el("h2", "kort-tittel", "Resultater"));
   res.append(el("p", "hjelp", "Vises på alle mobilene, ett trinn om gangen. Gjør dette når alle lagene er ferdige."));
+  const skjermLenke = el("a", "knapp lys-knapp", "Åpne storskjerm ↗");
+  Object.assign(skjermLenke, { href: "skjerm/", target: "_blank", rel: "noopener" });
+  res.append(el("p", "hjelp", "Storskjermen følger trinnene du velger her. Dra vinduet til den utvidede skjermen og trykk F for fullskjerm."), skjermLenke);
   const ferdige = lag.filter(l => l.ferdig).length;
   if (ferdige < lag.length) res.append(el("p", "varsel", ferdige + " av " + lag.length + " lag er ferdige."));
   const rad = el("div", "samling-knapper");

@@ -47,8 +47,9 @@ const klokkeTekst = s => "kl. " + s.tid.replace(":", ".");
 
 const sluttTid = s => new Date(startTid(s).getTime() + CONFIG.varerTimer * 3600 * 1000);
 
-// Lagkvelden er avsluttet fra styringssiden: da er samlingen ferdig, selv om det er samme kveld.
-const avsluttet = s => s.lagkveld && !s.lagkveld_aktiv;
+// Lagkvelden er avsluttet fra styringssiden, eller vinnerne er kåret: da er samlingen ferdig,
+// selv om det er samme kveld, og forsiden viser neste smaking.
+const avsluttet = s => s.lagkveld && (!s.lagkveld_aktiv || s.resultat_steg >= 3);
 
 // Kommende og pågående: en samling blir stående hele kvelden etter at den har startet,
 // til lagkvelden avsluttes eller det har gått CONFIG.varerTimer timer.
@@ -144,7 +145,7 @@ function startNedtelling() {
     ["nt-d", "nt-t", "nt-m", "nt-s"].forEach(id => $(id).textContent = "–");
     $("nt-tall").hidden = false;
     $("stripe").hidden = true;
-    visPamelding(null);
+    visPamelding(udatert || null);
     return;
   }
 
@@ -158,10 +159,15 @@ function startNedtelling() {
 
 // ---------------- Påmelding ----------------
 
+let pameldingSamling = null;   // samlingen skjemaet melder på til (neste, eller den neste uten dato)
+
 function visPamelding(s) {
   const badge = $("pm-status-badge");
   const detaljer = $("detaljer");
   detaljer.textContent = "";
+  pameldingSamling = s;
+  // Uten fast dato kan folk skrive hvilke datoer som passer.
+  $("datoer-felt").hidden = !(s && s.dato_avtales);
 
   if (!s) {
     badge.dataset.status = "stengt";
@@ -174,7 +180,7 @@ function visPamelding(s) {
 
   [
     ["Smaking", s.tittel],
-    ["Når", datoTekst(startTid(s)) + ", " + klokkeTekst(s)],
+    ["Når", s.dato_avtales ? "Dato avtales" : datoTekst(startTid(s)) + ", " + klokkeTekst(s)],
     ["Hvor", s.sted],
     ["Tema", s.tema]
   ].filter(([, v]) => v).forEach(([k, v]) => {
@@ -188,7 +194,7 @@ function visPamelding(s) {
 
 // Status og antall påmeldte. Returnerer status.
 function visPlasser(s) {
-  const status = pameldingStatus(s, new Date());
+  const status = s.dato_avtales ? "apen" : pameldingStatus(s, new Date());
   const badge = $("pm-status-badge");
   badge.dataset.status = status;
   badge.textContent = STATUS_TEKST[status];
@@ -199,7 +205,7 @@ function visPlasser(s) {
 }
 
 function visSenere(naaverende) {
-  const rest = kommende(new Date()).filter(s => s !== naaverende).concat(uavklarte());
+  const rest = kommende(new Date()).concat(uavklarte()).filter(s => s !== naaverende);
   const blokk = $("senere-blokk");
   const liste = $("senere-liste");
   liste.textContent = "";
@@ -231,24 +237,35 @@ function visBekreftelse(svar, navn) {
   const b = $("bekreftelse");
   b.hidden = false;
   $("bekreftelse-tittel").textContent = svar.allerede ? "Du er allerede påmeldt, " + navn : "Takk, " + navn + ". Du er påmeldt";
-  $("bekreftelse-tekst").textContent = "Vi gleder oss til å se deg. Legg datoen i kalenderen under.";
+  const udatert = pameldingSamling && pameldingSamling.dato_avtales;
+  $("bekreftelse-tekst").textContent = udatert
+    ? "Vi gleder oss til å se deg. Datoen er ikke satt ennå, vi sier fra når den er bestemt."
+    : "Vi gleder oss til å se deg. Legg datoen i kalenderen under.";
+  $("kalender-knapp").hidden = Boolean(udatert);
   b.focus();
 }
 
 // Påmeldingen lagres i databasen. Vertskapet ser listen på vertssiden.
 async function sendSkjema(e) {
   e.preventDefault();
-  if (!validerSkjema() || !neste) return;
+  const s = pameldingSamling;
+  if (!validerSkjema() || !s) return;
   const navn = $("navn").value.trim();
   const knapp = $("send-knapp");
   knapp.disabled = true;
   try {
-    const svar = await kall("meld_pa", { p_samling: neste.id, p_navn: navn, p_vin: $("vin").value.trim() });
+    const svar = await kall("meld_pa", { p_samling: s.id, p_navn: navn, p_vin: $("vin").value.trim(),
+      p_datoer: s.dato_avtales ? $("datoer").value.trim() : "" });
     visBekreftelse(svar, navn);
     // Oppdater antall påmeldte og status uten å skjule bekreftelsen.
     SMAKINGER = await kall("hent_samlinger", {});
-    const oppdatert = SMAKINGER.find(s => s.id === neste.id);
-    if (oppdatert) { neste = oppdatert; visPlasser(neste); oppdaterDansegulv(new Date()); }
+    const oppdatert = SMAKINGER.find(x => x.id === s.id);
+    if (oppdatert) {
+      if (neste && neste.id === s.id) neste = oppdatert;
+      pameldingSamling = oppdatert;
+      visPlasser(oppdatert);
+      oppdaterDansegulv(new Date());
+    }
   } catch (err) {
     feil("feil-navn", "navn", "Påmeldingen ble ikke lagret: " + err.message + ". Prøv igjen.");
   }
@@ -461,7 +478,7 @@ async function kall(navn, args) {
 // Når lagkvelden for en samling er i gang, kan lagene registrere seg og vinene sine.
 // Vises også etter starttidspunktet, når samlingen ikke lenger er «neste».
 function visLagkveld() {
-  $("lagkveld-knapp").hidden = !SMAKINGER.some(x => x.lagkveld_aktiv);
+  $("lagkveld-knapp").hidden = !SMAKINGER.some(x => x.lagkveld_aktiv && !avsluttet(x));
 }
 
 async function lastSmakinger() {

@@ -9,6 +9,7 @@ returns jsonb language sql stable security definer set search_path = public as $
     'dato_avtales', s.dato_avtales,
     'lagkveld_aktiv', exists (select 1 from lk_kveld k where k.samling_id = s.id and k.aktiv),
     'lagkveld', exists (select 1 from lk_kveld k where k.samling_id = s.id),
+    'resultat_steg', coalesce((select k.resultat_steg from lk_kveld k where k.samling_id = s.id), 0),
     'paameldte', (select count(*) from pamelding p where p.samling_id = s.id and not p.venteliste),
     'venteliste', (select count(*) from pamelding p where p.samling_id = s.id and p.venteliste))
     order by s.dato, s.tid), '[]'::jsonb)

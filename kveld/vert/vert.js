@@ -341,7 +341,7 @@ async function visPameldinger(s, boks) {
     const li = el("li");
     const tekst = el("span", "rang-tekst");
     tekst.append(el("span", "rang-navn", r.navn));
-    tekst.append(el("span", "rang-meta", [r.vin && "Tar med " + r.vin, klokke(r.opprettet)].filter(Boolean).join(" · ")));
+    tekst.append(el("span", "rang-meta", [r.vin && "Tar med " + r.vin, r.datoer && "Passer: " + r.datoer, klokke(r.opprettet)].filter(Boolean).join(" · ")));
     const fjern = el("button", "lenkeknapp", "Fjern");
     fjern.type = "button";
     fjern.addEventListener("click", async () => {

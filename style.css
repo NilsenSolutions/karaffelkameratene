@@ -216,3 +216,9 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 .pm-rad .badge { margin: 0; }
 .pm-rad .knapp[hidden] { display: none; }
 @media (max-width: 820px) { .pm-rad { flex-direction: column; align-items: flex-start; } }
+
+/* Vinloggen: samlingen som overskrift over vinene. */
+.logg li.samling-hode { display: block; background: transparent; padding: 1.25rem 0 0; }
+.logg li.samling-hode:first-child { padding-top: 0; }
+.logg li.samling-hode .navn { display: block; font-size: 1.4rem; }
+.logg li.samling-hode .meta { display: block; }

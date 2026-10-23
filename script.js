@@ -329,16 +329,43 @@ function visLogg() {
     return;
   }
 
-  rader.forEach(v => {
-    const [aar, mnd, dag] = v.dato.split("-").map(Number);
+  const kortDato = d => { const [aar, mnd, dag] = d.split("-").map(Number); return dag + ". " + MAANEDER[mnd - 1] + " " + aar; };
+  const vinRad = (v, medSamling) => {
     const li = el("li");
     li.append(
       el("span", "navn", v.vin),
-      el("span", "meta", [TYPER[v.type] !== "Annet" ? TYPER[v.type] : "", v.drue, v.land, v.aargang, dag + ". " + MAANEDER[mnd - 1] + " " + aar,
-        v.tatt_med && "fra " + v.tatt_med].filter(Boolean).join(", ")),
+      el("span", "meta", [TYPER[v.type] !== "Annet" ? TYPER[v.type] : "", v.drue, v.land, v.aargang,
+        medSamling ? [v.samling, kortDato(v.dato)].filter(Boolean).join(" ") : "", v.tatt_med && "fra " + v.tatt_med].filter(Boolean).join(", ")),
       el("span", "poeng", v.poeng == null ? "–" : String(Math.round(v.poeng)))
     );
-    liste.appendChild(li);
+    return li;
+  };
+
+  // Høyest poeng: én liste på tvers av samlingene.
+  if (tilstand.sorter === "poeng") {
+    rader.forEach(v => liste.appendChild(vinRad(v, true)));
+    return;
+  }
+
+  // Nyeste først: samlingen som overskrift, og vinene vi smakte under.
+  const grupper = [];
+  rader.forEach(v => {
+    const nokkel = v.samling_id || v.dato;
+    let g = grupper.find(x => x.nokkel === nokkel);
+    if (!g) grupper.push(g = { nokkel, forste: v, viner: [] });
+    g.viner.push(v);
+  });
+  grupper.forEach(g => {
+    const s = g.forste;
+    const scorer = g.viner.filter(v => v.poeng != null).map(v => v.poeng);
+    const hode = el("li", "samling-hode");
+    hode.append(
+      el("span", "navn", s.samling || "Smaking"),
+      el("span", "meta", [kortDato(s.dato), s.sted, s.tema, g.viner.length + (g.viner.length === 1 ? " vin" : " viner"),
+        scorer.length ? "snitt " + Math.round(scorer.reduce((a, b) => a + b, 0) / scorer.length) : ""].filter(Boolean).join(" · "))
+    );
+    liste.appendChild(hode);
+    g.viner.forEach(v => liste.appendChild(vinRad(v, false)));
   });
 }
 

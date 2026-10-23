@@ -189,3 +189,5 @@ html[data-tema="kamerater"] .tema-alt strong { color: var(--k-tekst); font-weigh
 html[data-tema="kamerater"] dialog.bekreft { border: 3px solid var(--k-blaa); }
 html[data-tema="kamerater"] dialog.bekreft::backdrop { background: rgba(31, 63, 120, .35); }
 
+html[data-tema="kamerater"] .logg li.samling-hode { background: transparent; }
+html[data-tema="kamerater"] .logg li.samling-hode .navn { font-family: var(--tittel); font-weight: 400; font-size: 1.6rem; color: var(--k-blaa); }

@@ -512,6 +512,7 @@ end $$;
 
 -- ---------------- Vinloggen på forsiden ----------------
 
+-- Erstattet av supabase/vinlogg_samling.sql (med samlingen).
 create or replace function public.hent_vinlogg()
 returns jsonb language sql stable security definer set search_path = public as $$
   select coalesce(jsonb_agg(jsonb_build_object('vin', trim(both ' ' from produsent || ' ' || vin), 'land', land, 'distrikt', distrikt,

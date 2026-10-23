@@ -77,6 +77,7 @@ async function hent() {
   }
   // Ikke tegn på nytt mens admin skriver i et felt.
   if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#innhold input, #innhold textarea, #innhold select")) return;
+  if (trekker) return;   // ikke avbryt loddtrekningen
   vis();
 }
 
@@ -170,11 +171,16 @@ function vis() {
   }
   rot.append(runde);
 
-  // Lagene
+  // Loddtrekning om rekkefølgen
+  if (k.resultat_steg === 0) rot.append(byggLoddtrekning(k, lag));
+
+  // Lagene, i trukket rekkefølge hvis det er trukket
+  const trukket = lesTrekning(k.samling_id) || [];
+  const plass = l => { const i = trukket.indexOf(l.id); return i < 0 ? 999 : i; };
   const lagboks = el("section", "kort");
   lagboks.append(el("h2", "kort-tittel", "Lagene"));
   if (!lag.length) lagboks.append(el("p", "hjelp", "Ingen lag har meldt seg inn ennå."));
-  lag.forEach(l => lagboks.append(byggLag(l, k, aktivt)));
+  lag.slice().sort((a, b) => plass(a) - plass(b)).forEach(l => lagboks.append(byggLag(l, k, aktivt)));
   rot.append(lagboks);
 
   // Resultater
@@ -210,6 +216,74 @@ function vis() {
     "Avslutte lagkvelden? Mobilene viser da at ingen lagkveld er i gang. Data beholdes.", "Avslutt")));
   verk.append(vr);
   rot.append(verk);
+}
+
+// ---------------- Loddtrekning ----------------
+// Rekkefølgen huskes i nettleseren for samlingen, så den står fast mens kvelden pågår.
+
+const TREKK_NOKKEL = "karaffel-trekning";
+let trekker = false;
+
+function lesTrekning(samling) {
+  try {
+    const t = JSON.parse(sessionStorage.getItem(TREKK_NOKKEL) || "{}");
+    return t.samling === samling ? t.rekkefolge : null;
+  } catch (e) { return null; }
+}
+function lagreTrekning(samling, rekkefolge) {
+  try { sessionStorage.setItem(TREKK_NOKKEL, JSON.stringify({ samling, rekkefolge })); } catch (e) { /* ignorer */ }
+}
+
+// Rettferdig stokking med kryptografisk tilfeldighet.
+function stokk(liste) {
+  const a = liste.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+const vent = ms => new Promise(r => setTimeout(r, ms));
+
+function byggLoddtrekning(k, lag) {
+  const boks = el("section", "kort loddtrekning");
+  boks.append(el("h2", "kort-tittel", "Loddtrekning"));
+  const kandidater = lag.filter(l => !l.ferdig);
+  const rekkefolge = (lesTrekning(k.samling_id) || []).map(id => lag.find(l => l.id === id)).filter(Boolean);
+
+  const stor = el("p", "trekning-stor", rekkefolge.length ? rekkefolge[0].navn + " starter!" : "Hvem starter?");
+  boks.append(stor);
+  if (rekkefolge.length) {
+    const ol = el("ol", "trekning-liste");
+    rekkefolge.forEach(l => ol.append(el("li", l.ferdig ? "ferdig" : "", l.navn + (l.ferdig ? " ✓" : ""))));
+    boks.append(ol);
+  } else {
+    boks.append(el("p", "hjelp", "Trekker en tilfeldig rekkefølge blant lagene som ikke er ferdige. Lagene under sorteres etter den."));
+  }
+
+  const rad = el("div", "samling-knapper");
+  const b = knapp(rekkefolge.length ? "Trekk på nytt" : "Trekk hvem som starter", rekkefolge.length ? "knapp lys-knapp" : "knapp", async () => {
+    if (kandidater.length < 2) { melding("Det trengs minst to lag som ikke er ferdige."); return; }
+    if (rekkefolge.length && !(await bekreft("Trekke en ny rekkefølge?", "Trekk på nytt"))) return;
+    const ny = stokk(kandidater);
+    trekker = true;
+    b.disabled = true;
+    // Navnene ruller og bremser opp, med mindre brukeren har bedt om mindre bevegelse.
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const rull = stokk(kandidater);
+      let i = 0;
+      for (let pause = 50; pause < 420; pause *= 1.12) {
+        stor.textContent = rull[i++ % rull.length].navn;
+        await vent(pause);
+      }
+    }
+    lagreTrekning(k.samling_id, ny.map(l => l.id));
+    trekker = false;
+    vis();
+  });
+  rad.append(b);
+  boks.append(rad);
+  return boks;
 }
 
 // Oversikten: velg hvilket arrangement du vil styre.

@@ -266,6 +266,8 @@ const BAND = [
   "Nebbiolo", "Riesling", "Grenache", "Chenin Blanc", "Tempranillo", "Grüner Veltliner", "Syrah", "Albariño",
   "Barolo", "Rioja", "Mosel", "Bordeaux", "Douro", "Wachau", "Barossa", "Mendoza", "Marlborough", "Jerez",
   "Krug", "Bollinger", "Gaja", "Vega Sicilia", "Penfolds", "Trimbach", "Guigal", "Dr. Loosen", "Antinori", "Catena",
+  "Produttori del Barbaresco", "Domaine Weinbach Riesling Réserve", "Marqués de Murrieta Reserva", "Miraval Rosé",
+  "Cloudy Bay Sauvignon Blanc", "Ayala Brut Majeur",
   "Blindt", "Karaffel", "Tanniner", "Syre", "Terroir", "Eik", "Kork"
 ];
 

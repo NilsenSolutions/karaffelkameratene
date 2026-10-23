@@ -371,10 +371,19 @@ async function kall(navn, args) {
   return data;
 }
 
+// Når lagkvelden for en samling er i gang, kan lagene registrere seg og vinene sine.
+// Vises også etter starttidspunktet, når samlingen ikke lenger er «neste».
+function visLagkveld() {
+  const s = SMAKINGER.find(x => x.lagkveld_aktiv);
+  $("lagkveld-blokk").hidden = !s;
+  if (s) $("lagkveld-tekst").textContent = "Lagkvelden «" + s.tittel + "» er i gang. Ett lag, én mobil.";
+}
+
 async function lastSmakinger() {
   try {
     SMAKINGER = await kall("hent_samlinger", {});
     startNedtelling();
+    visLagkveld();
   } catch (err) {
     startNedtelling();
     $("nt-tittel").textContent = "Smakingene kunne ikke hentes";

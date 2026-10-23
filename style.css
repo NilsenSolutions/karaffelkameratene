@@ -209,3 +209,8 @@ input[aria-invalid="true"] { border-color: var(--vin); }
   .topp nav { gap: .25rem 1rem; }
   .topp nav a { font-size: .95rem; }
 }
+
+/* «Registrer lag og vin» når lagkvelden er i gang. */
+.lagkveld-blokk { background: var(--ink-lys); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem; }
+.lagkveld-blokk[hidden] { display: none; }
+.lagkveld-blokk p { font-weight: 600; margin-bottom: .75rem; }

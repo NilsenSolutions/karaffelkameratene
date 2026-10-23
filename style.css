@@ -198,3 +198,14 @@ input[aria-invalid="true"] { border-color: var(--vin); }
   .marquee-spor { animation: none; }
   .knapp { transition: none; }
 }
+
+/* «For vertskapet» nederst til høyre i bunnen. */
+.bunn { align-items: center; }
+.bunn-vert { margin-left: auto; font-size: .9rem; opacity: .75; text-decoration: underline; text-underline-offset: 3px; }
+.bunn-vert:hover { opacity: 1; }
+
+/* Hovedmenyen på én linje på mobil. */
+@media (max-width: 480px) {
+  .topp nav { gap: .25rem 1rem; }
+  .topp nav a { font-size: .95rem; }
+}

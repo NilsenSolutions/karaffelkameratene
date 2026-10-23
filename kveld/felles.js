@@ -164,6 +164,8 @@ function huskTema(tema) {
 }
 
 async function lastTema() {
+  // Sider med data-fast-tema (lagkvelden) har låst utseende og følger ikke temavalget.
+  if (document.documentElement.hasAttribute("data-fast-tema")) return;
   let forhandsvis = null;
   try { forhandsvis = new URLSearchParams(location.search).get("tema"); } catch (e) { /* gammel nettleser */ }
   if (TEMAER.includes(forhandsvis)) return brukTema(forhandsvis);

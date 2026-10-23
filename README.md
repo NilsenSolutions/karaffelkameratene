@@ -105,3 +105,16 @@ For `karaffelkameratene.no` (apex) legger du inn fire A-poster:
 For `www` legger du inn en CNAME-post som peker til `nilsensolutions.github.io`.
 
 DNS kan bruke litt tid på å oppdatere seg.
+
+## Lagkveld (vinsmaking hos Jakob)
+
+Lag på to med én mobil. Lagene bruker `/smaking/`, admin styrer fra `/styring-k7q2/` på PC (PIN, ikke lenket fra siden).
+
+1. Admin: «Start lagkveld» på samlingen. Lagene oppretter lag (lagnavn og to navn) og registrerer sine to viner. Mister et lag mobilen, logger de inn igjen med lagkoden.
+2. Admin: «Start runden» for ett lag. Vinene vises som Vin A/B. De andre lagene gjetter land, distrikt, drue, årgang og pris og gir score 0–100. Laget som presenterer kan ikke gjette.
+3. Admin: «Lukk gjettingen», «Avslør vinene» (bare fasit vises, ingen poeng) og «Ferdig, til neste lag».
+4. Til slutt: vis resultatene i tre trinn (vinrangering og beste vin, poeng per lag, beste vinkjenner), og «Legg vinene i vinloggen».
+
+Poeng per vin (maks 15): land 2, drue 2, årgang 3/2/1 (0, 1 og 2 år unna), pris 3/2/1 (innenfor 10, 25 og 50 %), distrikt 5 for samme, ellers etter avstand: under 100 km 3, under 300 km 2, under 600 km 1. Feil land gir 0 for distrikt. Distriktene med koordinater ligger i `supabase/distrikter.sql`, og admin kan legge til flere.
+
+Databasen: `supabase/lagkveld.sql` og `supabase/distrikter.sql` (kjøres etter `oppsett.sql`).

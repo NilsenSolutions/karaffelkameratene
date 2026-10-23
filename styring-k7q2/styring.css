@@ -1,0 +1,15 @@
+/* Adminside for lagkvelden: bredere enn mobilsidene, brukes fra PC. */
+.styring main, .styring .topp { max-width: 900px; }
+#logg-inn[hidden], #styring[hidden] { display: none; }
+.runde { border: 3px solid var(--k-blaa, var(--sitron)); }
+.status-liste { margin: 0 0 1rem; padding-left: 1.2rem; }
+.status-liste li { margin: .25rem 0; }
+.lag-rad .samling-knapper { margin-top: .25rem; }
+.vin-detaljer { margin-top: .75rem; }
+.vin-detaljer[hidden] { display: none; }
+.vin-retting { background: var(--k-bakgrunn, var(--ink)); border-radius: 10px; padding: .75rem; margin-bottom: .75rem; }
+.vin-retting .vin-felt { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 640px) { .vin-retting .vin-felt { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.forhandsvisning { margin: 1rem 0; }
+.forhandsvisning summary { cursor: pointer; font-weight: 700; }
+.samling-knapper .knapp:disabled { opacity: .45; }

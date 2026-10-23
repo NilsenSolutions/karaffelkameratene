@@ -12,19 +12,14 @@ const CONFIG = {
 // Format: dato "ÅÅÅÅ-MM-DD", tid "TT:MM". Passerte smakinger ignoreres automatisk.
 let SMAKINGER = [];
 
-// type: rod, hvit, rose eller musserende. poeng: 1 til 10.
-const VINLOGG = [
-  { vin: "Produttori del Barbaresco Barbaresco", land: "Italia", type: "rod", dato: "2026-09-19", poeng: 8.4 },
-  { vin: "Domaine Weinbach Riesling Réserve", land: "Frankrike", type: "hvit", dato: "2026-08-15", poeng: 7.9 },
-  { vin: "Marqués de Murrieta Reserva", land: "Spania", type: "rod", dato: "2026-06-20", poeng: 7.5 },
-  { vin: "Miraval Rosé", land: "Frankrike", type: "rose", dato: "2026-06-20", poeng: 6.9 },
-  { vin: "Cloudy Bay Sauvignon Blanc", land: "New Zealand", type: "hvit", dato: "2026-05-16", poeng: 6.8 },
-  { vin: "Ayala Brut Majeur", land: "Frankrike", type: "musserende", dato: "2026-04-18", poeng: 7.7 }
-];
+// Vinloggen hentes fra databasen. Lagkvelder legges inn fra styringssiden når kvelden er ferdig.
+// Score er snittet fra lagene, 0–100.
+let VINLOGG = [];
 
 // =====================================================================
 
-const TYPER = { rod: "Rød", hvit: "Hvit", rose: "Rosé", musserende: "Musserende" };
+const TYPER = { rod: "Rød", hvit: "Hvit", rose: "Rosé", musserende: "Musserende", oransje: "Oransje", sot: "Søt / dessert", sterkvin: "Sterkvin", annet: "Annet" };
+const typeNokkel = tekst => Object.keys(TYPER).find(k => TYPER[k].toLowerCase() === String(tekst || "").toLowerCase()) || "annet";
 const MAANEDER = ["jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"];
 
 function el(tag, klasse, tekst) {
@@ -265,7 +260,8 @@ function lastNedKalender() {
 
 function byggMarquee() {
   const spor = $("marquee");
-  const navn = VINLOGG.map(v => v.vin);
+  spor.textContent = "";
+  const navn = VINLOGG.length ? VINLOGG.slice(0, 12).map(v => v.vin) : ["Rød", "Hvit", "Rosé", "Musserende", "Blindt"];
   navn.push("Skål");
   const enRunde = () => {
     const frag = document.createDocumentFragment();
@@ -292,7 +288,7 @@ function visLogg() {
       : b.dato.localeCompare(a.dato));
 
   if (rader.length === 0) {
-    liste.appendChild(el("li", "tom", "Ingen viner av denne typen er logget ennå."));
+    liste.appendChild(el("li", "tom", VINLOGG.length ? "Ingen viner av denne typen er logget ennå." : "Vinloggen fylles etter første lagkveld."));
     return;
   }
 
@@ -301,16 +297,29 @@ function visLogg() {
     const li = el("li");
     li.append(
       el("span", "navn", v.vin),
-      el("span", "meta", TYPER[v.type] + ", " + v.land + ", " + dag + ". " + MAANEDER[mnd - 1] + " " + aar),
-      el("span", "poeng", v.poeng.toFixed(1).replace(".", ","))
+      el("span", "meta", [TYPER[v.type] !== "Annet" ? TYPER[v.type] : "", v.drue, v.land, v.aargang, dag + ". " + MAANEDER[mnd - 1] + " " + aar,
+        v.tatt_med && "fra " + v.tatt_med].filter(Boolean).join(", ")),
+      el("span", "poeng", v.poeng == null ? "–" : String(Math.round(v.poeng)))
     );
     liste.appendChild(li);
   });
 }
 
-function byggFilter() {
+async function lastVinlogg() {
+  try {
+    const rader = await kall("hent_vinlogg", {});
+    VINLOGG = rader.map(r => Object.assign({}, r, { type: typeNokkel(r.type), poeng: r.score == null ? null : Number(r.score) }));
+  } catch (e) { VINLOGG = []; }
+  byggFilterKnapper();
+  visLogg();
+  byggMarquee();
+}
+
+function byggFilterKnapper() {
   const boks = $("filter");
+  boks.textContent = "";
   const typer = ["alle"].concat(Object.keys(TYPER).filter(t => VINLOGG.some(v => v.type === t)));
+  if (!typer.includes(tilstand.filter)) tilstand.filter = "alle";
   typer.forEach(t => {
     const b = el("button", "", t === "alle" ? "Alle" : TYPER[t]);
     b.type = "button";
@@ -318,7 +327,10 @@ function byggFilter() {
     b.setAttribute("aria-pressed", String(t === tilstand.filter));
     boks.appendChild(b);
   });
+}
 
+function byggFilter() {
+  const boks = $("filter");
   boks.addEventListener("click", e => {
     const b = e.target.closest("button");
     if (!b) return;
@@ -386,6 +398,7 @@ function brukTema(tema) {
 }
 
 async function lastTema() {
+  if (document.documentElement.hasAttribute("data-fast-tema")) return;
   let forhandsvis = null;
   try { forhandsvis = new URLSearchParams(location.search).get("tema"); } catch (e) { /* gammel nettleser */ }
   if (TEMAER.includes(forhandsvis)) return brukTema(forhandsvis);
@@ -400,12 +413,10 @@ async function lastTema() {
 
 // ---------------- Start ----------------
 
-brukTema(document.documentElement.getAttribute("data-tema") || "kveld");
 lastTema();
 lastSmakinger();
-byggMarquee();
 byggFilter();
-visLogg();
+lastVinlogg();
 $("skjema").addEventListener("submit", sendSkjema);
 $("kalender-knapp").addEventListener("click", lastNedKalender);
 $("en-til").addEventListener("click", () => {

@@ -106,12 +106,13 @@ returns double precision language sql immutable as $$
     cos(radians(lat1)) * cos(radians(lat2)) * power(sin(radians(lon2 - lon1) / 2), 2)))
 $$;
 
--- Treff på tekst med alternativer i fasit (Syrah / Shiraz). 1 = treff, 0 = bom.
+-- Treff på tekst der både svar og fasit kan ha flere navn skilt med / («Syrah / Shiraz»).
+-- Ett felles navn holder. 1 = treff, 0 = bom.
 create or replace function public.lk_treff(p_svar text, p_fasit text)
 returns int language sql immutable set search_path = public, extensions as $$
-  select case when normaliser(p_svar) <> '' and exists (
-    select 1 from unnest(string_to_array(coalesce(p_fasit, ''), '/')) a
-    where normaliser(a) <> '' and normaliser(a) = normaliser(p_svar)) then 1 else 0 end
+  select case when exists (
+    select 1 from unnest(string_to_array(coalesce(p_svar, ''), '/')) s, unnest(string_to_array(coalesce(p_fasit, ''), '/')) f
+    where normaliser(s) <> '' and normaliser(s) = normaliser(f)) then 1 else 0 end
 $$;
 
 -- Distriktpoeng: samme 5, under 100 km 3, under 300 km 2, under 600 km 1, ellers 0. Feil land gir 0.

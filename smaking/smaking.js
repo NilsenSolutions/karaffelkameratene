@@ -4,11 +4,18 @@
 const LAND = ["Frankrike", "Italia", "Spania", "Tyskland", "Portugal", "Østerrike", "USA", "Chile",
   "Argentina", "Australia", "Sør-Afrika", "New Zealand"];
 const TYPER = ["Rød", "Hvit", "Rosé", "Musserende", "Oransje", "Søt / dessert", "Sterkvin"];
-const DRUER = ["Cabernet Sauvignon", "Merlot", "Pinot Noir", "Syrah", "Shiraz", "Grenache", "Tempranillo", "Sangiovese",
-  "Nebbiolo", "Barbera", "Malbec", "Zinfandel", "Gamay", "Cabernet Franc", "Mourvèdre", "Touriga Nacional", "Pinotage",
-  "Carménère", "Primitivo", "Montepulciano", "Corvina", "Blaufränkisch", "Zweigelt", "Chardonnay", "Sauvignon Blanc",
-  "Riesling", "Chenin Blanc", "Grüner Veltliner", "Pinot Grigio", "Gewürztraminer", "Viognier", "Albariño", "Sémillon",
-  "Muscat", "Garganega", "Verdejo", "Godello", "Vermentino", "Glera", "Assyrtiko"];
+// Druer i nedtrekkslisten. Druer med to navn står som ett valg («Syrah / Shiraz») og gir treff på begge.
+const DRUER = {
+  "Røde druer": ["Aglianico", "Barbera", "Blaufränkisch", "Cabernet Franc", "Cabernet Sauvignon", "Carignan", "Carménère",
+    "Cinsault", "Corvina", "Dolcetto", "Gamay", "Grenache / Garnacha", "Malbec", "Mencía", "Merlot", "Montepulciano",
+    "Mourvèdre / Monastrell", "Nebbiolo", "Nero d'Avola", "Petit Verdot", "Pinot Noir / Spätburgunder", "Pinotage",
+    "Sangiovese", "Syrah / Shiraz", "Tempranillo / Tinta Roriz", "Touriga Nacional", "Zinfandel / Primitivo", "Zweigelt"],
+  "Hvite druer": ["Albariño", "Assyrtiko", "Chardonnay", "Chenin Blanc", "Furmint", "Garganega", "Gewürztraminer", "Glera",
+    "Godello", "Grüner Veltliner", "Marsanne", "Melon de Bourgogne", "Muscat / Moscato", "Pinot Blanc", "Pinot Grigio / Pinot Gris",
+    "Riesling", "Roussanne", "Sauvignon Blanc", "Sémillon", "Trebbiano", "Verdejo", "Verdicchio", "Vermentino", "Viognier"],
+  "Blanding": ["Blanding (flere druer)"]
+};
+const ALLE_DRUER = Object.values(DRUER).flat();
 const TOKEN_NOKKEL = "karaffel-lag-token";
 const ANNET = "__annet";
 const OPPDATER_MS = 3000;
@@ -187,7 +194,7 @@ function byggVinskjema(bokstav, v) {
   boks.append(tekstfelt("v" + bokstav + "-navn", "Vinens navn", verdier, "navn", lagre));
   boks.append(tekstfelt("v" + bokstav + "-produsent", "Produsent", verdier, "produsent", lagre));
   boks.append(...landOgDistrikt("v" + bokstav, verdier, lagre));
-  boks.append(tekstfelt("v" + bokstav + "-drue", "Drue", verdier, "drue", lagre, { liste: "druer" }));
+  boks.append(druefelt("v" + bokstav + "-drue", verdier, lagre));
   const rad = el("div", "to-felt");
   rad.append(tekstfelt("v" + bokstav + "-aargang", "Årgang", verdier, "aargang", lagre, { numerisk: true, plass: "2019" }));
   rad.append(tekstfelt("v" + bokstav + "-pris", "Pris (kr)", verdier, "pris", lagre, { numerisk: true, plass: "299" }));
@@ -244,7 +251,7 @@ function byggGjetteskjema(vin, g) {
   });
   const id = "g" + vin.bokstav;
   boks.append(...landOgDistrikt(id, verdier, lagre));
-  boks.append(tekstfelt(id + "-drue", "Drue", verdier, "drue", lagre, { liste: "druer" }));
+  boks.append(druefelt(id + "-drue", verdier, lagre));
   const rad = el("div", "to-felt");
   rad.append(tekstfelt(id + "-aargang", "Årgang", verdier, "aargang", lagre, { numerisk: true, plass: "2019" }));
   rad.append(tekstfelt(id + "-pris", "Pris (kr)", verdier, "pris", lagre, { numerisk: true, plass: "299" }));
@@ -443,6 +450,39 @@ function landOgDistrikt(id, verdier, lagre) {
   return [lf, df];
 }
 
+// Drue som nedtrekksliste, gruppert i røde og hvite. «Annet» gir et tekstfelt.
+function druefelt(id, verdier, lagre) {
+  const f = el("div", "felt");
+  const l = el("label", "", "Drue");
+  l.htmlFor = id;
+  const s = el("select");
+  s.id = id;
+  s.append(new Option("Velg drue…", ""));
+  Object.entries(DRUER).forEach(([gruppe, druer]) => {
+    const og = document.createElement("optgroup");
+    og.label = gruppe;
+    druer.forEach(d => og.append(new Option(d, d)));
+    s.append(og);
+  });
+  s.append(new Option("Annen drue…", ANNET));
+  const annet = el("input");
+  Object.assign(annet, { type: "text", placeholder: "Skriv druen", maxLength: 120 });
+  annet.setAttribute("aria-label", "Annen drue");
+  const kjent = !verdier.drue || ALLE_DRUER.includes(verdier.drue);
+  s.value = kjent ? verdier.drue : ANNET;
+  annet.hidden = kjent;
+  annet.value = kjent ? "" : verdier.drue;
+  s.addEventListener("change", () => {
+    annet.hidden = s.value !== ANNET;
+    verdier.drue = s.value === ANNET ? annet.value.trim() : s.value;
+    if (s.value === ANNET) annet.focus();
+    lagre();
+  });
+  annet.addEventListener("input", () => { verdier.drue = annet.value.trim(); lagre(); });
+  f.append(l, s, annet);
+  return f;
+}
+
 function scorefelt(id, verdier, lagre) {
   const f = el("div", "felt poeng-kort kort");
   const topp = el("div", "poeng-topp");
@@ -461,13 +501,6 @@ function scorefelt(id, verdier, lagre) {
 }
 
 // ---------------- Start ----------------
-
-(function () {
-  const dl = el("datalist");
-  dl.id = "druer";
-  DRUER.forEach(d => { const o = el("option"); o.value = d; dl.append(o); });
-  document.body.append(dl);
-})();
 
 if (!tilkoblet()) {
   melding("Siden er ikke koblet til databasen.");

@@ -198,7 +198,8 @@ function vis() {
   res.append(vl);
   rot.append(res);
 
-  // Distrikt og verktøy
+  // Poengregler, distrikt og verktøy
+  rot.append(byggPoengregler(lag));
   rot.append(byggDistrikt());
   const verk = el("section", "kort");
   verk.append(el("h2", "kort-tittel", "Verktøy"));
@@ -329,6 +330,46 @@ function forhandsvisning() {
     p.append(li);
   });
   d.append(el("h4", "pameldte-tittel", "Lagene (poeng)"), p);
+  return d;
+}
+
+// Samme regler som lk_poeng og lk_distriktpoeng i supabase/lagkveld.sql. Endres de der, må de endres her.
+const POENGREGLER = [
+  ["Land", "2", "Riktig land."],
+  ["Distrikt", "0–5", "5 for riktig distrikt. Ellers etter avstand: under 100 km 3, under 300 km 2, under 600 km 1. Feil land gir 0."],
+  ["Drue", "2", "Riktig drue. Druer med to navn (Syrah / Shiraz) gir treff på begge."],
+  ["Årgang", "0–3", "Riktig 3, ett år unna 2, to år unna 1."],
+  ["Pris", "0–3", "Innenfor 10 % 3, innenfor 25 % 2, innenfor 50 % 1."]
+];
+
+function byggPoengregler(lag) {
+  const d = el("details", "kort poengregler");
+  d.open = apne.has("regler");
+  d.addEventListener("toggle", () => { d.open ? apne.add("regler") : apne.delete("regler"); });
+  d.append(el("summary", "kort-tittel", "Poengregler"));
+  const tabell = el("table", "regel-tabell");
+  const hode = el("tr");
+  ["Felt", "Poeng", "Slik regnes det"].forEach(t => hode.append(el("th", "", t)));
+  tabell.append(hode);
+  POENGREGLER.forEach(r => {
+    const tr = el("tr");
+    r.forEach(t => tr.append(el("td", "", t)));
+    tabell.append(tr);
+  });
+  const sum = el("tr", "sum");
+  ["Maks per vin", "15", "Fulltreff er full pott på ett felt. Brukes ved likt poeng."].forEach(t => sum.append(el("td", "", t)));
+  tabell.append(sum);
+  d.append(tabell);
+
+  const viner = lag.reduce((n, l) => n + l.viner.length, 0);
+  const maks = lag.map(l => 15 * (viner - l.viner.length));
+  const tekst = lag.length > 1
+    ? "Med " + lag.length + " lag og " + viner + " viner kan et lag få maks " +
+      (Math.min(...maks) === Math.max(...maks) ? maks[0] : Math.min(...maks) + "–" + Math.max(...maks)) + " poeng (ikke egne viner)."
+    : "Maks for kvelden: 15 poeng × antall viner fra de andre lagene.";
+  d.append(el("p", "hjelp", tekst));
+  d.append(el("p", "hjelp", "Bare avslørte viner teller. Scoren 0–100 gir ikke lagpoeng, den brukes til vinrangeringen. " +
+    "Distrikter som ikke står i listen gir bare poeng ved helt riktig navn, så legg dem til under før runden avsløres."));
   return d;
 }
 

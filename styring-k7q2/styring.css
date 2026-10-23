@@ -18,3 +18,18 @@
 .styring #innhold h1 { overflow-wrap: anywhere; hyphens: auto; }
 .styring .tilbake { margin: 0 0 .75rem; }
 @media (max-width: 520px) { .styring #innhold h1 { font-size: clamp(1.8rem, 9vw, 2.6rem); } }
+
+/* Poengregler */
+.poengregler summary { cursor: pointer; margin: 0; }
+.poengregler[open] summary { margin-bottom: 1rem; }
+.regel-tabell { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: .95rem; }
+.regel-tabell th, .regel-tabell td { text-align: left; vertical-align: top; padding: .5rem .6rem; border-bottom: 1px solid rgba(0, 0, 0, .12); }
+.regel-tabell td:nth-child(2) { white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
+.regel-tabell .sum td { font-weight: 700; border-bottom: 0; }
+@media (max-width: 600px) {
+  .regel-tabell tr:first-child { display: none; }
+  .regel-tabell tr { display: grid; grid-template-columns: 1fr auto; border-bottom: 1px solid rgba(0, 0, 0, .12); padding: .4rem 0; }
+  .regel-tabell td { border: 0; padding: .1rem 0; }
+  .regel-tabell td:first-child { font-weight: 600; }
+  .regel-tabell td:nth-child(3) { grid-column: 1 / -1; }
+}

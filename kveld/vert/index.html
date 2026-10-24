@@ -1,139 +1,14 @@
 <!doctype html>
-<html lang="nb" data-tema="kamerater" data-fast-tema>
+<html lang="nb">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Vertsside – Karaffelkameratene</title>
-  <meta name="theme-color" content="#eef3ea">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <link rel="manifest" href="/site.webmanifest">
-  <meta name="apple-mobile-web-app-title" content="Karaffel">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="robots" content="noindex">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&family=Permanent+Marker&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-  <script>
-    // Samme tema som forsiden, valgt før siden tegnes. felles.js henter det lagrede valget etterpå.
-    (function () {
-      var t = null;
-      try { t = new URLSearchParams(location.search).get("tema") || localStorage.getItem("karaffel-tema"); } catch (e) {}
-      if (t === "kamerater") document.documentElement.setAttribute("data-tema", t);
-    })();
-  </script>
-  <link rel="stylesheet" href="../../style.css?v=20261024j">
-  <link rel="stylesheet" href="../kveld.css?v=20261024j">
-  <link rel="stylesheet" href="../../tema.css?v=20261024j">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Flyttet – Karaffelkameratene</title>
+  <meta http-equiv="refresh" content="0; url=/vert/">
+  <script>location.replace("/vert/");</script>
 </head>
-<body class="kveld">
-  <header class="topp">
-    <a class="merke" href="../../">Karaffelkameratene</a>
-    <span class="kveld-merke">Vertsside</span>
-    <a class="side-lenke" href="../../styring-k7q2/">Lagkveld (styring)</a>
-  </header>
-
-  <main>
-    <p class="melding" id="melding" role="status" hidden></p>
-
-    <form class="kort" id="logg-inn" hidden>
-      <h1>Vertsside</h1>
-      <div class="felt">
-        <label for="pin">PIN</label>
-        <input id="pin" type="password" autocomplete="current-password" required>
-      </div>
-      <button class="knapp" type="submit">Logg inn</button>
-      <p class="feil" id="pin-feil" role="alert"></p>
-    </form>
-
-    <div id="vert" hidden>
-      <h1>Vertsside</h1>
-
-      <section class="kort" aria-labelledby="live-tittel">
-        <h2 class="kort-tittel" id="live-tittel">Kveldsmodus</h2>
-        <p class="kveld-info" id="live-info"></p>
-        <div id="live-innhold" hidden>
-          <p class="hjelp">Når du avslører en vin, låses gjetningene og fasit vises på alle telefonene.</p>
-          <ul class="live" id="live"></ul>
-          <p class="vinner" id="kveldens-vinner" hidden></p>
-          <h3 class="live-under">Hvem traff best</h3>
-          <ol class="toppliste" id="toppliste"></ol>
-          <div class="samling-knapper live-knapper">
-            <a class="knapp lys-knapp" href="../" target="_blank" rel="noopener">Åpne kveldsmodus</a>
-            <button class="lenkeknapp" type="button" id="nullstill">Nullstill kvelden</button>
-            <button class="lenkeknapp" type="button" id="avslutt">Avslutt kveldsmodus</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="kort" aria-labelledby="sam-tittel">
-        <h2 class="kort-tittel" id="sam-tittel">Planlagte samlinger</h2>
-        <p class="hjelp">Samlingene vises på forsiden med nedtelling og påmelding. Konfigurer kvelden for en samling, og aktiver kveldsmodus når dere er i gang.</p>
-        <div id="samlinger"></div>
-        <button class="knapp lys-knapp" type="button" id="ny-samling">Ny samling</button>
-      </section>
-
-      <section class="kort" aria-labelledby="vk-tittel">
-        <h2 class="kort-tittel" id="vk-tittel">Vinkjennerne</h2>
-        <p class="hjelp">Alle avslørte kvelder samlet. Prosenten er andelen av mulige gjettepoeng de kveldene man var med, så små og store kvelder teller likt. Tallet til høyre er vinkjennerpoeng: prosenten trukket mot klubbens snitt med vekt som én vanlig kveld, så én heldig kveld ikke slår jevn innsats over mange.</p>
-        <ol class="toppliste" id="vinkjennere"></ol>
-      </section>
-
-      <section class="kort" aria-labelledby="tema-tittel">
-        <h2 class="kort-tittel" id="tema-tittel">Utseende</h2>
-        <p class="hjelp">Velg utseende for hele siden: forsiden, kveldsmodus og vertssiden. Det gjelder alle som besøker den. Forhåndsvis gjerne før du tar det i bruk.</p>
-        <fieldset class="tema-valg">
-          <legend>Tema</legend>
-          <label class="tema-alt">
-            <input type="radio" name="tema" value="kveld">
-            <span><strong>Kveld</strong>Mørkt med vinrosa og sitron.</span>
-          </label>
-          <label class="tema-alt">
-            <input type="radio" name="tema" value="kamerater">
-            <span><strong>Kamerater</strong>Lyst og håndtegnet, med de to strekfigurene som skjenker.</span>
-          </label>
-        </fieldset>
-        <div class="samling-knapper">
-          <button class="knapp" type="button" id="lagre-tema">Bruk på hele siden</button>
-          <a class="knapp lys-knapp" id="forhandsvis-tema" href="../../?tema=kveld" target="_blank" rel="noopener">Forhåndsvis</a>
-        </div>
-        <p class="status" id="tema-status" role="status"></p>
-      </section>
-
-      <form id="oppsett" hidden>
-        <h2 id="oppsett-tittel">Kvelden</h2>
-        <p class="kveld-info" id="oppsett-info"></p>
-
-        <fieldset class="kort">
-          <legend>Hva skal gjettes?</legend>
-          <p class="hjelp">Svaralternativer skilles med komma. Uten alternativer får deltakerne et tekstfelt.</p>
-          <div id="gjett-valg"></div>
-        </fieldset>
-
-        <fieldset class="kort">
-          <legend>Viner</legend>
-          <p class="hjelp">Feltene merket <span class="fasit-merke">fasit</span> brukes i gjettingen. Flere riktige svar skilles med /, for eksempel «Syrah / Shiraz». Har gjestene med flaskene i pose, fyll inn bokstav og hvem som tok den med nå, og fasit i løpet av kvelden før du avslører.</p>
-          <div id="viner"></div>
-          <button class="knapp lys-knapp" type="button" id="ny-vin">Legg til vin</button>
-        </fieldset>
-
-        <div class="panel-bunn">
-          <button class="knapp" type="submit" id="lagre">Lagre kvelden</button>
-          <button class="knapp lys-knapp" type="button" id="lagre-aktiver">Lagre og aktiver</button>
-        </div>
-        <p class="status" id="lagre-status" role="status"></p>
-        <button class="lenkeknapp" type="button" id="lukk-oppsett">Lukk uten å lagre</button>
-      </form>
-
-      <button class="lenkeknapp" type="button" id="logg-ut">Logg ut</button>
-    </div>
-  </main>
-
-  <script src="../oppsett.js?v=20261024j"></script>
-  <script src="../felles.js?v=20261024j"></script>
-  <script src="vert.js?v=20261024j"></script>
+<body style="font-family: system-ui, sans-serif; background: #eef3ea; color: #2b2b2b; padding: 2rem;">
+  <p>Siden har flyttet til <a href="/vert/">karaffelkameratene.no/vert</a>.</p>
 </body>
 </html>

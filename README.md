@@ -11,7 +11,7 @@ Ren HTML, CSS og JavaScript. Ingen byggesteg og ingen avhengigheter utenom Googl
 - **Legg i kalenderen**: laster ned en `.ics`-fil for smakingen.
 - **Vinlogg** som kan filtreres på vintype og sorteres på dato eller poeng.
 - **Kveldsmodus** på `/kveld/`: smakeskjema på mobilen under selve smakingen, med struktur, aromaer, notat, poeng og blindgjetting. Verten avslører vinene og ser hvem som traff best.
-- **Vertsside** på `/kveld/vert/` (PIN): planlagte samlinger, kveldens viner, avsløring og rangering.
+- **Vertskap** på `/vert/` (PIN): arrangementer med ferdige oppsett, påmeldte, lagkvelden, kåring, storskjerm (`/vert/skjerm/`) og arkiv. Gamle adresser (`/kveld/vert/`, `/styring-k7q2/`) sender videre hit.
 
 ## Filer
 
@@ -108,7 +108,7 @@ DNS kan bruke litt tid på å oppdatere seg.
 
 ## Lagkveld (vinsmaking hos Jakob)
 
-Lag på to med én mobil. Lagene bruker `/smaking/`, admin styrer fra `/styring-k7q2/` på PC (PIN, ikke lenket fra siden).
+Lag på to med én mobil. Lagene bruker `/smaking/`, vertskapet styrer fra `/vert/` på PC (PIN, «For vertskapet» nederst på forsiden).
 
 1. Admin: «Start lagkveld» på samlingen. Lagene oppretter lag (lagnavn og to navn) og registrerer sine to viner. Mister et lag mobilen, logger de inn igjen med lagkoden.
 2. Admin: «Start runden» for ett lag. Vinene vises som Vin A/B. De andre lagene gjetter land, distrikt, drue, årgang og pris og gir score 0–100. Laget som presenterer kan ikke gjette.

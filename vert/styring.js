@@ -65,7 +65,15 @@ function start() {
 async function hent() {
   try {
     const id = valgt;
-    const svar = id ? await rpc("lk_admin_samling", { p_pin: pin, p_samling: id }) : await rpc("lk_admin_samlinger", { p_pin: pin });
+    let svar;
+    if (id) {
+      // Samlingen og de påmeldte hentes sammen.
+      const [samling, pameldte] = await Promise.all([rpc("lk_admin_samling", { p_pin: pin, p_samling: id }),
+        rpc("vert_hent_pameldinger", { p_pin: pin, p_samling: id }).catch(() => [])]);
+      svar = Object.assign(samling, { pameldte: pameldte || [] });
+    } else {
+      svar = await rpc("lk_admin_samlinger", { p_pin: pin });
+    }
     if (id !== valgt) return;   // byttet side mens vi ventet
     data = svar;
     melding("");
@@ -119,7 +127,7 @@ function vis() {
   // Topp
   const topp = el("section", "kort");
   topp.append(el("h1", "", k.tittel || "Lagkveld"));
-  topp.append(el("p", "kveld-info", [datoTekst(k.dato), k.sted, lag.length + " lag",
+  topp.append(el("p", "kveld-info", [k.dato_avtales ? "Dato avtales" : datoTekst(k.dato), k.sted, lag.length + " lag",
     k.aktiv ? FASE_TEKST[k.fase] : "Lagkvelden er ikke i gang", k.aktiv ? STEG_TEKST[k.resultat_steg] : ""].filter(Boolean).join(" · ")));
   if (k.aktiv) {
     topp.append(el("p", "hjelp", "Lagene bruker karaffelkameratene.no/smaking/ på mobilen."));
@@ -131,6 +139,8 @@ function vis() {
       data.annen_aktiv ? "Avslutte «" + data.annen_aktiv.tittel + "» og starte lagkvelden for «" + k.tittel + "»?" : "", "Start")));
   }
   rot.append(topp);
+  rot.append(byggDetaljer(k));
+  rot.append(byggPameldte(k));
 
   // Styringen virker bare på kvelden som er i gang. Ellers vises lagene og stillingen.
   if (!k.aktiv) {
@@ -411,6 +421,116 @@ function byggNyttArrangement() {
   });
   boks.append(f);
   return boks;
+}
+
+// ---------------- Detaljer og påmeldte for én samling ----------------
+
+let detaljUtkast = {};   // { samling_id, felt… } så det som skrives ikke forsvinner ved oppdatering
+
+function byggDetaljer(k) {
+  const d = el("details", "kort detaljer-kort");
+  d.open = apne.has("detaljer");
+  d.addEventListener("toggle", () => { d.open ? apne.add("detaljer") : apne.delete("detaljer"); });
+  d.append(el("summary", "kort-tittel", "Detaljer" + (oppsettNavn(k.oppsett) ? " · " + oppsettNavn(k.oppsett) : "")));
+  if (detaljUtkast.samling_id !== k.samling_id) detaljUtkast = { samling_id: k.samling_id };
+  const verdi = (felt, standard) => felt in detaljUtkast ? detaljUtkast[felt] : standard;
+
+  const f = el("form", "vin-felt");
+  const felt = {};
+  [["tittel", "Tittel", "text", k.tittel], ["dato", "Dato", "date", k.dato], ["tid", "Klokkeslett", "time", k.tid],
+   ["sted", "Sted", "text", k.sted], ["tema", "Tema", "text", k.tema]].forEach(([n, navn, type, std]) => {
+    const boks = el("div", "felt");
+    const l = el("label", "", navn);
+    l.htmlFor = "d-" + n;
+    const i = el("input");
+    Object.assign(i, { id: "d-" + n, type, value: verdi(n, std || "") });
+    i.addEventListener("input", () => { detaljUtkast[n] = i.value; });
+    felt[n] = i;
+    boks.append(l, i);
+    f.append(boks);
+  });
+  const avtales = el("label", "avkryss-linje");
+  const ak = el("input");
+  ak.type = "checkbox";
+  ak.checked = Boolean(verdi("dato_avtales", k.dato_avtales));
+  ak.addEventListener("change", () => { detaljUtkast.dato_avtales = ak.checked; });
+  avtales.append(ak, document.createTextNode(" Dato avtales (folk kan foreslå datoer)"));
+  f.append(avtales);
+
+  const rad = el("div", "samling-knapper");
+  const lagre = el("button", "knapp", "Lagre detaljene");
+  lagre.type = "submit";
+  rad.append(lagre);
+  rad.append(knapp("Slett arrangementet", "lenkeknapp", async () => {
+    if (!(await bekreft("Slette «" + k.tittel + "»? Det forsvinner fra forsiden sammen med påmeldingene og et eventuelt arkiv. Vinene i vinloggen blir stående.", "Slett"))) return;
+    try {
+      await rpc("vert_slett_samling", { p_pin: pin, p_id: k.samling_id });
+      velg("");
+      melding("«" + k.tittel + "» er slettet.");
+    } catch (err) { melding(err.message); }
+  }));
+  f.append(rad);
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    const data_ = { id: k.samling_id, tittel: felt.tittel.value.trim(), dato: felt.dato.value, tid: felt.tid.value || "19:00",
+      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked };
+    if (!data_.dato && !data_.dato_avtales) { melding("Velg en dato, eller kryss av for at datoen avtales."); return; }
+    lagre.disabled = true;
+    try {
+      await rpc("vert_lagre_samling", { p_pin: pin, p_data: data_ });
+      detaljUtkast = {};
+      document.activeElement.blur();
+      await hent();
+      melding("Detaljene er lagret.");
+    } catch (err) {
+      melding(err.message);
+      lagre.disabled = false;
+    }
+  });
+  d.append(f);
+  return d;
+}
+
+function byggPameldte(k) {
+  const d = el("details", "kort");
+  d.open = apne.has("pameldte");
+  d.addEventListener("toggle", () => { d.open ? apne.add("pameldte") : apne.delete("pameldte"); });
+  const rader = data.pameldte || [];
+  d.append(el("summary", "kort-tittel", "Påmeldte (" + rader.length + ")"));
+  if (!rader.length) d.append(el("p", "hjelp", "Ingen påmeldt ennå."));
+  const ol = el("ol", "pameldte-liste");
+  rader.forEach(r => {
+    const li = el("li");
+    const t = el("span", "rang-tekst");
+    t.append(el("span", "rang-navn", r.navn),
+      el("span", "rang-meta", [r.vin && "Tar med " + r.vin, r.datoer && "Passer: " + r.datoer].filter(Boolean).join(" · ")));
+    li.append(t, knapp("Fjern", "lenkeknapp", () => handling("vert_fjern_pamelding", { p_id: r.id },
+      "Fjerne " + r.navn + " fra «" + k.tittel + "»?", "Fjern")));
+    ol.append(li);
+  });
+  d.append(ol);
+
+  // Legg til noen som har meldt seg på muntlig.
+  const f = el("form", "vin-felt");
+  const navn = el("input");
+  Object.assign(navn, { id: "p-navn", type: "text", placeholder: "Navn", maxLength: 60 });
+  const vin = el("input");
+  Object.assign(vin, { id: "p-vin", type: "text", placeholder: "Tar med (valgfritt)", maxLength: 120 });
+  const ln = el("label", "", "Navn"); ln.htmlFor = "p-navn";
+  const lv = el("label", "", "Tar med"); lv.htmlFor = "p-vin";
+  const fn = el("div", "felt"); fn.append(ln, navn);
+  const fv = el("div", "felt"); fv.append(lv, vin);
+  const b = el("button", "knapp lys-knapp", "Legg til påmeldt");
+  b.type = "submit";
+  f.append(fn, fv, b);
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!navn.value.trim()) { melding("Skriv inn et navn."); return; }
+    document.activeElement.blur();
+    await handling("vert_legg_til_pamelding", { p_samling: k.samling_id, p_navn: navn.value.trim(), p_vin: vin.value.trim() });
+  });
+  d.append(f);
+  return d;
 }
 
 function samlingRad(s) {

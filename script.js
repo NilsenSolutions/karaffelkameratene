@@ -51,7 +51,7 @@ const sluttTid = s => new Date(startTid(s).getTime() + CONFIG.varerTimer * 3600 
 
 // Lagkvelden er avsluttet fra styringssiden, eller vinnerne er kåret: da er samlingen ferdig,
 // selv om det er samme kveld, og forsiden viser neste smaking.
-const avsluttet = s => s.lagkveld && (!s.lagkveld_aktiv || s.resultat_steg >= 3);
+const avsluttet = s => Boolean(s.kveld_avsluttet || s.resultat_steg >= 3);
 
 // Kommende og pågående: en samling blir stående hele kvelden etter at den har startet,
 // til lagkvelden avsluttes eller det har gått CONFIG.varerTimer timer.

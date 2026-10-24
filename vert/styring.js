@@ -4,8 +4,6 @@ const PIN_NOKKEL = "karaffel-vert-pin";
 const VALGT_NOKKEL = "karaffel-valgt-samling";
 const FASE_TEKST = { venter: "Venter på neste runde", gjetting: "Gjetting åpen", lukket: "Gjetting lukket", avslort: "Vinene avslørt" };
 const STEG_TEKST = ["Ingen resultater vist", "Vinrangering og beste vin vises", "Poengene vises uten lagnavn", "Vinnerne er kåret med lagnavn"];
-const VINFELT = [["navn", "Vin"], ["produsent", "Produsent"], ["land", "Land"], ["distrikt", "Distrikt"], ["drue", "Drue"],
-  ["aargang", "Årgang"], ["type", "Type"], ["pris", "Pris"]];
 
 let pin = "";
 let valgt = "";    // id-en til arrangementet som er åpnet, tom = oversikten
@@ -62,6 +60,7 @@ function loggUt() {
 function start() {
   $("logg-inn").hidden = true;
   $("styring").hidden = false;
+  lastDistrikter(() => { if (data) vis(); });   // distriktene til nedtrekkslistene
   hent();
   clearInterval(timer);
   timer = setInterval(() => { if (!document.hidden) hent(); }, 3000);
@@ -766,30 +765,21 @@ function byggVertsviner(k, vertLag, aktivt, iGang) {
     ny.addEventListener("toggle", () => { ny.open ? apne.add("vv-ny") : apne.delete("vv-ny"); });
     ny.append(el("summary", "", "+ Legg til " + (viner.length ? "en vin til" : "vin")));
     const f = el("form", "vin-retting");
-    const rutenett = el("div", "vin-felt");
-    const inputs = {};
-    VINFELT.forEach(([felt, navn]) => {
-      const d = el("div", "felt");
-      const l = el("label", "", navn);
-      l.htmlFor = "nv-" + felt;
-      const i = el("input");
-      Object.assign(i, { id: "nv-" + felt, type: "text" });
-      inputs[felt] = i;
-      d.append(l, i);
-      rutenett.append(d);
-    });
+    const [rutenett, verdier] = vinFelter("nv", {});
     f.append(rutenett);
     const lagre = el("button", "knapp lys-knapp", "Legg til vinen");
     lagre.type = "submit";
     f.append(lagre);
     f.addEventListener("submit", async e => {
       e.preventDefault();
-      const d = {};
-      Object.entries(inputs).forEach(([n, i]) => { d[n] = i.value.trim(); });
-      if (!d.navn) { melding("Vinen må ha et navn."); return; }
+      if (!verdier.navn) { melding("Vinen må ha et navn."); return; }
       document.activeElement.blur();
-      const b = await handling("lk_admin_vertsvin", { p_samling: k.samling_id, p_data: d });
-      if (b) melding("Vin " + b + " er lagt til.");
+      const b = await handling("lk_admin_vertsvin", { p_samling: k.samling_id, p_data: Object.assign({}, verdier) });
+      if (b) {
+        delete vinUtkast.nv;
+        melding("Vin " + b + " er lagt til.");
+        vis();
+      }
     });
     ny.append(f);
     boks.append(ny);
@@ -805,32 +795,42 @@ function byggVertsviner(k, vertLag, aktivt, iGang) {
   return boks;
 }
 
+// Vinfeltene med de samme nedtrekkslistene som gjestene gjetter med (kveld/vinfelt.js), så fasiten treffer.
+// Det som er valgt huskes per skjema, så det ikke forsvinner når siden oppdaterer seg.
+const vinUtkast = {};
+
+function vinFelter(id, start) {
+  const verdier = vinUtkast[id] || (vinUtkast[id] = { navn: start.navn || "", produsent: start.produsent || "", land: start.land || "",
+    distrikt: start.distrikt || "", drue: start.drue || "", aargang: start.aargang || "", type: start.type || "", pris: start.pris || "" });
+  const ingenting = () => {};
+  const rutenett = el("div", "vin-felt");
+  rutenett.append(
+    tekstfelt(id + "-navn", "Vin", verdier, "navn", ingenting),
+    tekstfelt(id + "-produsent", "Produsent", verdier, "produsent", ingenting),
+    ...landOgDistrikt(id, verdier, ingenting),
+    druefelt(id + "-drue", verdier, ingenting),
+    tekstfelt(id + "-aargang", "Årgang", verdier, "aargang", ingenting, { numerisk: true, plass: "2019" }),
+    velgfelt(id + "-type", "Type", TYPER, verdier, "type", ingenting),
+    tekstfelt(id + "-pris", "Pris (kr)", verdier, "pris", ingenting, { numerisk: true, plass: "299" }));
+  return [rutenett, verdier];
+}
+
 function byggVinRetting(v) {
+  const id = "r-" + v.id;
   const f = el("form", "vin-retting");
   f.append(el("h4", "pameldte-tittel", "Vin " + v.bokstav + (v.avslort ? " (avslørt)" : "")));
-  const rutenett = el("div", "vin-felt");
-  const inputs = {};
-  VINFELT.forEach(([felt, navn]) => {
-    const d = el("div", "felt" + (felt === "notater" ? " bred" : ""));
-    const id = "r-" + v.id + "-" + felt;
-    const l = el("label", "", navn);
-    l.htmlFor = id;
-    const i = el("input");
-    Object.assign(i, { id, type: "text", value: v[felt] || "" });
-    inputs[felt] = i;
-    d.append(l, i);
-    rutenett.append(d);
-  });
+  const [rutenett, verdier] = vinFelter(id, v);
   f.append(rutenett);
   const lagre = el("button", "knapp lys-knapp", "Lagre rettelse");
   lagre.type = "submit";
   f.append(lagre);
   f.addEventListener("submit", async e => {
     e.preventDefault();
-    const d = {};
-    Object.entries(inputs).forEach(([k, i]) => { d[k] = i.value.trim(); });
     document.activeElement.blur();
-    if (await handling("lk_admin_lagre_vin", { p_vin: v.id, p_data: d })) melding("Vin " + v.bokstav + " er rettet.");
+    if (await handling("lk_admin_lagre_vin", { p_vin: v.id, p_data: Object.assign({}, verdier) })) {
+      delete vinUtkast[id];
+      melding("Vin " + v.bokstav + " er rettet.");
+    }
   });
   return f;
 }

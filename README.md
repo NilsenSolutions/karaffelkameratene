@@ -21,14 +21,14 @@ Ren HTML, CSS og JavaScript. Ingen byggesteg og ingen avhengigheter utenom Googl
 | `style.css` | Utseende |
 | `script.js` | Innhold, innstillinger og all dynamikk |
 | `kveld/` | Kveldsmodus for deltakerne, felles kode (`felles.js`) og databasetilkobling (`oppsett.js`) |
-| `kveld/vert/` | Vertssiden |
+| `vert/` | Vertssiden (arrangementer, påmeldte, lagkveld, arkiv) |
 | `supabase/oppsett.sql` | Tabeller og funksjoner i databasen |
 | `404.html` | Siden som vises når en adresse ikke finnes |
 | `CNAME` | Domenet for GitHub Pages |
 
 ## Oppdatere innhold
 
-**Planlagte samlinger** redigeres på vertssiden `/kveld/vert/` (logg inn med PIN) under «Planlagte samlinger»: dato, klokkeslett, tittel, sted og tema. Forsiden henter dem fra databasen. Passerte smakinger ignoreres, og nedtellingen hopper videre til neste.
+**Planlagte samlinger** opprettes og redigeres på vertssiden `/vert/` (logg inn med PIN), gjerne fra et ferdig oppsett: dato, klokkeslett, tittel, sted og tema. Forsiden henter dem fra databasen. Passerte smakinger ignoreres, og nedtellingen hopper videre til neste.
 
 **Påmeldte** ligger under «Påmeldte (N)» på hver samling: navn, hva de tar med og når de meldte seg på. Verten kan legge til noen som har meldt seg muntlig og fjerne folk. Samme navn to ganger på samme samling gir ikke dobbel påmelding.
 
@@ -46,13 +46,13 @@ Hele siden (forsiden, kveldsmodus og vertssiden) har to utseender:
 - **Kveld** (standard): mørkt med vinrosa og sitron. Ligger i `style.css` og `kveld/kveld.css`.
 - **Kamerater**: lyst og håndtegnet. Forsiden får de to strekfigurene som skjenker. Ligger i `tema.css` og slås på med `data-tema="kamerater"` på `<html>`. Nederste del av `tema.css` gjelder kveldsmodus og vertssiden.
 
-Vertskapet bytter tema på `/kveld/vert/` under «Utseende». Valget lagres i databasen og gjelder alle som besøker siden. Nettleseren husker siste tema, så sidene tegnes riktig med en gang ved neste besøk.
+Siden bruker kamerat-temaet fast.
 
 Forhåndsvis et tema uten å endre noe for andre med `?tema=kamerater` eller `?tema=kveld` bak adressen, på hvilken som helst av sidene.
 
 ## Kveldsmodus
 
-Verten styrer alt fra `/kveld/vert/`:
+Verten styrer alt fra `/vert/`:
 
 1. Under «Planlagte samlinger»: trykk «Konfigurer kvelden» på en samling, velg hva som skal gjettes og legg inn vinene. Kvelden kan forberedes i god tid.
 2. Når dere er i gang: trykk «Aktiver kveldsmodus» på samlingen (eller «Lagre og aktiver»). Bare én kveld kan være aktiv om gangen.

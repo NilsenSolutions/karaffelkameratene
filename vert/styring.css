@@ -67,3 +67,12 @@
 .modul-valg select { margin-left: .4rem; font: inherit; padding: .2rem .4rem; }
 .modul-gjett { display: flex; flex-wrap: wrap; gap: .35rem 1rem; align-items: center; font-weight: 600; }
 .modul-gjett label { font-weight: 400; display: inline-flex; align-items: center; gap: .25rem; cursor: pointer; }
+
+/* Byggeklosser: poeng per felt og vertens viner */
+.modul-tittel { font-weight: 700; display: block; margin-bottom: .35rem; }
+.poeng-rad { display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin-bottom: .35rem; }
+.poeng-rad label { display: grid; gap: .15rem; font-size: .9rem; font-weight: 600; }
+.poeng-rad input { width: 4.2rem; font: inherit; padding: .3rem .4rem; }
+.modul-poeng small { display: block; opacity: .7; font-size: .85rem; }
+.vertsvin { border-top: 1px solid rgba(0, 0, 0, .1); padding: .5rem 0; }
+.vertsvin summary { cursor: pointer; font-weight: 600; }

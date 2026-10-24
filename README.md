@@ -125,12 +125,11 @@ Hvert arrangement har byggeklosser som slås av og på under «Detaljer» på `/
 
 | Byggekloss | Gjør |
 |---|---|
-| Lag på to | Lag med én mobil. Av: hver deltaker for seg (et «lag» på én bak kulissene). |
-| Viner per lag/deltaker | 1 eller 2 |
+| Deltakere | Hver for seg (egen mobil) eller lag på 2–6 med én mobil per lag |
+| Vinene | Verten stiller med vinene (legges inn på `/vert/`), eller hvert lag/deltaker tar med 1–3 viner |
 | Hva tar du med? | Feltet i påmeldingen og listen over hvem som tar med hva |
-| Datoforslag | Folk kan foreslå datoer når datoen ikke er satt |
-| Score 0–100 | Score på hver vin, gir vinrangering og personlig vinlogg |
-| Kåring | Resultatene i trinn med vinnere til slutt |
-| Gjettes | Hvilke av land, distrikt, drue, årgang og pris som gjettes (og må fylles ut når vinen registreres) |
+| Poeng per felt | Land, distrikt, drue, årgang og pris får hver sin vekt. 0 = feltet gjettes ikke |
+
+Score 0–100 og kåring er alltid med. Datoen settes av verten, eller folk foreslår datoer når «Dato avtales» er krysset av.
 
 Ved kåringen arkiveres kvelden, og hver persons score lagres i vinloggen (på lagkvelder får begge på laget lagets score). På forsiden kan vinloggen vises med scoren til én person. SQL: `supabase/moduler.sql`.

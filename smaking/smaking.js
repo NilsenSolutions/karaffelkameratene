@@ -21,7 +21,9 @@ const OPPDATER_MS = 3000;
 
 // Kveldens byggeklosser (fra vertssiden). Uten lag er hver deltaker et «lag» på én.
 const MOD = () => (data && data.kveld && data.kveld.moduler) || {};
-const SOLO = () => MOD().lag === false;
+const LAGSTR = () => Number(MOD().lagstr || (MOD().lag === false ? 1 : 2));
+const SOLO = () => LAGSTR() <= 1;
+const VERT = () => MOD().vinkilde === "vert";   // verten stiller med alle vinene
 const T = (medLag, uten) => (SOLO() ? uten : medLag);
 const GJETTES = f => (MOD().gjett || ["land", "distrikt", "drue", "aargang", "pris"]).includes(f);
 const VINER_PER = () => MOD().viner_per || 2;
@@ -119,7 +121,7 @@ function visHoved() {
 function visBliMed(h) {
   const ny = el("form", "kort");
   ny.append(el("h2", "kort-tittel", T("Lag dere", "Bli med")));
-  ny.append(el("p", "hjelp", T("Dere er to på hvert lag og bruker én mobil sammen.", "Skriv navnet ditt. Du bruker din egen mobil.")));
+  ny.append(el("p", "hjelp", T("Dere er " + LAGSTR() + " på hvert lag og bruker én mobil sammen.", "Skriv navnet ditt. Du bruker din egen mobil.")));
   const felt = (id, tekst, plass) => {
     const f = el("div", "felt");
     const l = el("label", "", tekst);
@@ -132,7 +134,8 @@ function visBliMed(h) {
   };
   const navn = SOLO() ? null : felt("lagnavn", "Lagnavn", "For eksempel Tanninene");
   const m1 = felt("medlem1", T("Navn 1", "Navnet ditt"), "");
-  const m2 = SOLO() ? null : felt("medlem2", "Navn 2", "");
+  const flere = [];
+  for (let i = 2; i <= LAGSTR(); i++) flere.push(felt("medlem" + i, "Navn " + i, ""));
   const knapp = el("button", "knapp", T("Opprett laget", "Bli med"));
   knapp.type = "submit";
   const feil = el("p", "feil");
@@ -142,7 +145,7 @@ function visBliMed(h) {
     feil.textContent = "";
     knapp.disabled = true;
     try {
-      const svar = await rpc("lk_opprett_lag", { p_navn: navn ? navn.value : m1.value, p_medlem1: m1.value, p_medlem2: m2 ? m2.value : "" });
+      const svar = await rpc("lk_opprett_lag", { p_navn: navn ? navn.value : m1.value, p_medlem1: m1.value, p_medlem2: flere.map(f => f.value.trim()).filter(Boolean).join(", ") });
       skrivToken(svar.token);
       visningsnokkel = "";
       await hent();
@@ -182,6 +185,13 @@ function visBliMed(h) {
 // Før og mellom rundene: registrer egne viner.
 function visVenter(h) {
   const m = data.mitt_lag;
+  if (VERT()) {
+    const b = el("div", "kort");
+    b.append(el("h2", "kort-tittel", "Du er med! 🍷"));
+    b.append(el("p", "", "Verten stiller med vinene i kveld. Når runden starter, kommer vinene opp her, og du gjetter og gir score."));
+    h.append(b);
+    return;
+  }
   if (m.ferdig) {
     h.append(el("p", "kort", T("Deres runde er ferdig. Gjett på de andre lagenes viner når admin starter neste runde.", "Din runde er ferdig. Gjett på de andres viner når verten starter neste runde.")));
     return;
@@ -190,7 +200,7 @@ function visVenter(h) {
   intro.append(el("h2", "kort-tittel", VINER_PER() === 1 ? T("Vinen deres", "Vinen din") : T("Vinene deres", "Vinene dine")));
   intro.append(el("p", "hjelp", (VINER_PER() === 1 ? T("Registrer vinen dere har med.", "Registrer vinen du har med.") : T("Registrer de to vinene dere har med.", "Registrer de to vinene du har med.")) + " Fyll ut alle feltene og trykk «Lagre vin». Ingen andre ser " + (VINER_PER() === 1 ? "den" : "dem") + " før verten avslører. Du kan endre og lagre på nytt fram til runden starter."));
   h.append(intro);
-  ["A", "B"].slice(0, VINER_PER()).forEach(b => h.append(byggVinskjema(b, m.viner.find(v => v.bokstav === b) || {})));
+  ["A", "B", "C"].slice(0, VINER_PER()).forEach(b => h.append(byggVinskjema(b, m.viner.find(v => v.bokstav === b) || {})));
 }
 
 function byggVinskjema(bokstav, v) {
@@ -254,7 +264,7 @@ function visPresenterer(h, r) {
 // Gjett land, distrikt, drue, årgang og pris, og gi score 0–100.
 function visGjetting(h, r) {
   const intro = el("div", "kort");
-  intro.append(el("h2", "kort-tittel", r.lag + " presenterer"));
+  intro.append(el("h2", "kort-tittel", VERT() ? "Smak og gjett" : r.lag + " presenterer"));
   intro.append(el("p", "hjelp", T("Gjett så godt dere kan", "Gjett så godt du kan") + (MOD().score !== false ? ", og gi hver vin en score fra 0 til 100." : ".") + " Alt lagres automatisk. Poengene regnes ut først til slutt."));
   h.append(intro);
   r.viner.forEach(v => h.append(byggGjetteskjema(v, r.gjetninger[v.id] || {})));
@@ -288,14 +298,14 @@ function byggGjetteskjema(vin, g) {
 function visLukket(h, r) {
   const boks = el("div", "kort");
   boks.append(el("h2", "kort-tittel", "Gjettingen er lukket"));
-  boks.append(el("p", "", "Venter på at verten avslører " + T("vinene til ", "vinen til ") + r.lag + "."));
+  boks.append(el("p", "", VERT() ? "Venter på at verten avslører vinene." : "Venter på at verten avslører " + T("vinene til ", "vinen til ") + r.lag + "."));
   h.append(boks);
 }
 
 // Etter hver runde: bare fasit, ingen poeng.
 function visFasit(h, r) {
   const boks = el("div", "kort");
-  boks.append(el("h2", "kort-tittel", "Fasit: " + r.lag));
+  boks.append(el("h2", "kort-tittel", VERT() ? "Fasit" : "Fasit: " + r.lag));
   boks.append(el("p", "hjelp", "Poengene regnes ut og vises først til slutt."));
   h.append(boks);
   const gjetninger = r.gjetninger || {};
@@ -390,7 +400,7 @@ function visSidelinje() {
   data.lag.forEach(l => {
     const li = el("li", data.runde && data.runde.lag_id === l.id ? "pagar" : "");
     li.append(el("span", "rang-navn", l.navn));
-    li.append(el("span", "rang-meta", l.ferdig ? "Ferdig" : data.runde && data.runde.lag_id === l.id ? "Presenterer nå" : l.viner + " av " + VINER_PER() + (VINER_PER() === 1 ? " vin klar" : " viner klare")));
+    li.append(el("span", "rang-meta", VERT() ? "" : l.ferdig ? "Ferdig" : data.runde && data.runde.lag_id === l.id ? "Presenterer nå" : l.viner + " av " + VINER_PER() + (VINER_PER() === 1 ? " vin klar" : " viner klare")));
     ul.append(li);
   });
   boks.append(ul);

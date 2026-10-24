@@ -122,11 +122,13 @@ function vis() {
   if (!valgt) return visOversikt(rot);
 
   const k = data.kveld;
-  const mod = k.moduler || {};
-  MODUS_LAG = mod.lag !== false;
-  VINER_PER = mod.viner_per || 2;
-  const lag = data.lag;
-  const aktivt = lag.find(l => l.id === k.aktivt_lag);
+  const mod = normaliserModuler(k.moduler);
+  MODUS_LAG = mod.lag;
+  VINER_PER = mod.viner_per;
+  // Vertens viner ligger på et eget «lag» merket vert. Det er ikke en deltaker.
+  const vertLag = data.lag.find(l => l.vert);
+  const lag = data.lag.filter(l => !l.vert);
+  const aktivt = data.lag.find(l => l.id === k.aktivt_lag);
   const andre = aktivt ? lag.filter(l => l.id !== aktivt.id).length : 0;
 
   const tilbake = knapp("← Alle arrangementer", "lenkeknapp tilbake", () => velg(""));
@@ -153,6 +155,7 @@ function vis() {
   // Styringen virker bare på kvelden som er i gang. Ellers vises lagene og stillingen.
   if (!k.aktiv) {
     if (data.arkiv) rot.append(byggArkiv(k, data.arkiv));
+    if (mod.vinkilde === "vert" && !data.arkiv) rot.append(byggVertsviner(k, vertLag, null, false));
     if (lag.length) {
       const lagboks = el("section", "kort");
       lagboks.append(el("h2", "kort-tittel", L("Lagene", "Deltakerne")));
@@ -191,7 +194,8 @@ function vis() {
   rot.append(runde);
 
   // Loddtrekning om rekkefølgen
-  if (k.resultat_steg === 0) rot.append(byggLoddtrekning(k, lag));
+  if (mod.vinkilde === "vert") rot.append(byggVertsviner(k, vertLag, aktivt, true));
+  else if (k.resultat_steg === 0) rot.append(byggLoddtrekning(k, lag));
 
   // Lagene, i trukket rekkefølge hvis det er trukket
   const trukket = lesTrekning(k.samling_id) || [];
@@ -349,6 +353,8 @@ function visOversikt(rot) {
 const OPPSETT = [
   { nokkel: "lagkveld", navn: "Lagkveld", tittel: "Lagkveld", tema: "Jorda rundt", tid: "18:00",
     om: "Lag på to med én mobil. Hvert lag tar med to viner og presenterer dem. De andre gjetter land, distrikt, drue, årgang og pris, og gir score 0–100. Kåring med storskjerm til slutt." },
+  { nokkel: "smaksprove", navn: "Smaksprøve", tittel: "Smaksprøve", tema: "", tid: "19:00",
+    om: "Verten stiller med vinen (én eller flere). Alle gjetter på egen mobil og gir score 0–100. Fint for å prøve siden med gjester." },
   { nokkel: "blind", navn: "Klassisk blindsmaking", tittel: "Blindsmaking", tema: "Fritt valg", tid: "19:00",
     om: "Alle tar med én vin som serveres blindt i karaffel. Alle gjetter og gir poeng, og så avsløres flaskene." },
   { nokkel: "drue", navn: "Én drue, mange land", tittel: "Druekveld", tema: "Pinot Noir verden rundt", tid: "19:00",
@@ -369,65 +375,97 @@ const oppsettNavn = n => (OPPSETT.find(o => o.nokkel && o.nokkel === n) || {}).n
 
 // Byggeklossene hvert oppsett starter med. Kan endres per arrangement under «Detaljer».
 const ALLE_GJETT = [["land", "Land"], ["distrikt", "Distrikt"], ["drue", "Drue"], ["aargang", "Årgang"], ["pris", "Pris"]];
-const SOLO = { lag: false, viner_per: 1, tar_med: true, datoforslag: true, score: true, kaaring: true };
+// Hver for seg, hver tar med én vin. Poeng per felt (0 = gjettes ikke).
+const SOLO = { lagstr: 1, vinkilde: "deltakere", viner_per: 1, tar_med: true };
+const P = (land, distrikt, drue, aargang, pris) => ({ land, distrikt, drue, aargang, pris });
 const OPPSETT_MODULER = {
-  lagkveld: { lag: true, viner_per: 2, tar_med: false, datoforslag: true, score: true, kaaring: true, gjett: ["land", "distrikt", "drue", "aargang", "pris"] },
-  blind: Object.assign({}, SOLO, { gjett: ["land", "drue", "aargang"] }),
-  drue: Object.assign({}, SOLO, { gjett: ["land", "distrikt", "aargang", "pris"] }),
-  landkamp: Object.assign({}, SOLO, { gjett: ["land", "drue", "pris"] }),
-  vertikal: Object.assign({}, SOLO, { tar_med: false, gjett: ["aargang"] }),
-  budsjett: Object.assign({}, SOLO, { gjett: ["land", "drue", "pris"] }),
-  bobler: Object.assign({}, SOLO, { gjett: ["land", "drue", "pris"] }),
-  mat: Object.assign({}, SOLO, { gjett: ["land", "drue"] }),
-  "": Object.assign({}, SOLO, { gjett: ["land", "distrikt", "drue", "aargang", "pris"] })
+  lagkveld: { lagstr: 2, vinkilde: "deltakere", viner_per: 2, tar_med: false, poeng: P(2, 5, 2, 3, 3) },
+  smaksprove: { lagstr: 1, vinkilde: "vert", viner_per: 1, tar_med: false, poeng: P(2, 3, 3, 2, 2) },
+  blind: Object.assign({}, SOLO, { poeng: P(2, 0, 3, 2, 0) }),
+  drue: Object.assign({}, SOLO, { poeng: P(3, 4, 0, 2, 2) }),
+  landkamp: Object.assign({}, SOLO, { poeng: P(3, 0, 2, 0, 2) }),
+  vertikal: { lagstr: 1, vinkilde: "vert", viner_per: 1, tar_med: false, poeng: P(0, 0, 0, 5, 0) },
+  budsjett: Object.assign({}, SOLO, { poeng: P(2, 0, 2, 0, 4) }),
+  bobler: Object.assign({}, SOLO, { poeng: P(3, 0, 3, 0, 2) }),
+  mat: Object.assign({}, SOLO, { poeng: P(2, 0, 3, 0, 0) }),
+  "": Object.assign({}, SOLO, { poeng: P(2, 5, 2, 3, 3) })
 };
-OPPSETT.forEach(o => { o.moduler = OPPSETT_MODULER[o.nokkel]; });
+OPPSETT.forEach(o => { o.moduler = OPPSETT_MODULER[o.nokkel]; });   // normaliseres når de brukes (POENG_STANDARD er definert lenger ned)
 
-// Brytere for byggeklossene. endre(ny) kalles med en kopi hver gang noe endres.
-function byggModulvelger(m, endre) {
+// Byggeklossene for et arrangement. endre(ny) kalles med en kopi hver gang noe endres.
+// Score 0–100 og kåring er alltid med. Datoforslag følger «Dato avtales».
+const POENG_STANDARD = { land: 2, distrikt: 5, drue: 2, aargang: 3, pris: 3 };
+
+// Fyller ut og rydder byggeklossene, så eldre arrangementer og malene får samme form.
+function normaliserModuler(m0) {
+  const m = Object.assign({}, m0 || {});
+  m.lagstr = Number(m.lagstr || (m.lag === false ? 1 : 2));
+  m.lag = m.lagstr > 1;
+  m.vinkilde = m.vinkilde === "vert" ? "vert" : "deltakere";
+  m.viner_per = Number(m.viner_per || 1);
+  m.tar_med = m.vinkilde === "vert" ? false : m.tar_med !== false;
+  m.poeng = Object.assign({}, POENG_STANDARD, m.poeng || {});
+  // Eldre arrangementer hadde bare en liste over felt som gjettes.
+  if (!m0 || !m0.poeng) ALLE_GJETT.forEach(([f]) => { if (m.gjett && !m.gjett.includes(f)) m.poeng[f] = 0; });
+  if (!m.poeng.land) m.poeng.distrikt = 0;   // distrikt gir bare mening når landet gjettes
+  m.gjett = ALLE_GJETT.map(([f]) => f).filter(f => m.poeng[f] > 0);
+  m.score = true;
+  m.kaaring = true;
+  m.datoforslag = true;
+  return m;
+}
+
+function byggModulvelger(m0, endre) {
+  const m = normaliserModuler(m0);
+  const sett = endring => endre(normaliserModuler(Object.assign({}, m, endring)));
   const boks = el("fieldset", "moduler");
   boks.append(el("legend", "", "Byggeklosser"));
-  const bryter = (nokkel, tekst, hjelp) => {
+
+  const valg = (tekst, alternativer, verdi, ved) => {
+    const l = el("label", "modul-valg");
+    const s = el("select");
+    alternativer.forEach(([v, t]) => s.append(new Option(t, v)));
+    s.value = String(verdi);
+    s.addEventListener("change", () => ved(s.value));
+    l.append(document.createTextNode(tekst + " "), s);
+    return l;
+  };
+  boks.append(valg("Deltakere:", [[1, "Hver for seg, egen mobil"], [2, "Lag på 2"], [3, "Lag på 3"], [4, "Lag på 4"], [5, "Lag på 5"], [6, "Lag på 6"]],
+    m.lagstr, v => sett({ lagstr: Number(v) })));
+  boks.append(valg("Vinene:", [["vert", "Verten stiller med vinene"], ["d1", "Hver " + (m.lag ? "lag" : "deltaker") + " tar med 1 vin"],
+    ["d2", "Hver " + (m.lag ? "lag" : "deltaker") + " tar med 2 viner"], ["d3", "Hver " + (m.lag ? "lag" : "deltaker") + " tar med 3 viner"]],
+    m.vinkilde === "vert" ? "vert" : "d" + m.viner_per,
+    v => sett(v === "vert" ? { vinkilde: "vert" } : { vinkilde: "deltakere", viner_per: Number(v.slice(1)) })));
+
+  if (m.vinkilde !== "vert") {
     const l = el("label", "modul");
     const i = el("input");
     i.type = "checkbox";
-    i.checked = m[nokkel] !== false;
-    i.addEventListener("change", () => endre(Object.assign({}, m, { [nokkel]: i.checked })));
+    i.checked = m.tar_med;
+    i.addEventListener("change", () => sett({ tar_med: i.checked }));
     const t = el("span");
-    t.append(el("strong", "", tekst), el("small", "", hjelp));
+    t.append(el("strong", "", "Hva tar du med?"), el("small", "", "Påmeldte skriver hvilken vin de tar med, og alle ser listen."));
     l.append(i, t);
-    return l;
-  };
-  boks.append(
-    bryter("lag", "Lag på to", "Én mobil per lag. Av: hver deltaker for seg på egen mobil."),
-    bryter("tar_med", "Hva tar du med?", "Påmeldte skriver hvilken vin de tar med, og alle ser listen."),
-    bryter("datoforslag", "Datoforslag", "Uten fast dato kan folk foreslå datoer som passer."),
-    bryter("score", "Score 0–100", "Hver vin får score. Gir vinrangering og personlig vinlogg."),
-    bryter("kaaring", "Kåring", "Resultatene vises i trinn, med vinnere til slutt.")
-  );
-  const vp = el("label", "modul-valg");
-  const sel = el("select");
-  [[1, "1 vin"], [2, "2 viner"]].forEach(([v, t]) => sel.append(new Option(t, v)));
-  sel.value = String(m.viner_per || 1);
-  sel.addEventListener("change", () => endre(Object.assign({}, m, { viner_per: Number(sel.value) })));
-  vp.append(document.createTextNode("Viner per " + (m.lag !== false ? "lag" : "deltaker") + " "), sel);
-  boks.append(vp);
-  const gj = el("div", "modul-gjett");
-  gj.append(el("span", "", "Gjettes: "));
-  const valgt = m.gjett || ALLE_GJETT.map(g => g[0]);
-  ALLE_GJETT.forEach(([n, t]) => {
+    boks.append(l);
+  }
+
+  // Poengstrukturen: poeng per felt, 0 = gjettes ikke.
+  const p = el("div", "modul-poeng");
+  p.append(el("span", "modul-tittel", "Poeng per felt (0 = gjettes ikke)"));
+  const rad = el("div", "poeng-rad");
+  ALLE_GJETT.forEach(([f, navn]) => {
     const l = el("label", "");
     const i = el("input");
-    i.type = "checkbox";
-    i.checked = valgt.includes(n);
-    i.addEventListener("change", () => {
-      const ny = ALLE_GJETT.map(g => g[0]).filter(x => x === n ? i.checked : valgt.includes(x));
-      endre(Object.assign({}, m, { gjett: ny }));
-    });
-    l.append(i, document.createTextNode(" " + t));
-    gj.append(l);
+    Object.assign(i, { type: "number", min: 0, max: 10, step: 1, value: m.poeng[f] });
+    i.disabled = f === "distrikt" && !m.poeng.land;
+    i.addEventListener("change", () => sett({ poeng: Object.assign({}, m.poeng, { [f]: Math.max(0, Math.min(10, Number(i.value) || 0)) }) }));
+    l.append(el("span", "", navn), i);
+    rad.append(l);
   });
-  boks.append(gj);
+  p.append(rad);
+  const maks = ALLE_GJETT.reduce((s, [f]) => s + (m.poeng[f] || 0), 0);
+  p.append(el("small", "", "Maks " + maks + " poeng per vin. Distrikt gir delpoeng etter avstand, årgang og pris i tre trinn. Score 0–100 og kåring er alltid med."));
+  boks.append(p);
   return boks;
 }
 
@@ -478,7 +516,7 @@ function byggNyttArrangement() {
   f.addEventListener("submit", async e => {
     e.preventDefault();
     const d = { id: "", tittel: felt.tittel.value.trim(), dato: felt.dato.value, tid: felt.tid.value || "19:00",
-      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked, oppsett: valgtOppsett.nokkel, moduler: modNy };
+      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked, oppsett: valgtOppsett.nokkel, moduler: normaliserModuler(modNy) };
     if (!d.tittel) { melding("Gi arrangementet en tittel."); return; }
     if (!d.dato && !d.dato_avtales) { melding("Velg en dato, eller kryss av for at datoen avtales."); return; }
     lagre.disabled = true;
@@ -549,7 +587,7 @@ function byggDetaljer(k) {
   f.addEventListener("submit", async e => {
     e.preventDefault();
     const data_ = { id: k.samling_id, tittel: felt.tittel.value.trim(), dato: felt.dato.value, tid: felt.tid.value || "19:00",
-      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked, moduler: modD };
+      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked, moduler: normaliserModuler(modD) };
     if (!data_.dato && !data_.dato_avtales) { melding("Velg en dato, eller kryss av for at datoen avtales."); return; }
     lagre.disabled = true;
     try {
@@ -696,6 +734,77 @@ function byggLag(l, k, aktivt, lesemodus) {
   return boks;
 }
 
+// Når verten stiller med vinene: legg dem inn her, og start runden når gjestene er klare.
+// Alle vinene vises samtidig i én runde, og alle gjetter på alle.
+function byggVertsviner(k, vertLag, aktivt, iGang) {
+  const boks = el("section", "kort");
+  boks.append(el("h2", "kort-tittel", "Kveldens viner (verten stiller)"));
+  const viner = vertLag ? vertLag.viner : [];
+  boks.append(el("p", "hjelp", viner.length
+    ? "Gjestene ser bare «Vin A», «Vin B» … til du avslører. Rett en vin under «Se og rett»."
+    : "Legg inn vinen eller vinene gjestene skal smake. Bare du ser dem."));
+
+  viner.forEach(v => {
+    const d = el("details", "vertsvin");
+    d.open = apne.has("vv-" + v.id);
+    d.addEventListener("toggle", () => { d.open ? apne.add("vv-" + v.id) : apne.delete("vv-" + v.id); });
+    d.append(el("summary", "", "Vin " + v.bokstav + ": " + ([v.produsent, v.navn].filter(Boolean).join(" ") || "uten navn") +
+      (v.avslort ? " (avslørt)" : "")));
+    d.append(byggVinRetting(v));
+    if (!iGang || !aktivt) {
+      const r = el("div", "samling-knapper");
+      r.append(knapp("Slett vinen", "lenkeknapp", () => handling("lk_admin_slett_vin", { p_vin: v.id }, "Slette vin " + v.bokstav + "?", "Slett")));
+      d.append(r);
+    }
+    boks.append(d);
+  });
+
+  // Ny vin
+  if (!aktivt) {
+    const ny = el("details", "vertsvin");
+    ny.open = apne.has("vv-ny") || !viner.length;
+    ny.addEventListener("toggle", () => { ny.open ? apne.add("vv-ny") : apne.delete("vv-ny"); });
+    ny.append(el("summary", "", "+ Legg til " + (viner.length ? "en vin til" : "vin")));
+    const f = el("form", "vin-retting");
+    const rutenett = el("div", "vin-felt");
+    const inputs = {};
+    VINFELT.forEach(([felt, navn]) => {
+      const d = el("div", "felt");
+      const l = el("label", "", navn);
+      l.htmlFor = "nv-" + felt;
+      const i = el("input");
+      Object.assign(i, { id: "nv-" + felt, type: "text" });
+      inputs[felt] = i;
+      d.append(l, i);
+      rutenett.append(d);
+    });
+    f.append(rutenett);
+    const lagre = el("button", "knapp lys-knapp", "Legg til vinen");
+    lagre.type = "submit";
+    f.append(lagre);
+    f.addEventListener("submit", async e => {
+      e.preventDefault();
+      const d = {};
+      Object.entries(inputs).forEach(([n, i]) => { d[n] = i.value.trim(); });
+      if (!d.navn) { melding("Vinen må ha et navn."); return; }
+      document.activeElement.blur();
+      const b = await handling("lk_admin_vertsvin", { p_samling: k.samling_id, p_data: d });
+      if (b) melding("Vin " + b + " er lagt til.");
+    });
+    ny.append(f);
+    boks.append(ny);
+  }
+
+  if (iGang && !aktivt && vertLag && viner.length && k.resultat_steg === 0 && !vertLag.ferdig) {
+    const r = el("div", "samling-knapper");
+    r.append(knapp("Start runden: gjestene gjetter nå", "knapp", () => handling("lk_admin_start_lag", { p_lag: vertLag.id })));
+    boks.append(r);
+  } else if (!iGang && viner.length) {
+    boks.append(el("p", "hjelp", "Start kvelden over når gjestene skal melde seg inn. Da kan du starte runden."));
+  }
+  return boks;
+}
+
 function byggVinRetting(v) {
   const f = el("form", "vin-retting");
   f.append(el("h4", "pameldte-tittel", "Vin " + v.bokstav + (v.avslort ? " (avslørt)" : "")));
@@ -752,16 +861,24 @@ function forhandsvisning() {
   return d;
 }
 
-// Samme regler som lk_poeng og lk_distriktpoeng i supabase/lagkveld.sql. Endres de der, må de endres her.
-const POENGREGLER = [
-  ["Land", "2", "Riktig land."],
-  ["Distrikt", "0–5", "5 for riktig distrikt. Ellers etter avstand: under 100 km 3, under 300 km 2, under 600 km 1. Feil land gir 0."],
-  ["Drue", "2", "Riktig drue. Ved blanding gjelder den dominerende druen. Druer med to navn (Syrah / Shiraz) gir treff på begge."],
-  ["Årgang", "0–3", "Riktig 3, ett år unna 2, to år unna 1."],
-  ["Pris", "0–3", "Innenfor 10 % 3, innenfor 25 % 2, innenfor 50 % 1."]
-];
+// Poengreglene for kvelden, med vektene fra byggeklossene. Samme utregning som lk_poeng i supabase/iterasjon2.sql.
+const tredeler = w => [w, Math.round(w * 2 / 3), Math.round(w / 3)];
+function poengregler(p) {
+  const [a1, a2, a3] = tredeler(p.aargang), [p1, p2, p3] = tredeler(p.pris);
+  const d = [p.distrikt, Math.round(p.distrikt * 3 / 5), Math.round(p.distrikt * 2 / 5), Math.round(p.distrikt / 5)];
+  return [
+    ["Land", p.land, "Riktig land."],
+    ["Distrikt", p.distrikt, "Riktig distrikt " + d[0] + ". Ellers etter avstand: under 100 km " + d[1] + ", under 300 km " + d[2] + ", under 600 km " + d[3] + ". Feil land gir 0."],
+    ["Drue", p.drue, "Riktig drue. Ved blanding gjelder den dominerende druen. Druer med to navn (Syrah / Shiraz) gir treff på begge."],
+    ["Årgang", p.aargang, "Riktig " + a1 + ", ett år unna " + a2 + ", to år unna " + a3 + "."],
+    ["Pris", p.pris, "Innenfor 10 % " + p1 + ", innenfor 25 % " + p2 + ", innenfor 50 % " + p3 + "."]
+  ].filter(r => r[1] > 0);
+}
 
 function byggPoengregler(lag) {
+  const mod = normaliserModuler(data.kveld.moduler);
+  const regler = poengregler(mod.poeng);
+  const maksVin = regler.reduce((s, r) => s + r[1], 0);
   const d = el("details", "kort poengregler");
   d.open = apne.has("regler");
   d.addEventListener("toggle", () => { d.open ? apne.add("regler") : apne.delete("regler"); });
@@ -770,25 +887,16 @@ function byggPoengregler(lag) {
   const hode = el("tr");
   ["Felt", "Poeng", "Slik regnes det"].forEach(t => hode.append(el("th", "", t)));
   tabell.append(hode);
-  POENGREGLER.forEach(r => {
+  regler.forEach(r => {
     const tr = el("tr");
-    r.forEach(t => tr.append(el("td", "", t)));
+    tr.append(el("td", "", r[0]), el("td", "", String(r[1])), el("td", "", r[2]));
     tabell.append(tr);
   });
   const sum = el("tr", "sum");
-  ["Maks per vin", "15", "Fulltreff er full pott på ett felt. Brukes ved likt poeng."].forEach(t => sum.append(el("td", "", t)));
+  ["Maks per vin", String(maksVin), "Fulltreff er full pott på ett felt. Brukes ved likt poeng."].forEach(t => sum.append(el("td", "", t)));
   tabell.append(sum);
   d.append(tabell);
-
-  const viner = lag.reduce((n, l) => n + l.viner.length, 0);
-  const maks = lag.map(l => 15 * (viner - l.viner.length));
-  const tekst = lag.length > 1
-    ? "Med " + lag.length + " lag og " + viner + " viner kan et lag få maks " +
-      (Math.min(...maks) === Math.max(...maks) ? maks[0] : Math.min(...maks) + "–" + Math.max(...maks)) + " poeng (ikke egne viner)."
-    : "Maks for kvelden: 15 poeng × antall viner fra de andre lagene.";
-  d.append(el("p", "hjelp", tekst));
-  d.append(el("p", "hjelp", "Bare avslørte viner teller. Scoren 0–100 gir ikke lagpoeng, den brukes til vinrangeringen. " +
-    "Distrikter som ikke står i listen gir bare poeng ved helt riktig navn, så legg dem til under før runden avsløres."));
+  d.append(el("p", "hjelp", "Endre poengene under «Detaljer» → «Byggeklosser». Bare avslørte viner teller. Scoren 0–100 gir ikke poeng, den brukes til vinrangeringen og den personlige vinloggen."));
   return d;
 }
 

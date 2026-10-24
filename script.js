@@ -17,6 +17,8 @@ let SMAKINGER = [];
 // Vinloggen hentes fra databasen. Lagkvelder legges inn fra styringssiden når kvelden er ferdig.
 // Score er snittet fra lagene, 0–100.
 let VINLOGG = [];
+// Arkiverte kvelder (vinnere, beste vin osv.), vist over vinene fra hver kveld.
+let KVELDER = [];
 
 // =====================================================================
 
@@ -150,7 +152,9 @@ function startNedtelling() {
       : "Neste dato er ikke satt ennå. Kom tilbake snart.";
     ["nt-d", "nt-t", "nt-m", "nt-s"].forEach(id => $(id).textContent = "–");
     $("nt-tall").hidden = false;
-    $("stripe").hidden = true;
+    // Banneret i toppen: også når datoen ikke er satt, så folk kan melde seg på.
+    $("stripe").hidden = !udatert;
+    if (udatert) $("stripe-tekst").textContent = "Neste smaking: " + udatert.tittel + ". Datoen avtales, meld deg på!";
     visPamelding(udatert || null);
     return;
   }
@@ -413,6 +417,13 @@ function visLogg() {
       el("span", "meta", [kortDato(s.dato), s.sted, s.tema, g.viner.length + (g.viner.length === 1 ? " vin" : " viner"),
         scorer.length ? "snitt " + Math.round(scorer.reduce((a, b) => a + b, 0) / scorer.length) : ""].filter(Boolean).join(" · "))
     );
+    // Kvelden selv, fra arkivet: vinnerne, beste vin og hvor mange som var med.
+    const k = KVELDER.find(x => x.samling_id === s.samling_id);
+    if (k) {
+      hode.append(el("span", "kveld-vinnere", "👑 " + k.vinnere + (k.vinner_medlemmer ? " (" + k.vinner_medlemmer + ")" : "")));
+      hode.append(el("span", "meta", [k.beste_vin && "Beste vin: " + k.beste_vin + (k.beste_snitt != null ? " (" + String(k.beste_snitt).replace(".", ",") + ")" : ""),
+        k.deltakere && k.deltakere + " kamerater", k.lag && k.lag + " lag", k.snittpris && "snittpris " + k.snittpris + " kr"].filter(Boolean).join(" · ")));
+    }
     liste.appendChild(hode);
     g.viner.forEach(v => liste.appendChild(vinRad(v, false)));
   });
@@ -420,7 +431,8 @@ function visLogg() {
 
 async function lastVinlogg() {
   try {
-    const rader = await kall("hent_vinlogg", {});
+    const [rader, kvelder] = await Promise.all([kall("hent_vinlogg", {}), kall("hent_kvelder", {}).catch(() => [])]);
+    KVELDER = kvelder || [];
     VINLOGG = rader.map(r => Object.assign({}, r, { type: typeNokkel(r.type), poeng: r.score == null ? null : Number(r.score) }));
   } catch (e) { VINLOGG = []; }
   byggFilterKnapper();

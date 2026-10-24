@@ -280,3 +280,4 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 .danser.ny { animation: dukk-opp .7s cubic-bezier(.2, .9, .3, 1.4) var(--inn, 0s) both; }
 @keyframes dukk-opp { from { opacity: 0; transform: translateY(24px) scale(.2); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .danser.ny { animation: none; } }
+.logg li.samling-hode .kveld-vinnere { display: block; margin-top: .3rem; font-weight: 700; }

@@ -59,7 +59,7 @@ html[data-tema="kamerater"] .hero {
 html[data-tema="kamerater"] .hero-tekst { grid-area: tekst; }
 html[data-tema="kamerater"] .dansegulv { grid-area: dans; margin-top: 0; }
 html[data-tema="kamerater"] .hero-kamerater { display: block; grid-area: bilde; justify-self: center; align-self: end; width: 100%; max-width: 360px; }
-html[data-tema="kamerater"] .hero-kamerater svg { display: block; width: 100%; height: auto; }
+html[data-tema="kamerater"] .hero-kamerater svg { display: block; width: 100%; height: auto; max-height: 30vh; margin: 0 auto; }
 html[data-tema="kamerater"] .nedtelling { grid-area: nedtelling; }
 html[data-tema="kamerater"] .ingress { color: var(--k-dempet); }
 

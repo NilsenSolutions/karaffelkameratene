@@ -134,6 +134,7 @@ function vis() {
 
   // Styringen virker bare på kvelden som er i gang. Ellers vises lagene og stillingen.
   if (!k.aktiv) {
+    if (data.arkiv) rot.append(byggArkiv(k, data.arkiv));
     if (lag.length) {
       const lagboks = el("section", "kort");
       lagboks.append(el("h2", "kort-tittel", "Lagene"));
@@ -199,13 +200,15 @@ function vis() {
   if (k.resultat_steg > 0) rad.append(knapp("Skjul resultatene", "lenkeknapp", () => handling("lk_admin_resultat", { p_steg: 0 })));
   res.append(rad);
   res.append(forhandsvisning());
+  res.append(el("p", "hjelp", "Når vinnerne kåres (trinn 3), lagres kvelden i arkivet og vinene i vinloggen av seg selv."));
   const vl = el("div", "samling-knapper");
-  vl.append(knapp(k.i_vinlogg ? "Oppdater vinloggen" : "Legg vinene i vinloggen", "knapp lys-knapp", async () => {
-    const n = await handling("lk_admin_til_vinlogg", {}, "Legge kveldens viner med snittscore i vinloggen på forsiden?", "Legg inn");
-    if (n !== false) melding(n + " viner ligger nå i vinloggen.");
+  vl.append(knapp(k.i_vinlogg ? "Lagre kvelden i vinloggen på nytt" : "Lagre kvelden i vinloggen nå", "knapp lys-knapp", async () => {
+    const n = await handling("lk_admin_til_vinlogg", {}, "Lagre kvelden i arkivet og vinene med snittscore i vinloggen på forsiden?", "Lagre");
+    if (n !== false) melding("Kvelden er lagret, " + n + " viner i vinloggen.");
   }));
   res.append(vl);
   rot.append(res);
+  if (data.arkiv) rot.append(byggArkiv(k, data.arkiv));
 
   // Poengregler, distrikt og verktøy
   rot.append(byggPoengregler(lag));
@@ -292,27 +295,70 @@ function byggLoddtrekning(k, lag) {
 
 // Oversikten: velg hvilket arrangement du vil styre.
 function visOversikt(rot) {
+  // Arkivet: kvelder der vinnerne er kåret, og passerte samlinger som ikke er i gang.
+  const iDag = new Date().toISOString().slice(0, 10);
+  const iArkiv = s => !s.aktiv && (s.arkivert || (!s.dato_avtales && s.dato < iDag));
+  const kommende = data.filter(s => !iArkiv(s));
+  const arkiv = data.filter(iArkiv).reverse();   // nyeste først
+
   const boks = el("section", "kort");
   boks.append(el("h1", "", "Velg arrangement"));
   boks.append(el("p", "hjelp", "Åpne arrangementet du vil styre. Bare ett kan ha lagkveld i gang om gangen."));
-  if (!data.length) boks.append(el("p", "", "Ingen arrangementer de siste 60 dagene eller fremover. Legg inn et på vertssiden først."));
-  data.forEach(s => {
-    const rad = el("div", "samling-rad");
-    const topp = el("div", "samling-topp");
-    const t = el("div");
-    t.append(el("h3", "samling-navn", s.tittel));
-    t.append(el("p", "rang-meta", [datoTekst(s.dato), s.tid ? String(s.tid).slice(0, 5) : "", s.sted,
-      s.pameldte + " påmeldt", s.lagkveld ? s.lag + " lag" : ""].filter(Boolean).join(" · ")));
-    topp.append(t);
-    const status = s.aktiv ? "I gang nå" : s.resultat_steg === 3 ? "Ferdig" : s.lagkveld ? "Startet tidligere" : "Ikke startet";
-    topp.append(el("span", "status-merke" + (s.aktiv ? " pa" : s.resultat_steg === 3 ? " klar" : ""), status));
-    rad.append(topp);
-    const knapper = el("div", "samling-knapper");
-    knapper.append(knapp("Åpne", s.aktiv ? "knapp" : "knapp lys-knapp", () => velg(s.id)));
-    rad.append(knapper);
-    boks.append(rad);
-  });
+  if (!kommende.length) boks.append(el("p", "", "Ingen kommende arrangementer. Legg inn et på vertssiden først."));
+  kommende.forEach(s => boks.append(samlingRad(s)));
   rot.append(boks);
+
+  if (arkiv.length) {
+    const ark = el("section", "kort");
+    ark.append(el("h2", "kort-tittel", "Arkiv"));
+    ark.append(el("p", "hjelp", "Kvelder som er ferdige. Åpne en for å se lagene, rangeringen og vinene."));
+    arkiv.forEach(s => ark.append(samlingRad(s)));
+    rot.append(ark);
+  }
+}
+
+function samlingRad(s) {
+  const rad = el("div", "samling-rad");
+  const topp = el("div", "samling-topp");
+  const t = el("div");
+  t.append(el("h3", "samling-navn", s.tittel));
+  t.append(el("p", "rang-meta", [s.dato_avtales ? "Dato avtales" : datoTekst(s.dato), !s.dato_avtales && s.tid ? String(s.tid).slice(0, 5) : "", s.sted,
+    s.pameldte + " påmeldt", s.lagkveld ? s.lag + " lag" : ""].filter(Boolean).join(" · ")));
+  if (s.vinnere) t.append(el("p", "rang-meta", "👑 " + s.vinnere));
+  topp.append(t);
+  const status = s.aktiv ? "I gang nå" : s.arkivert || s.resultat_steg === 3 ? "Ferdig" : s.lagkveld ? "Startet tidligere" : "Ikke startet";
+  topp.append(el("span", "status-merke" + (s.aktiv ? " pa" : s.arkivert || s.resultat_steg === 3 ? " klar" : ""), status));
+  rad.append(topp);
+  const knapper = el("div", "samling-knapper");
+  knapper.append(knapp("Åpne", s.aktiv ? "knapp" : "knapp lys-knapp", () => velg(s.id)));
+  rad.append(knapper);
+  return rad;
+}
+
+// Arkivkortet for en ferdig kveld: vinnere, beste vin og rangeringen slik den ble lagret ved kåringen.
+function byggArkiv(k, a) {
+  const boks = el("section", "kort");
+  boks.append(el("h2", "kort-tittel", "Arkivert kveld"));
+  boks.append(el("p", "vinner-linje", "👑 " + (a.vinnere || "–") + (a.vinner_medlemmer ? " (" + a.vinner_medlemmer + ")" : "")));
+  boks.append(el("p", "kveld-info", [a.beste_vin && "Beste vin: " + a.beste_vin + (a.beste_snitt != null ? " (" + komma(a.beste_snitt) + ")" : ""),
+    a.deltakere + " kamerater", a.lag + " lag", a.viner + " viner", a.snittpris != null && "snittpris " + a.snittpris + " kr"].filter(Boolean).join(" · ")));
+  const ol = el("ol", "toppliste");
+  (a.rangering || []).forEach((x, i) => {
+    const li = el("li");
+    li.append(el("span", "plass", String(i + 1)), el("span", "rang-navn", x.lag + (x.medlemmer ? " (" + x.medlemmer + ")" : "")),
+      el("span", "rang-meta", x.treff + " fulltreff"), el("span", "rang-poeng", String(x.poeng)));
+    ol.append(li);
+  });
+  boks.append(ol);
+  boks.append(el("p", "hjelp", "Lagret " + new Date(a.lagret).toLocaleString("nb-NO", { dateStyle: "medium", timeStyle: "short" }) +
+    ". Kvelden og vinene står i vinloggen på forsiden."));
+  const rad = el("div", "samling-knapper");
+  rad.append(knapp("Lagre kvelden i vinloggen på nytt", "knapp lys-knapp", async () => {
+    const n = await handling("lk_admin_arkiver", { p_samling: k.samling_id }, "Oppdatere arkivet og vinloggen for «" + k.tittel + "» med det som står nå?", "Oppdater");
+    if (n !== false) melding("Arkivet er oppdatert, " + n + " viner i vinloggen.");
+  }));
+  boks.append(rad);
+  return boks;
 }
 
 function byggLag(l, k, aktivt, lesemodus) {

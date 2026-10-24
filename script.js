@@ -150,7 +150,8 @@ function startNedtelling() {
       ? ["Dato avtales", udatert.sted, udatert.tema].filter(Boolean).join(" · ") + "."
       : "Neste dato er ikke satt ennå. Kom tilbake snart.";
     ["nt-d", "nt-t", "nt-m", "nt-s"].forEach(id => $(id).textContent = "–");
-    $("nt-tall").hidden = false;
+    // Uten dato er det ingenting å telle ned til, så tallene skjules.
+    $("nt-tall").hidden = Boolean(udatert);
     // Banneret i toppen: også når datoen ikke er satt, så folk kan melde seg på.
     $("stripe").hidden = !udatert;
     if (udatert) $("stripe-tekst").textContent = "Neste smaking: " + udatert.tittel + ". Datoen avtales, meld deg på!";
@@ -691,7 +692,13 @@ async function lastResultat() {
   try { RESULTAT = await kall("hent_kveldens_resultat", {}); } catch (e) { return; }   // behold det vi har ved feil
   const har = Boolean(RESULTAT && RESULTAT.lag && RESULTAT.lag.length);
   $("dansegulv").classList.toggle("har-hemmelighet", har);
-  if (har) startHjemmeHopp(); else stoppHjemmeHopp();
+  // Kameratene hopper bare til CONFIG.dansTilKl morgenen etter kvelden, som dansegulvet.
+  let iKveld = false;
+  if (har) {
+    const [aar, mnd, dag] = String(RESULTAT.dato).split("-").map(Number);
+    iKveld = new Date() < new Date(aar, mnd - 1, dag + 1, CONFIG.dansTilKl, 0, 0);
+  }
+  if (iKveld) startHjemmeHopp(); else stoppHjemmeHopp();
 }
 
 // Én person per navn i lagene. Delt førsteplass ved likt poeng og like mange fulltreff.

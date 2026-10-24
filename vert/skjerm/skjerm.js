@@ -2,6 +2,7 @@
 // Henter samme offentlige data som mobilene (lk_hent uten lag), så ingenting vises før det er sluppet.
 
 let sistNokkel = "";
+let sistSteg = 0;   // kåringen avslutter kvelden, men storskjermen skal bli stående på den
 
 async function hent() {
   let data;
@@ -10,6 +11,8 @@ async function hent() {
   } catch (err) {
     return;   // prøver igjen ved neste runde
   }
+  if (!data && sistSteg >= 3) return;
+  sistSteg = data && data.kveld ? data.kveld.resultat_steg : 0;
   // Tegn bare på nytt når noe har endret seg, så animasjonene ikke starter om igjen.
   const nokkel = JSON.stringify([data && data.kveld, data && data.vinrangering, data && data.lagpoeng]);
   if (nokkel === sistNokkel) return;

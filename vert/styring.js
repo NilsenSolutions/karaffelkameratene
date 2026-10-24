@@ -213,12 +213,12 @@ function vis() {
   if (ferdige < lag.length) res.append(el("p", "varsel", ferdige + " av " + lag.length + L(" lag", " deltakere") + " er ferdige."));
   const rad = el("div", "samling-knapper");
   if (mod.kaaring !== false) [[1, "1. Vis vinrangering og beste vin"], [2, L("2. Vis poengene (uten lagnavn)", "2. Vis poengene (uten navn)")], [3, L("3. Kår vinnerne og vis lagnavnene", "3. Kår vinnerne og vis navnene")]].forEach(([s, t]) => {
-    rad.append(knapp(t, s === k.resultat_steg + 1 ? "knapp" : "knapp lys-knapp", () => handling("lk_admin_resultat", { p_steg: s }), s > k.resultat_steg + 1));
+    rad.append(knapp(t, s === k.resultat_steg + 1 ? "knapp" : "knapp lys-knapp", () => handling("lk_admin_resultat", { p_steg: s }, s === 3 ? "Kåre vinnerne og avslutte arrangementet? Kvelden lagres i arkivet og vinloggen." : "", "Kår vinnerne"), s > k.resultat_steg + 1));
   });
   if (k.resultat_steg > 0) rad.append(knapp("Skjul resultatene", "lenkeknapp", () => handling("lk_admin_resultat", { p_steg: 0 })));
   res.append(rad);
   res.append(forhandsvisning());
-  res.append(el("p", "hjelp", "Når vinnerne kåres (trinn 3), lagres kvelden i arkivet og vinene i vinloggen av seg selv."));
+  res.append(el("p", "hjelp", "Når vinnerne kåres (trinn 3), avsluttes arrangementet: kvelden lagres i arkivet, vinene i vinloggen, og forsiden går videre til neste smaking. Mobilene og storskjermen viser resultatene noen timer til."));
   const vl = el("div", "samling-knapper");
   vl.append(knapp(k.i_vinlogg ? "Lagre kvelden i vinloggen på nytt" : "Lagre kvelden i vinloggen nå", "knapp lys-knapp", async () => {
     const n = await handling("lk_admin_til_vinlogg", {}, "Lagre kvelden i arkivet og vinene med snittscore i vinloggen på forsiden?", "Lagre");

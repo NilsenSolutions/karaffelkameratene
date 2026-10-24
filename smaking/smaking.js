@@ -56,7 +56,7 @@ async function hent() {
   visSidelinje();
   // Bygg hoveddelen på nytt bare når noe som endrer den har skjedd, så det man skriver ikke forsvinner.
   const nokkel = JSON.stringify(data && {
-    k: data.kveld.fase, s: data.kveld.resultat_steg, l: data.mitt_lag && data.mitt_lag.id, f: data.mitt_lag && data.mitt_lag.ferdig,
+    k: data.kveld.fase, s: data.kveld.resultat_steg, a: data.kveld.avsluttet, l: data.mitt_lag && data.mitt_lag.id, f: data.mitt_lag && data.mitt_lag.ferdig,
     r: data.runde && [data.runde.lag_id, data.runde.viner.map(v => v.avslort)], vr: data.vinrangering && data.vinrangering.length,
     lp: data.lagpoeng && data.lagpoeng.length
   });
@@ -94,6 +94,17 @@ function visHoved() {
   const h = $("hoved");
   h.textContent = "";
   if (!data) return;
+  // Kåringen avslutter kvelden: takk, og resultatene står igjen en stund.
+  if (data.kveld.avsluttet) {
+    const takk = el("div", "kort takk");
+    takk.append(el("h2", "kort-tittel", "Takk for i kveld! 🍷"));
+    takk.append(el("p", "", "Kvelden er avsluttet. Resultatene står under, og vinene ligger i vinloggen."));
+    const lenke = el("a", "knapp", "Til forsiden");
+    lenke.href = "../";
+    takk.append(lenke);
+    h.append(takk);
+    return visResultater(h);
+  }
   if (!data.mitt_lag) return visBliMed(h);
   if (data.kveld.resultat_steg >= 1) return visResultater(h);
   const r = data.runde;
@@ -332,7 +343,7 @@ function visResultater(h) {
   if (steg >= 3 && data.lagpoeng && data.lagpoeng.length) {
     const topp = data.lagpoeng[0];
     const vinnere = data.lagpoeng.filter(l => l.poeng === topp.poeng && l.treff === topp.treff);
-    const meg = vinnere.some(l => l.lag === data.mitt_lag.navn);
+    const meg = vinnere.some(l => l.lag === (data.mitt_lag || {}).navn);
     h.append(el("p", "vinner", "🏆 Kveldens vinkjennere: " + listeTekst(vinnere.map(l => l.lag + (l.medlemmer && !SOLO() ? " (" + l.medlemmer + ")" : ""))) + (meg ? ". Gratulerer!" : "")));
   }
   if (steg >= 2 && data.lagpoeng) {
@@ -343,7 +354,7 @@ function visResultater(h) {
     if (!navnSynlig) boks.append(el("p", "hjelp", T("Lagnavnene avsløres når vinnerne kåres.", "Navnene avsløres når vinnerne kåres.")));
     const ol = el("ol", "toppliste");
     data.lagpoeng.forEach((l, i) => {
-      const li = el("li", navnSynlig && l.lag === data.mitt_lag.navn ? "meg" : "");
+      const li = el("li", navnSynlig && l.lag === (data.mitt_lag || {}).navn ? "meg" : "");
       li.append(el("span", "plass", String(i + 1)), el("span", "rang-navn", navnSynlig ? l.lag : T("Lag ?", "?")), el("span", "rang-meta", l.treff + " fulltreff"), el("span", "rang-poeng", String(l.poeng)));
       ol.append(li);
     });

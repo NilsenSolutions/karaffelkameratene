@@ -70,16 +70,14 @@ function kveldens(naa) {
 // Samlinger der datoen ikke er bestemt ennå. De får ingen nedtelling eller påmelding.
 const uavklarte = () => SMAKINGER.filter(s => s.dato_avtales);
 
-// Status for påmelding: apen eller stengt. Det er ingen plassgrense.
-// Påmeldingen er åpen til verten starter kvelden (eller starttidspunktet er passert). Da er det «Gjør deg klar» som gjelder.
-function pameldingStatus(s, naa) {
-  if (s.lagkveld_aktiv || avsluttet(s)) return "stengt";
-  return !s.dato_avtales && naa >= startTid(s) ? "stengt" : "apen";
+// Påmeldingen er åpen helt til verten starter kvelden. Da gjelder «Gjør deg klar» i stedet. Det står aldri «stengt».
+function pameldingStatus(s) {
+  return s.lagkveld_aktiv || avsluttet(s) ? "klar" : "apen";
 }
 
 const STATUS_TEKST = {
   apen: "Påmeldingen er åpen",
-  stengt: "Påmeldingen er stengt"
+  klar: "Kvelden er åpnet: gjør deg klar"
 };
 
 // ---------------- Nedtelling og stripe ----------------
@@ -201,16 +199,16 @@ function visPamelding(s) {
   });
 
   const status = visPlasser(s);
-  $("skjema").hidden = status === "stengt" || !$("bekreftelse").hidden;
+  $("skjema").hidden = status === "klar" || !$("bekreftelse").hidden;
   visSenere(s);
 }
 
 // Status og antall påmeldte. Returnerer status.
 function visPlasser(s) {
-  const status = pameldingStatus(s, new Date());
+  const status = pameldingStatus(s);
   const badge = $("pm-status-badge");
   badge.dataset.status = status;
-  badge.textContent = kveldenErApen(s) ? "Kvelden er åpnet: gjør deg klar" : STATUS_TEKST[status];
+  badge.textContent = STATUS_TEKST[status];
 
   $("plasser-blokk").hidden = false;
   $("plasser-tekst").textContent = s.paameldte > 0 ? s.paameldte + " påmeldt." : "Ingen påmeldt ennå.";

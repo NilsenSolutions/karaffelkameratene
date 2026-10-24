@@ -178,7 +178,10 @@ function visPamelding(s) {
   pameldingSamling = s;
   oppdaterDansegulv(new Date());
   // Uten fast dato kan folk skrive hvilke datoer som passer.
-  $("datoer-felt").hidden = !(s && s.dato_avtales);
+  // Byggeklossene bestemmer hva skjemaet spør om.
+  const m = (s && s.moduler) || {};
+  $("datoer-felt").hidden = !(s && s.dato_avtales && m.datoforslag !== false);
+  $("vin-felt").hidden = m.tar_med === false;
 
   if (!s) {
     badge.dataset.status = "stengt";
@@ -231,7 +234,7 @@ async function visPameldte(s) {
     figur.setAttribute("aria-hidden", "true");
     figur.append(kameratSvg(i));
     const tekst = el("span");
-    tekst.append(el("strong", "", r.navn), document.createTextNode(r.vin ? " tar med " + r.vin : ""));
+    tekst.append(el("strong", "", r.navn), document.createTextNode(r.vin && (s.moduler || {}).tar_med !== false ? " tar med " + r.vin : ""));
     li.append(figur, tekst);
     liste.append(li);
   });
@@ -287,7 +290,7 @@ async function sendSkjema(e) {
   const knapp = $("send-knapp");
   knapp.disabled = true;
   try {
-    const svar = await kall("meld_pa", { p_samling: s.id, p_navn: navn, p_vin: $("vin").value.trim(),
+    const svar = await kall("meld_pa", { p_samling: s.id, p_navn: navn, p_vin: (s.moduler || {}).tar_med === false ? "" : $("vin").value.trim(),
       p_datoer: s.dato_avtales ? $("datoer").value.trim() : "" });
     visBekreftelse(svar, navn);
     // Oppdater antall påmeldte og status uten å skjule bekreftelsen.
@@ -386,17 +389,24 @@ function byggMarquee() {
 
 // ---------------- Vinlogg ----------------
 
-const tilstand = { filter: "alle", sorter: "dato" };
+const tilstand = { filter: "alle", sorter: "dato", person: "" };
+// Personlige scorer: { vinlogg_id: { personnøkkel: score } } og visningsnavn per nøkkel.
+let PERSONSCORE = {};
+let PERSONER = {};
+const personNokkel = n => String(n || "").trim().toLowerCase();
 
 function visLogg() {
   const liste = $("logg");
   liste.textContent = "";
 
+  // Med en person valgt: bare vinene personen ga score, og personens score i stedet for snittet.
+  const p = tilstand.person;
   const rader = VINLOGG
     .filter(v => tilstand.filter === "alle" || v.type === tilstand.filter)
-    .slice()
+    .filter(v => !p || (PERSONSCORE[v.id] && PERSONSCORE[v.id][p] != null))
+    .map(v => p ? Object.assign({}, v, { poeng: PERSONSCORE[v.id][p] }) : v)
     .sort((a, b) => tilstand.sorter === "poeng"
-      ? b.poeng - a.poeng
+      ? (b.poeng == null ? -1 : b.poeng) - (a.poeng == null ? -1 : a.poeng)
       : b.dato.localeCompare(a.dato));
 
   if (rader.length === 0) {
@@ -446,14 +456,36 @@ function visKvelder() {
 
 async function lastVinlogg() {
   try {
-    const [rader, kvelder] = await Promise.all([kall("hent_vinlogg", {}), kall("hent_kvelder", {}).catch(() => [])]);
+    const [rader, kvelder, scorer] = await Promise.all([kall("hent_vinlogg", {}), kall("hent_kvelder", {}).catch(() => []),
+      kall("hent_personscore", {}).catch(() => [])]);
     KVELDER = kvelder || [];
     VINLOGG = rader.map(r => Object.assign({}, r, { type: typeNokkel(r.type), poeng: r.score == null ? null : Number(r.score) }));
+    PERSONSCORE = {};
+    PERSONER = {};
+    (scorer || []).forEach(s => {
+      const n = personNokkel(s.person);
+      if (!n) return;
+      if (!PERSONER[n]) PERSONER[n] = String(s.person).trim();
+      (PERSONSCORE[s.vinlogg_id] = PERSONSCORE[s.vinlogg_id] || {})[n] = Number(s.score);
+    });
   } catch (e) { VINLOGG = []; }
+  byggPersonvalg();
   byggFilterKnapper();
   visLogg();
   visKvelder();
   byggMarquee();
+}
+
+// «Vis score fra»: alle som har gitt score, alfabetisk.
+function byggPersonvalg() {
+  const sel = $("person");
+  const navn = Object.keys(PERSONER).sort((a, b) => PERSONER[a].localeCompare(PERSONER[b], "nb"));
+  $("person-valg").hidden = !navn.length;
+  sel.textContent = "";
+  sel.append(new Option("Alle (snitt)", ""));
+  navn.forEach(n => sel.append(new Option(PERSONER[n], n)));
+  if (!PERSONER[tilstand.person]) tilstand.person = "";
+  sel.value = tilstand.person;
 }
 
 function byggFilterKnapper() {
@@ -513,7 +545,9 @@ async function kall(navn, args) {
 // Når lagkvelden for en samling er i gang, kan lagene registrere seg og vinene sine.
 // Vises også etter starttidspunktet, når samlingen ikke lenger er «neste».
 function visLagkveld() {
-  $("lagkveld-knapp").hidden = !SMAKINGER.some(x => x.lagkveld_aktiv && !avsluttet(x));
+  const s = SMAKINGER.find(x => x.lagkveld_aktiv && !avsluttet(x));
+  $("lagkveld-knapp").hidden = !s;
+  if (s) $("lagkveld-knapp").textContent = (s.moduler || {}).lag === false ? "Bli med og registrer vin" : "Registrer lag og vin";
 }
 
 async function lastSmakinger() {
@@ -864,6 +898,7 @@ lyttEtterSkal();
 byggFilter();
 lastVinlogg();
 $("skjema").addEventListener("submit", sendSkjema);
+$("person").addEventListener("change", e => { tilstand.person = e.target.value; visLogg(); });
 $("kalender-knapp").addEventListener("click", lastNedKalender);
 $("en-til").addEventListener("click", () => {
   $("bekreftelse").hidden = true;

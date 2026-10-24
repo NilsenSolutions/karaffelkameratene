@@ -19,6 +19,13 @@ const TOKEN_NOKKEL = "karaffel-lag-token";
 const ANNET = "__annet";
 const OPPDATER_MS = 3000;
 
+// Kveldens byggeklosser (fra vertssiden). Uten lag er hver deltaker et «lag» på én.
+const MOD = () => (data && data.kveld && data.kveld.moduler) || {};
+const SOLO = () => MOD().lag === false;
+const T = (medLag, uten) => (SOLO() ? uten : medLag);
+const GJETTES = f => (MOD().gjett || ["land", "distrikt", "drue", "aargang", "pris"]).includes(f);
+const VINER_PER = () => MOD().viner_per || 2;
+
 let data = null;              // fra lk_hent
 let distrikter = {};          // { land: [distrikt, …] }
 let visningsnokkel = "";
@@ -62,13 +69,13 @@ async function hent() {
 function visInfo() {
   if (!data) {
     $("tittel").textContent = "Vinsmaking";
-    $("info").textContent = "Ingen lagkveld er i gang akkurat nå. Siden oppdaterer seg selv.";
+    $("info").textContent = "Ingen smakekveld er i gang akkurat nå. Siden oppdaterer seg selv.";
     $("lagkort").textContent = "";
     return;
   }
   const k = data.kveld;
   $("tittel").textContent = k.tittel || "Vinsmaking";
-  $("info").textContent = [datoTekst(k.dato), k.sted, data.lag.length + (data.lag.length === 1 ? " lag" : " lag")].filter(Boolean).join(" · ");
+  $("info").textContent = [datoTekst(k.dato), k.sted, data.lag.length + T(" lag", data.lag.length === 1 ? " deltaker" : " deltakere")].filter(Boolean).join(" · ");
 
   const kort = $("lagkort");
   kort.textContent = "";
@@ -76,7 +83,7 @@ function visInfo() {
     const m = data.mitt_lag;
     const boks = el("div", "kort lag-hode");
     boks.append(el("p", "lag-navn", m.navn));
-    boks.append(el("p", "rang-meta", [m.medlem1, m.medlem2].filter(Boolean).join(" og ") + " · lagkode " + m.kode));
+    boks.append(el("p", "rang-meta", (SOLO() ? "Din kode " : [m.medlem1, m.medlem2].filter(Boolean).join(" og ") + " · lagkode ") + m.kode));
     kort.append(boks);
   }
 }
@@ -100,8 +107,8 @@ function visHoved() {
 // Opprett lag eller logg inn med lagkode.
 function visBliMed(h) {
   const ny = el("form", "kort");
-  ny.append(el("h2", "kort-tittel", "Lag dere"));
-  ny.append(el("p", "hjelp", "Dere er to på hvert lag og bruker én mobil sammen."));
+  ny.append(el("h2", "kort-tittel", T("Lag dere", "Bli med")));
+  ny.append(el("p", "hjelp", T("Dere er to på hvert lag og bruker én mobil sammen.", "Skriv navnet ditt. Du bruker din egen mobil.")));
   const felt = (id, tekst, plass) => {
     const f = el("div", "felt");
     const l = el("label", "", tekst);
@@ -112,10 +119,10 @@ function visBliMed(h) {
     ny.append(f);
     return i;
   };
-  const navn = felt("lagnavn", "Lagnavn", "For eksempel Tanninene");
-  const m1 = felt("medlem1", "Navn 1", "");
-  const m2 = felt("medlem2", "Navn 2", "");
-  const knapp = el("button", "knapp", "Opprett laget");
+  const navn = SOLO() ? null : felt("lagnavn", "Lagnavn", "For eksempel Tanninene");
+  const m1 = felt("medlem1", T("Navn 1", "Navnet ditt"), "");
+  const m2 = SOLO() ? null : felt("medlem2", "Navn 2", "");
+  const knapp = el("button", "knapp", T("Opprett laget", "Bli med"));
   knapp.type = "submit";
   const feil = el("p", "feil");
   ny.append(knapp, feil);
@@ -124,7 +131,7 @@ function visBliMed(h) {
     feil.textContent = "";
     knapp.disabled = true;
     try {
-      const svar = await rpc("lk_opprett_lag", { p_navn: navn.value, p_medlem1: m1.value, p_medlem2: m2.value });
+      const svar = await rpc("lk_opprett_lag", { p_navn: navn ? navn.value : m1.value, p_medlem1: m1.value, p_medlem2: m2 ? m2.value : "" });
       skrivToken(svar.token);
       visningsnokkel = "";
       await hent();
@@ -136,15 +143,15 @@ function visBliMed(h) {
   h.append(ny);
 
   const inn = el("form", "kort");
-  inn.append(el("h2", "kort-tittel", "Har dere allerede et lag?"));
-  inn.append(el("p", "hjelp", "Skriv inn lagkoden på fire siffer. Den står øverst på mobilen der laget ble opprettet."));
+  inn.append(el("h2", "kort-tittel", T("Har dere allerede et lag?", "Har du meldt deg inn fra før?")));
+  inn.append(el("p", "hjelp", T("Skriv inn lagkoden på fire siffer. Den står øverst på mobilen der laget ble opprettet.", "Skriv inn koden din på fire siffer. Den står øverst på mobilen du meldte deg inn på.")));
   const kf = el("div", "felt");
-  const kl = el("label", "", "Lagkode");
+  const kl = el("label", "", T("Lagkode", "Kode"));
   kl.htmlFor = "lagkode";
   const kode = el("input");
   Object.assign(kode, { id: "lagkode", type: "text", inputMode: "numeric", maxLength: 4, autocomplete: "off" });
   kf.append(kl, kode);
-  const kk = el("button", "knapp lys-knapp", "Fortsett som laget");
+  const kk = el("button", "knapp lys-knapp", T("Fortsett som laget", "Fortsett"));
   kk.type = "submit";
   const kfeil = el("p", "feil");
   inn.append(kf, kk, kfeil);
@@ -165,19 +172,19 @@ function visBliMed(h) {
 function visVenter(h) {
   const m = data.mitt_lag;
   if (m.ferdig) {
-    h.append(el("p", "kort", "Deres runde er ferdig. Gjett på de andre lagenes viner når admin starter neste runde."));
+    h.append(el("p", "kort", T("Deres runde er ferdig. Gjett på de andre lagenes viner når admin starter neste runde.", "Din runde er ferdig. Gjett på de andres viner når verten starter neste runde.")));
     return;
   }
   const intro = el("div", "kort");
-  intro.append(el("h2", "kort-tittel", "Vinene deres"));
-  intro.append(el("p", "hjelp", "Registrer de to vinene dere har med. Fyll ut alle feltene og trykk «Lagre vin». Ingen andre ser dem før admin avslører dem. Dere kan endre og lagre på nytt fram til runden deres starter. Fortell om vinene muntlig når det er deres tur."));
+  intro.append(el("h2", "kort-tittel", VINER_PER() === 1 ? T("Vinen deres", "Vinen din") : T("Vinene deres", "Vinene dine")));
+  intro.append(el("p", "hjelp", (VINER_PER() === 1 ? T("Registrer vinen dere har med.", "Registrer vinen du har med.") : T("Registrer de to vinene dere har med.", "Registrer de to vinene du har med.")) + " Fyll ut alle feltene og trykk «Lagre vin». Ingen andre ser " + (VINER_PER() === 1 ? "den" : "dem") + " før verten avslører. Du kan endre og lagre på nytt fram til runden starter."));
   h.append(intro);
-  ["A", "B"].forEach(b => h.append(byggVinskjema(b, m.viner.find(v => v.bokstav === b) || {})));
+  ["A", "B"].slice(0, VINER_PER()).forEach(b => h.append(byggVinskjema(b, m.viner.find(v => v.bokstav === b) || {})));
 }
 
 function byggVinskjema(bokstav, v) {
   const boks = el("fieldset", "kort vinskjema");
-  boks.append(el("legend", "", "Vin " + bokstav));
+  boks.append(el("legend", "", VINER_PER() === 1 ? "Vinen" : "Vin " + bokstav));
   const verdier = { navn: v.navn || "", produsent: v.produsent || "", land: v.land || "", distrikt: v.distrikt || "",
     drue: v.drue || "", aargang: v.aargang || "", type: v.type || "", pris: v.pris || "" };
   const status = el("p", "status lagre-status");
@@ -188,12 +195,7 @@ function byggVinskjema(bokstav, v) {
 
   boks.append(tekstfelt("v" + bokstav + "-navn", "Vinens navn", verdier, "navn", lagre));
   boks.append(tekstfelt("v" + bokstav + "-produsent", "Produsent", verdier, "produsent", lagre));
-  boks.append(...landOgDistrikt("v" + bokstav, verdier, lagre));
-  boks.append(druefelt("v" + bokstav + "-drue", verdier, lagre));
-  const rad = el("div", "to-felt");
-  rad.append(tekstfelt("v" + bokstav + "-aargang", "Årgang", verdier, "aargang", lagre, { numerisk: true, plass: "2019" }));
-  rad.append(tekstfelt("v" + bokstav + "-pris", "Pris (kr)", verdier, "pris", lagre, { numerisk: true, plass: "299" }));
-  boks.append(rad);
+  boks.append(...gjettefelt("v" + bokstav, verdier, lagre));
   boks.append(velgfelt("v" + bokstav + "-type", "Type", TYPER, verdier, "type", lagre));
 
   const knapp = el("button", "knapp", "Lagre vin " + bokstav);
@@ -201,9 +203,9 @@ function byggVinskjema(bokstav, v) {
   const feil = el("p", "feil");
   feil.setAttribute("role", "alert");
   knapp.addEventListener("click", async () => {
-    const mangler = PAKREVD.filter(([felt]) => !String(verdier[felt] || "").trim()).map(([, navn]) => navn);
+    const mangler = PAKREVD.filter(([felt]) => ["navn", "produsent", "type"].includes(felt) || GJETTES(felt)).filter(([felt]) => !String(verdier[felt] || "").trim()).map(([, navn]) => navn);
     if (mangler.length) {
-      feil.textContent = "Fyll ut " + listeTekst(mangler.map(n => n.toLowerCase())) + " før dere lagrer.";
+      feil.textContent = "Fyll ut " + listeTekst(mangler.map(n => n.toLowerCase())) + T(" før dere lagrer.", " før du lagrer.");
       return;
     }
     feil.textContent = "";
@@ -230,10 +232,10 @@ const PAKREVD = [["navn", "Vinens navn"], ["produsent", "Produsent"], ["land", "
 // Runden der laget selv presenterer.
 function visPresenterer(h, r) {
   const boks = el("div", "kort presenterer");
-  boks.append(el("h2", "kort-tittel", "Dere presenterer!"));
+  boks.append(el("h2", "kort-tittel", T("Dere presenterer!", "Du presenterer!")));
   boks.append(el("p", "", data.kveld.fase === "avslort"
-    ? "Vinene deres er avslørt. Fortell gjerne om dem."
-    : "De andre lagene gjetter på vinene deres nå. Dere kan ikke gjette på egne viner."));
+    ? T("Vinene deres er avslørt. Fortell gjerne om dem.", "Vinen din er avslørt. Fortell gjerne om den.")
+    : T("De andre lagene gjetter på vinene deres nå. Dere kan ikke gjette på egne viner.", "De andre gjetter på vinen din nå. Du kan ikke gjette på din egen.")));
   h.append(boks);
   data.mitt_lag.viner.forEach(v => h.append(fasitkort(v, "Vin " + v.bokstav)));
 }
@@ -242,7 +244,7 @@ function visPresenterer(h, r) {
 function visGjetting(h, r) {
   const intro = el("div", "kort");
   intro.append(el("h2", "kort-tittel", r.lag + " presenterer"));
-  intro.append(el("p", "hjelp", "Gjett så godt dere kan, og gi hver vin en score fra 0 til 100. Alt lagres automatisk. Poengene regnes ut først til slutt."));
+  intro.append(el("p", "hjelp", T("Gjett så godt dere kan", "Gjett så godt du kan") + (MOD().score !== false ? ", og gi hver vin en score fra 0 til 100." : ".") + " Alt lagres automatisk. Poengene regnes ut først til slutt."));
   h.append(intro);
   r.viner.forEach(v => h.append(byggGjetteskjema(v, r.gjetninger[v.id] || {})));
 }
@@ -266,13 +268,8 @@ function byggGjetteskjema(vin, g) {
     }
   });
   const id = "g" + vin.bokstav;
-  boks.append(...landOgDistrikt(id, verdier, lagre));
-  boks.append(druefelt(id + "-drue", verdier, lagre));
-  const rad = el("div", "to-felt");
-  rad.append(tekstfelt(id + "-aargang", "Årgang", verdier, "aargang", lagre, { numerisk: true, plass: "2019" }));
-  rad.append(tekstfelt(id + "-pris", "Pris (kr)", verdier, "pris", lagre, { numerisk: true, plass: "299" }));
-  boks.append(rad);
-  boks.append(scorefelt(id + "-score", verdier, lagre));
+  boks.append(...gjettefelt(id, verdier, lagre));
+  if (MOD().score !== false) boks.append(scorefelt(id + "-score", verdier, lagre));
   boks.append(status);
   return boks;
 }
@@ -280,7 +277,7 @@ function byggGjetteskjema(vin, g) {
 function visLukket(h, r) {
   const boks = el("div", "kort");
   boks.append(el("h2", "kort-tittel", "Gjettingen er lukket"));
-  boks.append(el("p", "", "Venter på at admin avslører vinene til " + r.lag + "."));
+  boks.append(el("p", "", "Venter på at verten avslører " + T("vinene til ", "vinen til ") + r.lag + "."));
   h.append(boks);
 }
 
@@ -310,10 +307,11 @@ function fasitkort(v, overskrift, gjett) {
   }
   const tabell = el("table", "fasit-tabell");
   const hode = el("tr");
-  ["", "Fasit", "Dere gjettet"].forEach(t => hode.append(el("th", "", t)));
+  ["", "Fasit", T("Dere gjettet", "Du gjettet")].forEach(t => hode.append(el("th", "", t)));
   tabell.append(hode);
-  rader.forEach(([n, t, felt]) => {
+  rader.forEach(([n, t, felt0]) => {
     if (!t) return;
+    const felt = felt0 && GJETTES(felt0) ? felt0 : null;   // felt som ikke gjettes denne kvelden
     const svar = felt ? (felt === "pris" ? kr(gjett.pris) : gjett[felt]) : "";
     const tr = el("tr");
     tr.append(el("th", "", n), el("td", "", t), el("td", "gjettet", felt ? svar || "–" : ""));
@@ -335,18 +333,18 @@ function visResultater(h) {
     const topp = data.lagpoeng[0];
     const vinnere = data.lagpoeng.filter(l => l.poeng === topp.poeng && l.treff === topp.treff);
     const meg = vinnere.some(l => l.lag === data.mitt_lag.navn);
-    h.append(el("p", "vinner", "🏆 Kveldens vinkjennere: " + listeTekst(vinnere.map(l => l.lag + (l.medlemmer ? " (" + l.medlemmer + ")" : ""))) + (meg ? ". Gratulerer!" : "")));
+    h.append(el("p", "vinner", "🏆 Kveldens vinkjennere: " + listeTekst(vinnere.map(l => l.lag + (l.medlemmer && !SOLO() ? " (" + l.medlemmer + ")" : ""))) + (meg ? ". Gratulerer!" : "")));
   }
   if (steg >= 2 && data.lagpoeng) {
     // Steg 2 viser bare poengene. Lagnavnene kommer først med kåringen i steg 3.
     const navnSynlig = steg >= 3;
     const boks = el("section", "kort");
-    boks.append(el("h2", "kort-tittel", navnSynlig ? "Poeng per lag" : "Poengene – hvem er hvem?"));
-    if (!navnSynlig) boks.append(el("p", "hjelp", "Lagnavnene avsløres når vinnerne kåres."));
+    boks.append(el("h2", "kort-tittel", navnSynlig ? T("Poeng per lag", "Poeng per deltaker") : "Poengene – hvem er hvem?"));
+    if (!navnSynlig) boks.append(el("p", "hjelp", T("Lagnavnene avsløres når vinnerne kåres.", "Navnene avsløres når vinnerne kåres.")));
     const ol = el("ol", "toppliste");
     data.lagpoeng.forEach((l, i) => {
       const li = el("li", navnSynlig && l.lag === data.mitt_lag.navn ? "meg" : "");
-      li.append(el("span", "plass", String(i + 1)), el("span", "rang-navn", navnSynlig ? l.lag : "Lag ?"), el("span", "rang-meta", l.treff + " fulltreff"), el("span", "rang-poeng", String(l.poeng)));
+      li.append(el("span", "plass", String(i + 1)), el("span", "rang-navn", navnSynlig ? l.lag : T("Lag ?", "?")), el("span", "rang-meta", l.treff + " fulltreff"), el("span", "rang-poeng", String(l.poeng)));
       ol.append(li);
     });
     boks.append(ol);
@@ -376,12 +374,12 @@ function visSidelinje() {
   s.textContent = "";
   if (!data || !data.mitt_lag || data.kveld.resultat_steg >= 1) return;
   const boks = el("section", "kort");
-  boks.append(el("h2", "kort-tittel", "Lagene"));
+  boks.append(el("h2", "kort-tittel", T("Lagene", "Deltakerne")));
   const ul = el("ul", "lagliste");
   data.lag.forEach(l => {
     const li = el("li", data.runde && data.runde.lag_id === l.id ? "pagar" : "");
     li.append(el("span", "rang-navn", l.navn));
-    li.append(el("span", "rang-meta", l.ferdig ? "Ferdig" : data.runde && data.runde.lag_id === l.id ? "Presenterer nå" : l.viner + " av 2 viner klare"));
+    li.append(el("span", "rang-meta", l.ferdig ? "Ferdig" : data.runde && data.runde.lag_id === l.id ? "Presenterer nå" : l.viner + " av " + VINER_PER() + (VINER_PER() === 1 ? " vin klar" : " viner klare")));
     ul.append(li);
   });
   boks.append(ul);
@@ -391,7 +389,7 @@ function visSidelinje() {
   if (tidligere.length) {
     const t = el("details", "kort tidligere");
     t.append(el("summary", "", "Tidligere avslørte viner (" + tidligere.length + ")"));
-    tidligere.forEach(v => t.append(fasitkort(v, v.lag + " · Vin " + v.bokstav)));
+    tidligere.forEach(v => t.append(fasitkort(v, v.lag + (VINER_PER() === 1 ? "" : " · Vin " + v.bokstav))));
     s.append(t);
   }
 }
@@ -524,6 +522,22 @@ function druefelt(id, verdier, lagre) {
   annet.addEventListener("input", () => { verdier.drue = annet.value.trim(); lagre(); });
   f.append(l, s, annet);
   return f;
+}
+
+// Feltene som gjettes denne kvelden, styrt av byggeklossene. Brukes både når vinen registreres og når den gjettes.
+function gjettefelt(id, verdier, lagre) {
+  const ut = [];
+  if (GJETTES("land")) {
+    const [land, distrikt] = landOgDistrikt(id, verdier, lagre);
+    ut.push(land);
+    if (GJETTES("distrikt")) ut.push(distrikt);
+  }
+  if (GJETTES("drue")) ut.push(druefelt(id + "-drue", verdier, lagre));
+  const rad = el("div", "to-felt");
+  if (GJETTES("aargang")) rad.append(tekstfelt(id + "-aargang", "Årgang", verdier, "aargang", lagre, { numerisk: true, plass: "2019" }));
+  if (GJETTES("pris")) rad.append(tekstfelt(id + "-pris", "Pris (kr)", verdier, "pris", lagre, { numerisk: true, plass: "299" }));
+  if (rad.children.length) ut.push(rad);
+  return ut;
 }
 
 function scorefelt(id, verdier, lagre) {

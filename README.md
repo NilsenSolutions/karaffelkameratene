@@ -118,3 +118,19 @@ Lag på to med én mobil. Lagene bruker `/smaking/`, vertskapet styrer fra `/ver
 Poeng per vin (maks 15): land 2, drue 2, årgang 3/2/1 (0, 1 og 2 år unna), pris 3/2/1 (innenfor 10, 25 og 50 %), distrikt 5 for samme, ellers etter avstand: under 100 km 3, under 300 km 2, under 600 km 1. Feil land gir 0 for distrikt. Distriktene med koordinater ligger i `supabase/distrikter.sql`, og admin kan legge til flere.
 
 Databasen: `supabase/lagkveld.sql` og `supabase/distrikter.sql` (kjøres etter `oppsett.sql`).
+
+## Modulære arrangementer
+
+Hvert arrangement har byggeklosser som slås av og på under «Detaljer» på `/vert/` (eller ved «Nytt arrangement», der de ferdige oppsettene fyller dem inn):
+
+| Byggekloss | Gjør |
+|---|---|
+| Lag på to | Lag med én mobil. Av: hver deltaker for seg (et «lag» på én bak kulissene). |
+| Viner per lag/deltaker | 1 eller 2 |
+| Hva tar du med? | Feltet i påmeldingen og listen over hvem som tar med hva |
+| Datoforslag | Folk kan foreslå datoer når datoen ikke er satt |
+| Score 0–100 | Score på hver vin, gir vinrangering og personlig vinlogg |
+| Kåring | Resultatene i trinn med vinnere til slutt |
+| Gjettes | Hvilke av land, distrikt, drue, årgang og pris som gjettes (og må fylles ut når vinen registreres) |
+
+Ved kåringen arkiveres kvelden, og hver persons score lagres i vinloggen (på lagkvelder får begge på laget lagets score). På forsiden kan vinloggen vises med scoren til én person. SQL: `supabase/moduler.sql`.

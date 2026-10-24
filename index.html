@@ -29,8 +29,8 @@
       if (t === "kamerater") document.documentElement.setAttribute("data-tema", t);
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=20261024n">
-  <link rel="stylesheet" href="tema.css?v=20261024n">
+  <link rel="stylesheet" href="style.css?v=20261024o">
+  <link rel="stylesheet" href="tema.css?v=20261024o">
 </head>
 <body>
   <a class="skip" href="#pamelding">Hopp til påmelding</a>
@@ -176,7 +176,7 @@
               <input id="navn" name="navn" type="text" autocomplete="name" required>
               <p class="feil" id="feil-navn" role="alert"></p>
             </div>
-            <div class="felt">
+            <div class="felt" id="vin-felt">
               <label for="vin">Hva tar du med? <span class="valgfri">Valgfritt</span></label>
               <input id="vin" name="vin" type="text" placeholder="For eksempel en nebbiolo">
             </div>
@@ -213,6 +213,9 @@
             <button type="button" data-sorter="dato" aria-pressed="true">Nyeste først</button>
             <button type="button" data-sorter="poeng" aria-pressed="false">Høyest poeng</button>
           </div>
+          <label class="person-valg" id="person-valg" hidden>Vis score fra
+            <select id="person"><option value="">Alle (snitt)</option></select>
+          </label>
         </div>
 
         <ul class="logg" id="logg" aria-live="polite"></ul>
@@ -239,7 +242,7 @@
     <a class="bunn-vert" href="vert/">For vertskapet</a>
   </footer>
 
-  <script src="kveld/oppsett.js?v=20261024n"></script>
-  <script src="script.js?v=20261024n"></script>
+  <script src="kveld/oppsett.js?v=20261024o"></script>
+  <script src="script.js?v=20261024o"></script>
 </body>
 </html>

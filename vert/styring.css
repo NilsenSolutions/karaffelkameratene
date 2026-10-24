@@ -55,3 +55,15 @@
 .mal.valgt { border-color: #2f5ba8; background: #eaf0fb; }
 .mal-om { margin-bottom: 1rem; }
 .avkryss-linje { display: flex; align-items: center; gap: .4rem; grid-column: 1 / -1; font-weight: 600; }
+
+/* Byggeklosser */
+.moduler { grid-column: 1 / -1; border: 2px solid rgba(0, 0, 0, .1); border-radius: 12px; padding: .75rem 1rem 1rem; margin: .25rem 0; display: grid; gap: .5rem; }
+.moduler legend { font-weight: 700; padding: 0 .35rem; }
+.modul { display: grid; grid-template-columns: auto 1fr; gap: .1rem .6rem; align-items: start; cursor: pointer; }
+.modul input { margin-top: .3rem; width: 1.1rem; height: 1.1rem; }
+.modul span { display: grid; }
+.modul small { opacity: .7; font-size: .85rem; }
+.modul-valg { font-weight: 600; }
+.modul-valg select { margin-left: .4rem; font: inherit; padding: .2rem .4rem; }
+.modul-gjett { display: flex; flex-wrap: wrap; gap: .35rem 1rem; align-items: center; font-weight: 600; }
+.modul-gjett label { font-weight: 400; display: inline-flex; align-items: center; gap: .25rem; cursor: pointer; }

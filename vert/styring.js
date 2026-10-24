@@ -13,6 +13,11 @@ let data = null;
 let timer = null;
 const apne = new Set();   // åpne redigeringsfelt, så de ikke lukkes ved oppdatering
 
+// Kveldens byggeklosser styrer ordbruken: lag på to, eller hver deltaker for seg.
+let MODUS_LAG = true;
+let VINER_PER = 2;
+const L = (medLag, uten) => (MODUS_LAG ? medLag : uten);
+
 function melding(tekst) {
   const m = $("melding");
   m.textContent = tekst || "";
@@ -117,6 +122,9 @@ function vis() {
   if (!valgt) return visOversikt(rot);
 
   const k = data.kveld;
+  const mod = k.moduler || {};
+  MODUS_LAG = mod.lag !== false;
+  VINER_PER = mod.viner_per || 2;
   const lag = data.lag;
   const aktivt = lag.find(l => l.id === k.aktivt_lag);
   const andre = aktivt ? lag.filter(l => l.id !== aktivt.id).length : 0;
@@ -127,16 +135,16 @@ function vis() {
   // Topp
   const topp = el("section", "kort");
   topp.append(el("h1", "", k.tittel || "Lagkveld"));
-  topp.append(el("p", "kveld-info", [k.dato_avtales ? "Dato avtales" : datoTekst(k.dato), k.sted, lag.length + " lag",
-    k.aktiv ? FASE_TEKST[k.fase] : "Lagkvelden er ikke i gang", k.aktiv ? STEG_TEKST[k.resultat_steg] : ""].filter(Boolean).join(" · ")));
+  topp.append(el("p", "kveld-info", [k.dato_avtales ? "Dato avtales" : datoTekst(k.dato), k.sted, lag.length + L(" lag", lag.length === 1 ? " deltaker" : " deltakere"),
+    k.aktiv ? FASE_TEKST[k.fase] : "Kvelden er ikke i gang", k.aktiv ? STEG_TEKST[k.resultat_steg] : ""].filter(Boolean).join(" · ")));
   if (k.aktiv) {
-    topp.append(el("p", "hjelp", "Lagene bruker karaffelkameratene.no/smaking/ på mobilen."));
+    topp.append(el("p", "hjelp", L("Lagene", "Deltakerne") + " bruker karaffelkameratene.no/smaking/ på mobilen."));
   } else {
     topp.append(el("p", "hjelp", data.annen_aktiv
       ? "«" + data.annen_aktiv.tittel + "» er i gang nå. Starter du her, avsluttes den (data beholdes)."
-      : "Når du starter lagkvelden, kan lagene melde seg inn på karaffelkameratene.no/smaking/."));
-    topp.append(knapp(lag.length ? "Start lagkvelden igjen" : "Start lagkveld her", "knapp", () => handling("lk_admin_aktiver", { p_samling: k.samling_id },
-      data.annen_aktiv ? "Avslutte «" + data.annen_aktiv.tittel + "» og starte lagkvelden for «" + k.tittel + "»?" : "", "Start")));
+      : "Når du starter kvelden, kan " + L("lagene", "deltakerne") + " melde seg inn på karaffelkameratene.no/smaking/."));
+    topp.append(knapp(lag.length ? "Start kvelden igjen" : "Start kvelden her", "knapp", () => handling("lk_admin_aktiver", { p_samling: k.samling_id },
+      data.annen_aktiv ? "Avslutte «" + data.annen_aktiv.tittel + "» og starte kvelden for «" + k.tittel + "»?" : "", "Start")));
   }
   rot.append(topp);
   rot.append(byggDetaljer(k));
@@ -147,7 +155,7 @@ function vis() {
     if (data.arkiv) rot.append(byggArkiv(k, data.arkiv));
     if (lag.length) {
       const lagboks = el("section", "kort");
-      lagboks.append(el("h2", "kort-tittel", "Lagene"));
+      lagboks.append(el("h2", "kort-tittel", L("Lagene", "Deltakerne")));
       lag.forEach(l => lagboks.append(byggLag(l, k, null, true)));
       rot.append(lagboks);
       const res = el("section", "kort");
@@ -165,7 +173,7 @@ function vis() {
     const ul = el("ul", "status-liste");
     aktivt.viner.forEach(v => {
       const li = el("li");
-      li.append(el("strong", "", "Vin " + v.bokstav), document.createTextNode(" · " + v.gjetninger + " av " + andre + " lag har gjettet · " + v.scoret + " har gitt score"));
+      li.append(el("strong", "", "Vin " + v.bokstav), document.createTextNode(" · " + v.gjetninger + " av " + andre + L(" lag", " deltakere") + " har gjettet · " + v.scoret + " har gitt score"));
       ul.append(li);
     });
     runde.append(ul);
@@ -178,7 +186,7 @@ function vis() {
     if (k.fase === "avslort") rad.append(knapp("Ferdig, til neste lag", "knapp", () => handling("lk_admin_neste")));
     runde.append(rad);
   } else if (k.resultat_steg === 0) {
-    runde.append(el("p", "hjelp", "Start runden for et lag i listen under."));
+    runde.append(el("p", "hjelp", L("Start runden for et lag i listen under.", "Start runden for en deltaker i listen under.")));
   }
   rot.append(runde);
 
@@ -189,22 +197,22 @@ function vis() {
   const trukket = lesTrekning(k.samling_id) || [];
   const plass = l => { const i = trukket.indexOf(l.id); return i < 0 ? 999 : i; };
   const lagboks = el("section", "kort");
-  lagboks.append(el("h2", "kort-tittel", "Lagene"));
-  if (!lag.length) lagboks.append(el("p", "hjelp", "Ingen lag har meldt seg inn ennå."));
+  lagboks.append(el("h2", "kort-tittel", L("Lagene", "Deltakerne")));
+  if (!lag.length) lagboks.append(el("p", "hjelp", L("Ingen lag har meldt seg inn ennå.", "Ingen deltakere har meldt seg inn ennå.")));
   lag.slice().sort((a, b) => plass(a) - plass(b)).forEach(l => lagboks.append(byggLag(l, k, aktivt)));
   rot.append(lagboks);
 
   // Resultater
   const res = el("section", "kort");
   res.append(el("h2", "kort-tittel", "Resultater"));
-  res.append(el("p", "hjelp", "Vises på alle mobilene, ett trinn om gangen. Gjør dette når alle lagene er ferdige."));
+  res.append(el("p", "hjelp", "Vises på alle mobilene, ett trinn om gangen. Gjør dette når alle er ferdige."));
   const skjermLenke = el("a", "knapp lys-knapp", "Åpne storskjerm ↗");
   Object.assign(skjermLenke, { href: "skjerm/", target: "_blank", rel: "noopener" });
   res.append(el("p", "hjelp", "Storskjermen følger trinnene du velger her. Dra vinduet til den utvidede skjermen og trykk F for fullskjerm."), skjermLenke);
   const ferdige = lag.filter(l => l.ferdig).length;
-  if (ferdige < lag.length) res.append(el("p", "varsel", ferdige + " av " + lag.length + " lag er ferdige."));
+  if (ferdige < lag.length) res.append(el("p", "varsel", ferdige + " av " + lag.length + L(" lag", " deltakere") + " er ferdige."));
   const rad = el("div", "samling-knapper");
-  [[1, "1. Vis vinrangering og beste vin"], [2, "2. Vis poengene (uten lagnavn)"], [3, "3. Kår vinnerne og vis lagnavnene"]].forEach(([s, t]) => {
+  if (mod.kaaring !== false) [[1, "1. Vis vinrangering og beste vin"], [2, L("2. Vis poengene (uten lagnavn)", "2. Vis poengene (uten navn)")], [3, L("3. Kår vinnerne og vis lagnavnene", "3. Kår vinnerne og vis navnene")]].forEach(([s, t]) => {
     rad.append(knapp(t, s === k.resultat_steg + 1 ? "knapp" : "knapp lys-knapp", () => handling("lk_admin_resultat", { p_steg: s }), s > k.resultat_steg + 1));
   });
   if (k.resultat_steg > 0) rad.append(knapp("Skjul resultatene", "lenkeknapp", () => handling("lk_admin_resultat", { p_steg: 0 })));
@@ -226,10 +234,10 @@ function vis() {
   const verk = el("section", "kort");
   verk.append(el("h2", "kort-tittel", "Verktøy"));
   const vr = el("div", "samling-knapper");
-  vr.append(knapp("Nullstill lagkvelden", "lenkeknapp", () => handling("lk_admin_nullstill", {},
-    "Slette alle lag, viner og gjetninger for denne kvelden? Dette kan ikke angres.", "Nullstill")));
-  vr.append(knapp("Avslutt lagkvelden", "lenkeknapp", () => handling("lk_admin_deaktiver", {},
-    "Avslutte lagkvelden? Mobilene viser da at ingen lagkveld er i gang. Data beholdes.", "Avslutt")));
+  vr.append(knapp("Nullstill kvelden", "lenkeknapp", () => handling("lk_admin_nullstill", {},
+    "Slette alle " + L("lag", "deltakere") + ", viner og gjetninger for denne kvelden? Dette kan ikke angres.", "Nullstill")));
+  vr.append(knapp("Avslutt kvelden", "lenkeknapp", () => handling("lk_admin_deaktiver", {},
+    "Avslutte kvelden? Mobilene viser da at ingen kveld er i gang. Data beholdes.", "Avslutt")));
   verk.append(vr);
   rot.append(verk);
 }
@@ -274,13 +282,13 @@ function byggLoddtrekning(k, lag) {
     rekkefolge.forEach(l => ol.append(el("li", l.ferdig ? "ferdig" : "", l.navn + (l.ferdig ? " ✓" : ""))));
     boks.append(ol);
   } else {
-    boks.append(el("p", "hjelp", "Trekker en tilfeldig rekkefølge blant lagene som ikke er ferdige. Lagene under sorteres etter den."));
+    boks.append(el("p", "hjelp", "Trekker en tilfeldig rekkefølge blant dem som ikke er ferdige. Listen under sorteres etter den."));
   }
-  boks.append(el("p", "hjelp", "Rekkefølgen er bare et forslag. Du kan starte hvilket som helst lag som ikke er ferdig, med «Start runden» i listen under."));
+  boks.append(el("p", "hjelp", "Rekkefølgen er bare et forslag. Du kan starte hvem som helst som ikke er ferdig, med «Start runden» i listen under."));
 
   const rad = el("div", "samling-knapper");
   const b = knapp(rekkefolge.length ? "Trekk på nytt" : "Trekk hvem som starter", rekkefolge.length ? "knapp lys-knapp" : "knapp", async () => {
-    if (kandidater.length < 2) { melding("Det trengs minst to lag som ikke er ferdige."); return; }
+    if (kandidater.length < 2) { melding("Det trengs minst to som ikke er ferdige."); return; }
     if (rekkefolge.length && !(await bekreft("Trekke en ny rekkefølge?", "Trekk på nytt"))) return;
     const ny = stokk(kandidater);
     trekker = true;
@@ -313,7 +321,7 @@ function visOversikt(rot) {
 
   const boks = el("section", "kort");
   boks.append(el("h1", "", "Velg arrangement"));
-  boks.append(el("p", "hjelp", "Åpne arrangementet du vil styre. Bare ett kan ha lagkveld i gang om gangen."));
+  boks.append(el("p", "hjelp", "Åpne arrangementet du vil styre. Bare ett kan være i gang om gangen."));
   const ny = el("div", "samling-knapper");
   ny.append(knapp(apne.has("ny") ? "Avbryt" : "+ Nytt arrangement", apne.has("ny") ? "lenkeknapp" : "knapp", () => {
     apne.has("ny") ? apne.delete("ny") : apne.add("ny");
@@ -328,7 +336,7 @@ function visOversikt(rot) {
   if (arkiv.length) {
     const ark = el("section", "kort");
     ark.append(el("h2", "kort-tittel", "Arkiv"));
-    ark.append(el("p", "hjelp", "Kvelder som er ferdige. Åpne en for å se lagene, rangeringen og vinene."));
+    ark.append(el("p", "hjelp", "Kvelder som er ferdige. Åpne en for å se deltakerne, rangeringen og vinene."));
     arkiv.forEach(s => ark.append(samlingRad(s)));
     rot.append(ark);
   }
@@ -358,6 +366,70 @@ const OPPSETT = [
   { nokkel: "", navn: "Tomt oppsett", tittel: "", tema: "", tid: "19:00", om: "Fyll inn alt selv." }
 ];
 const oppsettNavn = n => (OPPSETT.find(o => o.nokkel && o.nokkel === n) || {}).navn || "";
+
+// Byggeklossene hvert oppsett starter med. Kan endres per arrangement under «Detaljer».
+const ALLE_GJETT = [["land", "Land"], ["distrikt", "Distrikt"], ["drue", "Drue"], ["aargang", "Årgang"], ["pris", "Pris"]];
+const SOLO = { lag: false, viner_per: 1, tar_med: true, datoforslag: true, score: true, kaaring: true };
+const OPPSETT_MODULER = {
+  lagkveld: { lag: true, viner_per: 2, tar_med: false, datoforslag: true, score: true, kaaring: true, gjett: ["land", "distrikt", "drue", "aargang", "pris"] },
+  blind: Object.assign({}, SOLO, { gjett: ["land", "drue", "aargang"] }),
+  drue: Object.assign({}, SOLO, { gjett: ["land", "distrikt", "aargang", "pris"] }),
+  landkamp: Object.assign({}, SOLO, { gjett: ["land", "drue", "pris"] }),
+  vertikal: Object.assign({}, SOLO, { tar_med: false, gjett: ["aargang"] }),
+  budsjett: Object.assign({}, SOLO, { gjett: ["land", "drue", "pris"] }),
+  bobler: Object.assign({}, SOLO, { gjett: ["land", "drue", "pris"] }),
+  mat: Object.assign({}, SOLO, { gjett: ["land", "drue"] }),
+  "": Object.assign({}, SOLO, { gjett: ["land", "distrikt", "drue", "aargang", "pris"] })
+};
+OPPSETT.forEach(o => { o.moduler = OPPSETT_MODULER[o.nokkel]; });
+
+// Brytere for byggeklossene. endre(ny) kalles med en kopi hver gang noe endres.
+function byggModulvelger(m, endre) {
+  const boks = el("fieldset", "moduler");
+  boks.append(el("legend", "", "Byggeklosser"));
+  const bryter = (nokkel, tekst, hjelp) => {
+    const l = el("label", "modul");
+    const i = el("input");
+    i.type = "checkbox";
+    i.checked = m[nokkel] !== false;
+    i.addEventListener("change", () => endre(Object.assign({}, m, { [nokkel]: i.checked })));
+    const t = el("span");
+    t.append(el("strong", "", tekst), el("small", "", hjelp));
+    l.append(i, t);
+    return l;
+  };
+  boks.append(
+    bryter("lag", "Lag på to", "Én mobil per lag. Av: hver deltaker for seg på egen mobil."),
+    bryter("tar_med", "Hva tar du med?", "Påmeldte skriver hvilken vin de tar med, og alle ser listen."),
+    bryter("datoforslag", "Datoforslag", "Uten fast dato kan folk foreslå datoer som passer."),
+    bryter("score", "Score 0–100", "Hver vin får score. Gir vinrangering og personlig vinlogg."),
+    bryter("kaaring", "Kåring", "Resultatene vises i trinn, med vinnere til slutt.")
+  );
+  const vp = el("label", "modul-valg");
+  const sel = el("select");
+  [[1, "1 vin"], [2, "2 viner"]].forEach(([v, t]) => sel.append(new Option(t, v)));
+  sel.value = String(m.viner_per || 1);
+  sel.addEventListener("change", () => endre(Object.assign({}, m, { viner_per: Number(sel.value) })));
+  vp.append(document.createTextNode("Viner per " + (m.lag !== false ? "lag" : "deltaker") + " "), sel);
+  boks.append(vp);
+  const gj = el("div", "modul-gjett");
+  gj.append(el("span", "", "Gjettes: "));
+  const valgt = m.gjett || ALLE_GJETT.map(g => g[0]);
+  ALLE_GJETT.forEach(([n, t]) => {
+    const l = el("label", "");
+    const i = el("input");
+    i.type = "checkbox";
+    i.checked = valgt.includes(n);
+    i.addEventListener("change", () => {
+      const ny = ALLE_GJETT.map(g => g[0]).filter(x => x === n ? i.checked : valgt.includes(x));
+      endre(Object.assign({}, m, { gjett: ny }));
+    });
+    l.append(i, document.createTextNode(" " + t));
+    gj.append(l);
+  });
+  boks.append(gj);
+  return boks;
+}
 
 let valgtOppsett = OPPSETT[0];
 let nyUtkast = {};   // det som er skrevet inn, så det ikke forsvinner når siden oppdateres
@@ -398,13 +470,15 @@ function byggNyttArrangement() {
   ak.addEventListener("change", () => { nyUtkast.dato_avtales = ak.checked; });
   avtales.append(ak, document.createTextNode(" Dato avtales (folk kan foreslå datoer)"));
   f.append(avtales);
+  const modNy = nyUtkast.moduler || valgtOppsett.moduler;
+  f.append(byggModulvelger(modNy, ny => { nyUtkast.moduler = ny; vis(); }));
   const lagre = el("button", "knapp", "Opprett arrangement");
   lagre.type = "submit";
   f.append(lagre);
   f.addEventListener("submit", async e => {
     e.preventDefault();
     const d = { id: "", tittel: felt.tittel.value.trim(), dato: felt.dato.value, tid: felt.tid.value || "19:00",
-      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked, oppsett: valgtOppsett.nokkel };
+      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked, oppsett: valgtOppsett.nokkel, moduler: modNy };
     if (!d.tittel) { melding("Gi arrangementet en tittel."); return; }
     if (!d.dato && !d.dato_avtales) { melding("Velg en dato, eller kryss av for at datoen avtales."); return; }
     lagre.disabled = true;
@@ -457,6 +531,8 @@ function byggDetaljer(k) {
   avtales.append(ak, document.createTextNode(" Dato avtales (folk kan foreslå datoer)"));
   f.append(avtales);
 
+  const modD = verdi("moduler", k.moduler || {});
+  f.append(byggModulvelger(modD, ny => { detaljUtkast.moduler = ny; vis(); }));
   const rad = el("div", "samling-knapper");
   const lagre = el("button", "knapp", "Lagre detaljene");
   lagre.type = "submit";
@@ -473,7 +549,7 @@ function byggDetaljer(k) {
   f.addEventListener("submit", async e => {
     e.preventDefault();
     const data_ = { id: k.samling_id, tittel: felt.tittel.value.trim(), dato: felt.dato.value, tid: felt.tid.value || "19:00",
-      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked };
+      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked, moduler: modD };
     if (!data_.dato && !data_.dato_avtales) { melding("Velg en dato, eller kryss av for at datoen avtales."); return; }
     lagre.disabled = true;
     try {
@@ -539,7 +615,7 @@ function samlingRad(s) {
   const t = el("div");
   t.append(el("h3", "samling-navn", s.tittel));
   t.append(el("p", "rang-meta", [s.dato_avtales ? "Dato avtales" : datoTekst(s.dato), !s.dato_avtales && s.tid ? String(s.tid).slice(0, 5) : "", s.sted,
-    s.pameldte + " påmeldt", s.lagkveld ? s.lag + " lag" : ""].filter(Boolean).join(" · ")));
+    s.pameldte + " påmeldt", s.lagkveld ? s.lag + ((s.moduler || {}).lag === false ? " deltakere" : " lag") : ""].filter(Boolean).join(" · ")));
   if (s.oppsett || s.tema) t.append(el("p", "rang-meta", [oppsettNavn(s.oppsett), s.tema].filter(Boolean).join(" · ")));
   if (s.vinnere) t.append(el("p", "rang-meta", "👑 " + s.vinnere));
   topp.append(t);
@@ -585,7 +661,7 @@ function byggLag(l, k, aktivt, lesemodus) {
   t.append(el("h3", "samling-navn", l.navn));
   t.append(el("p", "rang-meta", [l.medlem1, l.medlem2].filter(Boolean).join(" og ") + " · kode " + l.kode));
   topp.append(t);
-  const status = l.ferdig ? "Ferdig" : aktivt && aktivt.id === l.id ? "Presenterer" : l.viner.length + " av 2 viner";
+  const status = l.ferdig ? "Ferdig" : aktivt && aktivt.id === l.id ? "Presenterer" : l.viner.length + " av " + VINER_PER + (VINER_PER === 1 ? " vin" : " viner");
   topp.append(el("span", "status-merke" + (l.ferdig ? " klar" : aktivt && aktivt.id === l.id ? " pa" : ""), status));
   boks.append(topp);
 
@@ -603,7 +679,7 @@ function byggLag(l, k, aktivt, lesemodus) {
   const vis_ = () => { visDetaljer(); };
   rad.append(vis);
   if (!lesemodus) rad.append(knapp("Slett laget", "lenkeknapp", () => handling("lk_admin_slett_lag", { p_lag: l.id },
-    "Slette laget «" + l.navn + "» med vinene og gjetningene? Dette kan ikke angres.", "Slett")));
+    L("Slette laget «", "Slette deltakeren «") + l.navn + "» med vinene og gjetningene? Dette kan ikke angres.", "Slett")));
   boks.append(rad);
 
   const detaljer = el("div", "vin-detaljer");
@@ -672,7 +748,7 @@ function forhandsvisning() {
     li.append(el("span", "plass", String(i + 1)), el("span", "rang-navn", x.lag), el("span", "rang-meta", x.treff + " fulltreff"), el("span", "rang-poeng", String(x.poeng)));
     p.append(li);
   });
-  d.append(el("h4", "pameldte-tittel", "Lagene (poeng)"), p);
+  d.append(el("h4", "pameldte-tittel", L("Lagene (poeng)", "Deltakerne (poeng)")), p);
   return d;
 }
 

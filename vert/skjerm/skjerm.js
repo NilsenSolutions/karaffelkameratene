@@ -28,6 +28,7 @@ function vis(data) {
   }
   const k = data.kveld;
   const steg = k.resultat_steg;
+  const solo = (k.moduler || {}).lag === false;   // hver deltaker for seg: navnet er personen
   rot.append(el("p", "kveld", [k.tittel, k.sted].filter(Boolean).join(" · ")));
 
   if (steg === 0) {
@@ -59,20 +60,20 @@ function vis(data) {
   const lag = data.lagpoeng || [];
   if (steg === 2) {
     rot.append(el("h1", "", "Poengene – hvem er hvem?"));
-    rot.append(el("p", "under", "Lagnavnene avsløres om litt …"));
+    rot.append(el("p", "under", solo ? "Navnene avsløres om litt …" : "Lagnavnene avsløres om litt …"));
   } else {
     const topp = lag[0];
     const vinnere = topp ? lag.filter(l => l.poeng === topp.poeng && l.treff === topp.treff) : [];
     const banner = el("div", "vinner");
     banner.append(el("p", "merke", "🏆 Kveldens vinkjennere"),
       el("p", "vinner-navn", listeTekst(vinnere.map(l => l.lag))),
-      el("p", "beste-meta", listeTekst(vinnere.map(l => l.medlemmer).filter(Boolean)) + (topp ? " · " + topp.poeng + " poeng" : "")));
+      el("p", "beste-meta", (solo ? "" : listeTekst(vinnere.map(l => l.medlemmer).filter(Boolean)) + " · ") + (topp ? topp.poeng + " poeng" : "")));
     rot.append(banner);
   }
   const ol = el("ol", "liste lagliste");
   lag.forEach((l, i) => {
     const li = el("li", steg >= 3 && i === 0 ? "forste" : "");
-    li.append(el("span", "plass", String(i + 1)), el("span", "navn", steg >= 3 ? l.lag : "Lag ?"),
+    li.append(el("span", "plass", String(i + 1)), el("span", "navn", steg >= 3 ? l.lag : solo ? "?" : "Lag ?"),
       el("span", "treff", l.treff + " fulltreff"), el("span", "poeng", String(l.poeng)));
     ol.append(li);
   });

@@ -295,4 +295,6 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 /* Påmeldte og hva de tar med */
 .pameldt-liste { list-style: none; margin: .5rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
 .pameldt-liste[hidden] { display: none; }
-.pameldt-liste li { background: var(--k-kort, #fff); border: 2px solid var(--k-linje, #d6dfd1); border-radius: 999px; padding: .2rem .7rem; font-size: .92rem; }
+.pameldt-liste li { display: flex; align-items: center; gap: .45rem; background: var(--k-kort, #fff); border: 2px solid var(--k-linje, #d6dfd1); border-radius: 16px; padding: .3rem .8rem .3rem .4rem; font-size: .92rem; }
+.pameldt-figur { flex: none; width: 40px; }
+.pameldt-figur svg { display: block; width: 100%; height: auto; overflow: visible; }

@@ -224,9 +224,15 @@ async function visPameldte(s) {
   if (pameldingSamling !== s && !(pameldingSamling && pameldingSamling.id === s.id)) return;   // byttet samling mens vi ventet
   liste.textContent = "";
   liste.hidden = !rader.length;
-  rader.forEach(r => {
+  rader.forEach((r, i) => {
     const li = el("li");
-    li.append(el("strong", "", r.navn), document.createTextNode(r.vin ? " tar med " + r.vin : ""));
+    // Hver påmeldt får sin egen kamerat-karikatur ved navnet.
+    const figur = el("span", "pameldt-figur");
+    figur.setAttribute("aria-hidden", "true");
+    figur.append(kameratSvg(i));
+    const tekst = el("span");
+    tekst.append(el("strong", "", r.navn), document.createTextNode(r.vin ? " tar med " + r.vin : ""));
+    li.append(figur, tekst);
     liste.append(li);
   });
 }

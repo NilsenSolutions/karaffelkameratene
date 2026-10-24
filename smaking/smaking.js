@@ -183,17 +183,44 @@ function visBliMed(h) {
 }
 
 // Før og mellom rundene: registrer egne viner.
+// Står øverst mens man venter: hva som er klart, og at siden oppdaterer seg selv når verten starter runden.
+const HOLD_APEN = "Hold denne siden åpen. Når verten starter runden, kommer gjettingen opp her av seg selv. Du trenger ikke trykke noe.";
+
 function visVenter(h) {
   const m = data.mitt_lag;
   if (VERT()) {
-    const b = el("div", "kort");
-    b.append(el("h2", "kort-tittel", "Du er med! 🍷"));
-    b.append(el("p", "", "Verten stiller med vinene i kveld. Når runden starter, kommer vinene opp her, og du gjetter og gir score."));
+    const b = el("div", "kort status-kort klar");
+    b.append(el("h2", "kort-tittel", T("Dere er med! 🍷", "Du er med! 🍷")));
+    b.append(el("p", "", "Verten stiller med vinene i kveld. " + HOLD_APEN));
     h.append(b);
     return;
   }
   if (m.ferdig) {
-    h.append(el("p", "kort", T("Deres runde er ferdig. Gjett på de andre lagenes viner når admin starter neste runde.", "Din runde er ferdig. Gjett på de andres viner når verten starter neste runde.")));
+    const b = el("div", "kort status-kort klar");
+    b.append(el("h2", "kort-tittel", T("Deres runde er ferdig ✓", "Din runde er ferdig ✓")));
+    b.append(el("p", "", "Nå gjetter " + T("dere", "du") + " på de andres viner. " + HOLD_APEN));
+    h.append(b);
+    return;
+  }
+
+  // Sjekkliste: laget og vinene. Når alt er lagret, legges skjemaene bort under «Se eller endre».
+  const bokstaver = ["A", "B", "C"].slice(0, VINER_PER());
+  const lagret = bokstaver.filter(b => m.viner.some(v => v.bokstav === b));
+  const klar = lagret.length === bokstaver.length;
+  const st = el("div", "kort status-kort" + (klar ? " klar" : ""));
+  st.append(el("h2", "kort-tittel", klar ? T("Dere er klare! ✓", "Du er klar! ✓") : T("Nesten klare", "Nesten klar")));
+  const liste = el("ul", "sjekkliste");
+  liste.append(el("li", "ok", T("Laget «" + m.navn + "» er registrert", "Du er registrert som «" + m.navn + "»")));
+  bokstaver.forEach(b => liste.append(el("li", lagret.includes(b) ? "ok" : "", (VINER_PER() === 1 ? "Vinen" : "Vin " + b) +
+    (lagret.includes(b) ? " er lagret" : " er ikke lagret ennå"))));
+  st.append(liste);
+  st.append(el("p", "", klar ? HOLD_APEN : "Lagre " + (VINER_PER() === 1 ? "vinen" : "vinene") + " under. " + HOLD_APEN));
+  h.append(st);
+  if (klar) {
+    const d = el("details", "kort");
+    d.append(el("summary", "", "Se eller endre " + (VINER_PER() === 1 ? "vinen" : "vinene")));
+    bokstaver.forEach(b => d.append(byggVinskjema(b, m.viner.find(v => v.bokstav === b) || {})));
+    h.append(d);
     return;
   }
   const intro = el("div", "kort");

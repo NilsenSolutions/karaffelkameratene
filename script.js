@@ -114,7 +114,7 @@ function tikk() {
   const stripe = $("stripe");
   stripe.hidden = false;
   $("stripe-tekst").textContent =
-    "Neste smaking om " + (d > 0 ? d + " d " : "") + t + " t " + (d === 0 ? m + " min" : "") + ". Meld deg på.";
+    "Neste smaking om " + (d > 0 ? d + " d " : "") + t + " t " + (d === 0 ? m + " min" : "") + (kveldenErApen(neste) ? ". Du kan bli med allerede nå: trykk her!" : ". Meld deg på.");
 }
 
 // Etter start: ingen nedtelling, men samlingen står igjen med sted og påmeldte.
@@ -122,7 +122,7 @@ function visIGang() {
   $("nt-tittel").textContent = "I gang nå: " + neste.tittel;
   $("nt-tall").hidden = true;
   $("stripe").hidden = false;
-  $("stripe-tekst").textContent = neste.tittel + " er i gang nå. Skål!";
+  $("stripe-tekst").textContent = neste.tittel + (kveldenErApen(neste) ? " er i gang nå. Trykk her for å være med!" : " er i gang nå. Skål!");
 }
 
 // Dansegulvet: kveldens påmeldte så lenge kvelden varer (også etter at den er avsluttet), ellers neste samling.
@@ -544,11 +544,28 @@ async function kall(navn, args) {
 
 // Når lagkvelden for en samling er i gang, kan lagene registrere seg og vinene sine.
 // Vises også etter starttidspunktet, når samlingen ikke lenger er «neste».
-function visLagkveld() {
+// Når kvelden er åpen fra vertssiden, peker knappene og banneret rett til smakingen.
+// Har denne mobilen allerede et lag (eller en deltaker), står det «Fortsett som …», så ingen tror de må begynne på nytt.
+async function visLagkveld() {
   const s = SMAKINGER.find(x => x.lagkveld_aktiv && !avsluttet(x));
-  $("lagkveld-knapp").hidden = !s;
-  if (s) $("lagkveld-knapp").textContent = (s.moduler || {}).lag === false ? "Bli med og registrer vin" : "Registrer lag og vin";
+  const knapper = [$("lagkveld-knapp"), $("nt-smaking")];
+  knapper.forEach(k => { k.hidden = !s; });
+  $("stripe").href = s ? "smaking/" : "#pamelding";
+  if (!s) return;
+  const m = s.moduler || {};
+  const solo = m.lag === false || Number(m.lagstr) === 1;
+  let tekst = m.vinkilde === "vert" ? "Bli med i smakingen" : solo ? "Bli med og registrer vin" : "Registrer lag og vin";
+  let token = null;
+  try { token = localStorage.getItem("karaffel-lag-token"); } catch (e) { token = null; }
+  if (token) {
+    try {
+      const d = await kall("lk_hent", { p_token: token });
+      if (d && d.mitt_lag) tekst = "Fortsett som " + d.mitt_lag.navn;
+    } catch (e) { /* ukjent lag: vis vanlig tekst */ }
+  }
+  knapper.forEach(k => { k.textContent = tekst; });
 }
+const kveldenErApen = s => Boolean(s && s.lagkveld_aktiv && !avsluttet(s));
 
 async function lastSmakinger() {
   try {

@@ -43,3 +43,12 @@
 .fasit-tabell th:first-child { width: 26%; font-weight: 700; }
 .fasit-tabell td { font-weight: 600; }
 .fasit-tabell td.gjettet { font-weight: 400; }
+
+/* Statuskortet mens man venter på runden */
+.status-kort { border-left: 6px solid #dda829; }
+.status-kort.klar { border-left-color: #2e7d4f; }
+.sjekkliste { list-style: none; margin: .25rem 0 .75rem; padding: 0; display: grid; gap: .3rem; }
+.sjekkliste li { display: flex; gap: .5rem; align-items: baseline; }
+.sjekkliste li::before { content: "○"; font-weight: 700; color: #b3263e; }
+.sjekkliste li.ok::before { content: "✓"; color: #2e7d4f; }
+details.kort > summary { cursor: pointer; font-weight: 700; }

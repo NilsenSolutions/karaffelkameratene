@@ -303,3 +303,7 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 .person-valg { display: flex; align-items: center; gap: .5rem; font-weight: 600; }
 .person-valg[hidden] { display: none; }
 .person-valg select { font: inherit; padding: .35rem .6rem; border: 2px solid var(--ink); border-radius: 999px; background: transparent; color: inherit; }
+
+/* Knappen til kveldens smaking i «Neste smaking»-kortet */
+.nt-knapp { margin-top: .75rem; }
+.nt-knapp[hidden] { display: none; }

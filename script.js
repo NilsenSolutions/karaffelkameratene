@@ -123,6 +123,13 @@ function visIGang() {
 
 // Dansegulvet: kveldens påmeldte så lenge kvelden varer (også etter at den er avsluttet), ellers neste samling.
 function oppdaterDansegulv(naa) {
+  // Mens kveldens kamerater hopper rundt, fylles dansegulvet med de påmeldte til neste smaking.
+  const s = pameldingSamling;
+  if (hjemmeHopp && s && s !== kveldens(naa)) {
+    const n = s.paameldte;
+    return byggDansegulv(n, n ? n + (n === 1 ? " kamerat" : " kamerater") + " påmeldt til " + s.tittel
+      : "Ingen påmeldt til " + s.tittel + " ennå. Bli den første!");
+  }
   const iKveld = kveldens(naa);
   if (!iKveld) return byggDansegulv(neste ? neste.paameldte : 0);
   const n = iKveld.paameldte;
@@ -133,7 +140,6 @@ function startNedtelling() {
   const naa = new Date();
   neste = kommende(naa)[0] || null;
 
-  oppdaterDansegulv(naa);
 
   if (!neste) {
     // Ingen datert samling: vis den neste uten dato hvis det finnes en.
@@ -166,6 +172,7 @@ function visPamelding(s) {
   const detaljer = $("detaljer");
   detaljer.textContent = "";
   pameldingSamling = s;
+  oppdaterDansegulv(new Date());
   // Uten fast dato kan folk skrive hvilke datoer som passer.
   $("datoer-felt").hidden = !(s && s.dato_avtales);
 
@@ -592,21 +599,23 @@ function kameratSvg(i) {
   return svg;
 }
 
+// Legger til eller fjerner dansere til antallet stemmer. Nye kamerater dukker opp én etter én.
 function byggDansegulv(antall, tekst) {
   const gulv = $("dansegulv");
   const n = Math.min(Math.max(0, antall || 0), MAKS_DANSERE);
-  gulv.hidden = n === 0;
-  if (!n) return;
+  gulv.hidden = n === 0 && !tekst;
+  if (gulv.hidden) return;
   $("dansegulv-tekst").textContent = tekst || (antall === 1 ? "1 kamerat er påmeldt" : antall + " kamerater er påmeldt");
   const dansere = $("dansere");
-  if (dansere.children.length === n) return;
-  dansere.textContent = "";
-  for (let i = 0; i < n; i++) {
-    const d = el("span", "danser");
+  while (dansere.children.length > n) dansere.lastChild.remove();
+  const fra = dansere.children.length;
+  for (let i = fra; i < n; i++) {
+    const d = el("span", "danser ny");
     // Hver får sitt eget tempo og sin egen fase, så de ikke danser i takt.
     d.style.setProperty("--takt", (0.8 + Math.random() * 0.6).toFixed(2) + "s");
     d.style.setProperty("--forsinkelse", (-Math.random() * 3).toFixed(2) + "s");
     d.style.setProperty("--slurk", (3 + Math.random() * 3).toFixed(2) + "s");
+    d.style.setProperty("--inn", ((i - fra) * 0.35).toFixed(2) + "s");
     d.append(kameratSvg(i));
     dansere.append(d);
   }
@@ -705,6 +714,7 @@ function startHjemmeHopp() {
   hero.append(felt);
   document.body.classList.add("kamerater-hopper");
   hjemmeHopp = { felt, stopp: sprett(felt, figurer), antall: personer.length };
+  oppdaterDansegulv(new Date());
 }
 
 function stoppHjemmeHopp() {
@@ -713,6 +723,7 @@ function stoppHjemmeHopp() {
   hjemmeHopp.felt.remove();
   hjemmeHopp = null;
   document.body.classList.remove("kamerater-hopper");
+  oppdaterDansegulv(new Date());
 }
 
 // Rangeringen i et kort midt på skjermen.

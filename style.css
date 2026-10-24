@@ -275,4 +275,8 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 /* Etter kåringen: kveldens kamerater hopper rundt øverst på forsiden. */
 .hero { position: relative; }
 .hoppefelt { position: absolute; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; }
-body.kamerater-hopper .dansere { display: none; }
+
+/* Nye påmeldte dukker opp på dansegulvet, én etter én. */
+.danser.ny { animation: dukk-opp .7s cubic-bezier(.2, .9, .3, 1.4) var(--inn, 0s) both; }
+@keyframes dukk-opp { from { opacity: 0; transform: translateY(24px) scale(.2); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .danser.ny { animation: none; } }

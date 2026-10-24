@@ -275,9 +275,24 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 /* Etter kåringen: kveldens kamerater hopper rundt øverst på forsiden. */
 .hero { position: relative; }
 .hoppefelt { position: absolute; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; }
+.hoppefelt .hopper { pointer-events: auto; cursor: pointer; }
 
 /* Nye påmeldte dukker opp på dansegulvet, én etter én. */
 .danser.ny { animation: dukk-opp .7s cubic-bezier(.2, .9, .3, 1.4) var(--inn, 0s) both; }
 @keyframes dukk-opp { from { opacity: 0; transform: translateY(24px) scale(.2); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .danser.ny { animation: none; } }
 .logg li.samling-hode .kveld-vinnere { display: block; margin-top: .3rem; font-weight: 700; }
+
+/* Kveldslogg under vinloggen */
+.kveldslogg-blokk { margin-top: 3rem; }
+.kveldslogg { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.kveldslogg > li { display: grid; gap: .2rem; background: #fff; border-radius: var(--radius); padding: 1rem 1.25rem; }
+.kveldslogg .navn { font-family: var(--tittel); font-size: 1.3rem; }
+.kveldslogg .meta { opacity: .75; font-size: .95rem; }
+.kveldslogg .kveld-vinnere { font-weight: 700; margin-top: .3rem; }
+.kveld-topp { margin: .4rem 0 0; padding-left: 1.3rem; font-size: .95rem; }
+
+/* Påmeldte og hva de tar med */
+.pameldt-liste { list-style: none; margin: .5rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
+.pameldt-liste[hidden] { display: none; }
+.pameldt-liste li { background: var(--k-kort, #fff); border: 2px solid var(--k-linje, #d6dfd1); border-radius: 999px; padding: .2rem .7rem; font-size: .92rem; }

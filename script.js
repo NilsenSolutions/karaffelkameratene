@@ -7,7 +7,9 @@ const CONFIG = {
   // Påmeldingen stenger så mange timer før start.
   stengerTimerFoer: 24,
   // Samlingen står på forsiden som «i gang» så mange timer etter start.
-  varerTimer: 8
+  varerTimer: 8,
+  // Dansegulvet med kveldens kamerater står til dette klokkeslettet morgenen etter (0 = midnatt).
+  dansTilKl: 6
 };
 
 // Planlagte smakinger hentes fra databasen og redigeres på vertssiden (/kveld/vert/).
@@ -124,16 +126,13 @@ function visIGang() {
 }
 
 // Dansegulvet: kveldens påmeldte så lenge kvelden varer (også etter at den er avsluttet), ellers neste samling.
+// Dansegulvet vises bare på selve kvelden: fra start til CONFIG.dansTilKl neste morgen.
 function oppdaterDansegulv(naa) {
-  // Mens kveldens kamerater hopper rundt, fylles dansegulvet med de påmeldte til neste smaking.
-  const s = pameldingSamling;
-  if (hjemmeHopp && s && s !== kveldens(naa)) {
-    const n = s.paameldte;
-    return byggDansegulv(n, n ? n + (n === 1 ? " kamerat" : " kamerater") + " påmeldt til " + s.tittel
-      : "Ingen påmeldt til " + s.tittel + " ennå. Bli den første!");
-  }
   const iKveld = kveldens(naa);
-  if (!iKveld) return byggDansegulv(neste ? neste.paameldte : 0);
+  if (!iKveld) return byggDansegulv(0);
+  const [aar, mnd, dag] = iKveld.dato.split("-").map(Number);
+  const slutt = new Date(aar, mnd - 1, dag + 1, CONFIG.dansTilKl, 0, 0);
+  if (naa >= slutt) return byggDansegulv(0);
   const n = iKveld.paameldte;
   byggDansegulv(n, n + (n === 1 ? " kamerat " : " kamerater ") + (iKveld === neste ? "er med i kveld" : "var med i kveld"));
 }
@@ -212,7 +211,23 @@ function visPlasser(s) {
 
   $("plasser-blokk").hidden = false;
   $("plasser-tekst").textContent = s.paameldte > 0 ? s.paameldte + " påmeldt." : "Ingen påmeldt ennå.";
+  visPameldte(s);
   return status;
+}
+
+// Hvem som er påmeldt (fornavn) og hva de tar med, så folk ikke tar med det samme.
+async function visPameldte(s) {
+  const liste = $("pameldt-liste");
+  let rader = [];
+  try { rader = await kall("hent_dansegulv", { p_samling: s.id }); } catch (e) { rader = []; }
+  if (pameldingSamling !== s && !(pameldingSamling && pameldingSamling.id === s.id)) return;   // byttet samling mens vi ventet
+  liste.textContent = "";
+  liste.hidden = !rader.length;
+  rader.forEach(r => {
+    const li = el("li");
+    li.append(el("strong", "", r.navn), document.createTextNode(r.vin ? " tar med " + r.vin : ""));
+    liste.append(li);
+  });
 }
 
 function visSenere(naaverende) {
@@ -394,38 +409,31 @@ function visLogg() {
     return li;
   };
 
-  // Høyest poeng: én liste på tvers av samlingene.
-  if (tilstand.sorter === "poeng") {
-    rader.forEach(v => liste.appendChild(vinRad(v, true)));
-    return;
-  }
+  // Én samlet liste over alt vi har smakt. Kvelden står i meta-linjen.
+  rader.forEach(v => liste.appendChild(vinRad(v, true)));
+}
 
-  // Nyeste først: samlingen som overskrift, og vinene vi smakte under.
-  const grupper = [];
-  rader.forEach(v => {
-    const nokkel = v.samling_id || v.dato;
-    let g = grupper.find(x => x.nokkel === nokkel);
-    if (!g) grupper.push(g = { nokkel, forste: v, viner: [] });
-    g.viner.push(v);
-  });
-  grupper.forEach(g => {
-    const s = g.forste;
-    const scorer = g.viner.filter(v => v.poeng != null).map(v => v.poeng);
-    const hode = el("li", "samling-hode");
-    hode.append(
-      el("span", "navn", s.samling || "Smaking"),
-      el("span", "meta", [kortDato(s.dato), s.sted, s.tema, g.viner.length + (g.viner.length === 1 ? " vin" : " viner"),
-        scorer.length ? "snitt " + Math.round(scorer.reduce((a, b) => a + b, 0) / scorer.length) : ""].filter(Boolean).join(" · "))
-    );
-    // Kvelden selv, fra arkivet: vinnerne, beste vin og hvor mange som var med.
-    const k = KVELDER.find(x => x.samling_id === s.samling_id);
-    if (k) {
-      hode.append(el("span", "kveld-vinnere", "👑 " + k.vinnere + (k.vinner_medlemmer ? " (" + k.vinner_medlemmer + ")" : "")));
-      hode.append(el("span", "meta", [k.beste_vin && "Beste vin: " + k.beste_vin + (k.beste_snitt != null ? " (" + String(k.beste_snitt).replace(".", ",") + ")" : ""),
-        k.deltakere && k.deltakere + " kamerater", k.lag && k.lag + " lag", k.snittpris && "snittpris " + k.snittpris + " kr"].filter(Boolean).join(" · ")));
+// Kveldslogg: hver kveld for seg, med vinnere, beste vin og topp tre.
+function visKvelder() {
+  const blokk = $("kveldslogg-blokk");
+  const liste = $("kveldslogg");
+  liste.textContent = "";
+  blokk.hidden = !KVELDER.length;
+  KVELDER.forEach(k => {
+    const [aar, mnd, dag] = String(k.dato).split("-").map(Number);
+    const li = el("li");
+    li.append(el("span", "navn", k.tittel || "Smaking"));
+    li.append(el("span", "meta", [dag + ". " + MAANEDER[mnd - 1] + " " + aar, k.sted, k.tema].filter(Boolean).join(" · ")));
+    li.append(el("span", "kveld-vinnere", "👑 " + (k.vinnere || "–") + (k.vinner_medlemmer ? " (" + k.vinner_medlemmer + ")" : "")));
+    li.append(el("span", "meta", [k.beste_vin && "Beste vin: " + k.beste_vin + (k.beste_snitt != null ? " (" + String(k.beste_snitt).replace(".", ",") + ")" : ""),
+      k.deltakere && k.deltakere + " kamerater", k.lag && k.lag + " lag", k.viner && k.viner + " viner",
+      k.snittpris && "snittpris " + k.snittpris + " kr"].filter(Boolean).join(" · ")));
+    if (k.rangering && k.rangering.length) {
+      const ol = el("ol", "kveld-topp");
+      k.rangering.slice(0, 3).forEach(r => ol.append(el("li", "", r.lag + " – " + r.poeng + " poeng")));
+      li.append(ol);
     }
-    liste.appendChild(hode);
-    g.viner.forEach(v => liste.appendChild(vinRad(v, false)));
+    liste.appendChild(li);
   });
 }
 
@@ -437,6 +445,7 @@ async function lastVinlogg() {
   } catch (e) { VINLOGG = []; }
   byggFilterKnapper();
   visLogg();
+  visKvelder();
   byggMarquee();
 }
 
@@ -571,22 +580,63 @@ function styrDrikking() {
 const DANS_FARGER = ["#2f5ba8", "#2e7d4f", "#dda829", "#b3263e"];
 const MAKS_DANSERE = 40;
 
-// Små kjennetegn, så kameratene blir litt forskjellige strek-karikaturer.
-const PREG = [
-  '<path d="M21 11 L23 4 L27 9 L30 2 L33 9 L37 4 L39 11" stroke="#2b2b2b" stroke-width="2.5"/>',                         // piggete hår
-  '<path d="M19 15 C17 6 25 3 30 6 C35 3 43 6 41 15" stroke="#7a4a1f" stroke-width="5"/>',                                 // sveis
-  '<path d="M20 21 Q22 34 30 34 Q38 34 40 21" stroke="#7a4a1f" stroke-width="3"/>',                                       // skjegg
-  '<path d="M19 12 Q30 1 41 12 Z" fill="#b3263e" stroke="#b3263e" stroke-width="2.5"/><path d="M40 12 L49 13" stroke="#b3263e"/>', // caps
-  '<path d="M19 17 Q17 4 30 5 Q43 4 41 17 M19 17 L17 32 M41 17 L43 32" stroke="#dda829" stroke-width="3"/>',               // langt hår
-  '<path d="M18 9 Q30 -1 42 8 Q31 12 18 9 Z" fill="#2b2b2b" stroke="#2b2b2b" stroke-width="2"/><path d="M30 2 L30 -1" stroke="#2b2b2b" stroke-width="2"/>', // alpelue
-  '<path d="M24 23.5 Q27 21 30 23 Q33 21 36 23.5" stroke="#2b2b2b" stroke-width="2.5"/>',                                  // bart
-  '<path d="M21 9 Q24 3 28 7 Q31 2 35 7 Q39 4 40 11" stroke="#2b2b2b" stroke-width="2.5"/>'                                // krøller
+// Strek-karikaturer: hver kamerat får sin egen kombinasjon av hode, ansikt, hår, kropp og tilbehør.
+// Delene velges med ulike tellere, så tolv kamerater blir tolv forskjellige figurer.
+const BLAA = "#2f5ba8", MORK = "#2b2b2b", BRUN = "#7a4a1f", GUL = "#dda829", ROD = "#b3263e", GRONN = "#2e7d4f";
+
+const HODER = [
+  '<circle cx="30" cy="18" r="11" stroke="' + BLAA + '"/>',                                   // rundt
+  '<ellipse cx="30" cy="17" rx="9.5" ry="12.5" stroke="' + BLAA + '"/>',                      // langt
+  '<rect x="19" y="7" width="22" height="22" rx="7" stroke="' + BLAA + '"/>',                 // kantete
+  '<path d="M19 15 Q19 5 30 6 Q41 5 41 15 Q42 30 30 30 Q18 30 19 15 Z" stroke="' + BLAA + '"/>' // pæreformet
 ];
-const BRILLER = '<circle cx="26" cy="16" r="3.6" stroke="#2b2b2b" stroke-width="2"/><circle cx="34" cy="16" r="3.6" stroke="#2b2b2b" stroke-width="2"/><path d="M29.6 16 L30.4 16" stroke="#2b2b2b" stroke-width="2"/>';
+
+const ANSIKT = [
+  '<circle cx="26" cy="16" r="1.4" fill="' + BLAA + '" stroke="none"/><circle cx="34" cy="16" r="1.4" fill="' + BLAA + '" stroke="none"/><path d="M25 21 Q30 26 35 21" stroke="' + BLAA + '"/>',
+  '<path d="M24 16 Q26 13.5 28 16 M32 16 Q34 13.5 36 16" stroke="' + BLAA + '" stroke-width="2"/><path d="M25 21 Q30 28 35 21 Z" fill="' + ROD + '" stroke="' + BLAA + '" stroke-width="2"/>', // ler
+  '<circle cx="26" cy="16" r="1.4" fill="' + BLAA + '" stroke="none"/><path d="M32 16 L36 16" stroke="' + BLAA + '" stroke-width="2"/><path d="M25 22 Q31 25 35 20" stroke="' + BLAA + '"/>', // blunker
+  '<circle cx="26" cy="16" r="1.6" fill="' + BLAA + '" stroke="none"/><circle cx="34" cy="16" r="1.6" fill="' + BLAA + '" stroke="none"/><ellipse cx="30" cy="23" rx="2.6" ry="2.2" stroke="' + BLAA + '" stroke-width="2"/>' // «oi!»
+];
+
+const HAAR = [
+  '',                                                                                                        // skallet
+  '<path d="M21 11 L23 4 L27 9 L30 2 L33 9 L37 4 L39 11" stroke="' + MORK + '" stroke-width="2.5"/>',        // pigger
+  '<path d="M19 14 C17 5 25 2 30 5 C35 2 43 5 41 14" stroke="' + BRUN + '" stroke-width="5"/>',              // sveis
+  '<path d="M19 17 Q17 3 30 4 Q43 3 41 17 M19 17 L16 34 M41 17 L44 34" stroke="' + GUL + '" stroke-width="3"/>', // langt
+  '<path d="M21 9 Q24 2 28 6 Q31 1 35 6 Q39 3 40 10" stroke="' + MORK + '" stroke-width="2.5"/><path d="M19 13 Q17 8 21 9 M41 13 Q43 8 39 10" stroke="' + MORK + '" stroke-width="2.5"/>', // krøller
+  '<path d="M30 6 Q31 -1 36 1" stroke="' + ROD + '" stroke-width="3"/><path d="M20 12 Q30 3 40 12" stroke="' + ROD + '" stroke-width="3"/>', // hanekam
+  '<circle cx="30" cy="3" r="4" stroke="' + BRUN + '" stroke-width="3"/><path d="M20 12 Q30 4 40 12" stroke="' + BRUN + '" stroke-width="3"/>', // knute
+  '<path d="M19 15 Q22 6 30 6 Q38 6 41 15 M19 15 L24 11 M41 15 L36 11" stroke="' + GRONN + '" stroke-width="3"/>' // midtskill
+];
+
+const TILBEHOR = [
+  '',
+  '<circle cx="26" cy="16" r="3.6" stroke="' + MORK + '" stroke-width="2"/><circle cx="34" cy="16" r="3.6" stroke="' + MORK + '" stroke-width="2"/><path d="M29.6 16 L30.4 16" stroke="' + MORK + '" stroke-width="2"/>', // briller
+  '<path d="M21 14 L29 14 L28 19 L22 19 Z M31 14 L39 14 L38 19 L32 19 Z" fill="' + MORK + '" stroke="' + MORK + '" stroke-width="1.5"/>', // solbriller
+  '<path d="M19 11 Q30 0 41 11 Z" fill="' + ROD + '" stroke="' + ROD + '" stroke-width="2.5"/><path d="M40 11 L49 12" stroke="' + ROD + '"/>', // caps
+  '<path d="M18 8 Q30 -2 42 7 Q31 11 18 8 Z" fill="' + MORK + '" stroke="' + MORK + '" stroke-width="2"/>',  // alpelue
+  '<path d="M20 22 Q22 35 30 35 Q38 35 40 22" stroke="' + BRUN + '" stroke-width="3"/>',                       // skjegg
+  '<path d="M24 23.5 Q27 21 30 23 Q33 21 36 23.5" stroke="' + MORK + '" stroke-width="2.5"/>',                 // bart
+  '<path d="M25 31 L35 35 L35 31 L25 35 Z" fill="' + ROD + '" stroke="' + ROD + '" stroke-width="1.5"/>',       // sløyfe
+  '<path d="M22 31 Q30 37 38 31 M37 33 L39 42" stroke="' + GRONN + '" stroke-width="3.5"/>',                   // skjerf
+  '<path d="M17 13 Q30 -1 43 13" stroke="' + MORK + '" stroke-width="2.5"/><rect x="14" y="12" width="5" height="8" rx="2" fill="' + MORK + '" stroke="none"/><rect x="41" y="12" width="5" height="8" rx="2" fill="' + MORK + '" stroke="none"/>' // hodetelefoner
+];
+
+// Kroppen går fra halsen (30,29) til hoftene (30,70). Armene sitter i (30,40).
+const KROPPER = [
+  farge => '<path d="M30 29 L30 70" stroke="' + farge + '"/>',                                               // strek
+  farge => '<path d="M30 29 C16 40 15 63 30 70 C45 63 44 40 30 29" stroke="' + farge + '"/>',                // mage
+  farge => '<path d="M30 29 L30 40 M30 40 L19 70 L41 70 Z" stroke="' + farge + '"/>',                        // kjole
+  farge => '<path d="M23 31 L37 31 L36 68 L24 68 Z" stroke="' + farge + '"/><path d="M30 31 L30 29" stroke="' + farge + '"/>' // skjorte
+];
 
 function kameratSvg(i) {
   const farge = DANS_FARGER[i % DANS_FARGER.length];
-  const preg = PREG[i % PREG.length] + (i % 3 === 1 ? BRILLER : "");
+  const hode = HODER[i % HODER.length];
+  const ansikt = ANSIKT[(i * 3 + 1) % ANSIKT.length];
+  const haar = HAAR[(i * 5 + 2) % HAAR.length];
+  const tilbehor = TILBEHOR[(i * 7 + 3) % TILBEHOR.length];
+  const kropp = KROPPER[(i * 3) % KROPPER.length](farge);
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 64 112");
@@ -594,17 +644,14 @@ function kameratSvg(i) {
   svg.innerHTML =
     '<g fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">' +
       '<g class="kropp">' +
-        '<circle cx="30" cy="18" r="11" stroke="#2f5ba8"/>' +
-        '<circle cx="26" cy="16" r="1.4" fill="#2f5ba8" stroke="none"/><circle cx="34" cy="16" r="1.4" fill="#2f5ba8" stroke="none"/>' +
-        '<path d="M25 21 Q30 26 35 21" stroke="#2f5ba8"/>' + preg +
-        '<path d="M30 29 L30 70" stroke="' + farge + '"/>' +
-        '<path class="bein bein-v" d="M30 70 L20 102" stroke="#2f5ba8"/>' +
-        '<path class="bein bein-h" d="M30 70 L40 102" stroke="#2f5ba8"/>' +
+        kropp + hode + ansikt + haar + tilbehor +
+        '<path class="bein bein-v" d="M30 70 L20 102" stroke="' + BLAA + '"/>' +
+        '<path class="bein bein-h" d="M30 70 L40 102" stroke="' + BLAA + '"/>' +
         '<path class="arm-fri" d="M30 40 L14 28" stroke="' + farge + '"/>' +
         '<g class="arm-karaffel">' +
           '<path d="M30 40 L46 52" stroke="' + farge + '"/>' +
-          '<path d="M46 62 C46 58 50 57 50 54 L50 47 M54 47 L54 54 C54 57 58 58 58 62 C60 70 44 70 46 62 Z" stroke="#2b2b2b" stroke-width="2.5"/>' +
-          '<path d="M46.5 63 C47 67 57 67 57.5 63 Z" fill="#b3263e" stroke="none"/>' +
+          '<path d="M46 62 C46 58 50 57 50 54 L50 47 M54 47 L54 54 C54 57 58 58 58 62 C60 70 44 70 46 62 Z" stroke="' + MORK + '" stroke-width="2.5"/>' +
+          '<path d="M46.5 63 C47 67 57 67 57.5 63 Z" fill="' + ROD + '" stroke="none"/>' +
         '</g>' +
       '</g>' +
     '</g>';
@@ -723,6 +770,7 @@ function startHjemmeHopp() {
   felt.setAttribute("aria-hidden", "true");
   const figurer = personer.map((p, i) => lagHopper(p, i));
   felt.append(...figurer);
+  felt.addEventListener("click", visRangering);   // klikk på en kamerat: kveldens rangering
   hero.append(felt);
   document.body.classList.add("kamerater-hopper");
   hjemmeHopp = { felt, stopp: sprett(felt, figurer), antall: personer.length };

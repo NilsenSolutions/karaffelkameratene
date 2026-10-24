@@ -304,7 +304,14 @@ function visOversikt(rot) {
   const boks = el("section", "kort");
   boks.append(el("h1", "", "Velg arrangement"));
   boks.append(el("p", "hjelp", "Åpne arrangementet du vil styre. Bare ett kan ha lagkveld i gang om gangen."));
-  if (!kommende.length) boks.append(el("p", "", "Ingen kommende arrangementer. Legg inn et på vertssiden først."));
+  const ny = el("div", "samling-knapper");
+  ny.append(knapp(apne.has("ny") ? "Avbryt" : "+ Nytt arrangement", apne.has("ny") ? "lenkeknapp" : "knapp", () => {
+    apne.has("ny") ? apne.delete("ny") : apne.add("ny");
+    vis();
+  }));
+  boks.append(ny);
+  if (apne.has("ny")) boks.append(byggNyttArrangement());
+  if (!kommende.length) boks.append(el("p", "", "Ingen kommende arrangementer ennå."));
   kommende.forEach(s => boks.append(samlingRad(s)));
   rot.append(boks);
 
@@ -317,6 +324,95 @@ function visOversikt(rot) {
   }
 }
 
+// ---------------- Nytt arrangement fra ferdige oppsett ----------------
+// Hvert oppsett fyller inn tittel, tema og klokkeslett, og beskriver hvordan kvelden er lagt opp.
+// Nøkkelen lagres på samlingen (kolonnen oppsett).
+
+const OPPSETT = [
+  { nokkel: "lagkveld", navn: "Lagkveld", tittel: "Lagkveld", tema: "Jorda rundt", tid: "18:00",
+    om: "Lag på to med én mobil. Hvert lag tar med to viner og presenterer dem. De andre gjetter land, distrikt, drue, årgang og pris, og gir score 0–100. Kåring med storskjerm til slutt." },
+  { nokkel: "blind", navn: "Klassisk blindsmaking", tittel: "Blindsmaking", tema: "Fritt valg", tid: "19:00",
+    om: "Alle tar med én vin som serveres blindt i karaffel. Alle gjetter og gir poeng, og så avsløres flaskene." },
+  { nokkel: "drue", navn: "Én drue, mange land", tittel: "Druekveld", tema: "Pinot Noir verden rundt", tid: "19:00",
+    om: "Samme drue fra ulike land og distrikter. Hvordan smaker terroir? Gjett landet." },
+  { nokkel: "landkamp", navn: "Landkamp", tittel: "Landkamp", tema: "Frankrike mot Italia", tid: "19:00",
+    om: "To land mot hverandre. Halvparten tar med fra hvert land, og bordet stemmer frem vinneren." },
+  { nokkel: "vertikal", navn: "Vertikal smaking", tittel: "Vertikal", tema: "Samme vin, ulike årganger", tid: "19:00",
+    om: "Én vin i flere årganger. Rangér årgangene og gjett hvilken som er eldst." },
+  { nokkel: "budsjett", navn: "Beste kjøp", tittel: "Beste kjøp", tema: "Under 200 kroner", tid: "19:00",
+    om: "Hvem finner den beste flasken under en fast pris? Blindt, og prisen avsløres til slutt." },
+  { nokkel: "bobler", navn: "Bobler", tittel: "Boblekveld", tema: "Champagne, cava, crémant og pét-nat", tid: "19:00",
+    om: "Musserende fra hele verden. Gjett metode og land, og finn kveldens beste bobler." },
+  { nokkel: "mat", navn: "Mat og vin", tittel: "Mat og vin", tema: "Vin til hver rett", tid: "18:30",
+    om: "Flere retter, og hver kamerat tar med en vin som skal passe til en av dem. Stem frem beste match." },
+  { nokkel: "", navn: "Tomt oppsett", tittel: "", tema: "", tid: "19:00", om: "Fyll inn alt selv." }
+];
+const oppsettNavn = n => (OPPSETT.find(o => o.nokkel && o.nokkel === n) || {}).navn || "";
+
+let valgtOppsett = OPPSETT[0];
+let nyUtkast = {};   // det som er skrevet inn, så det ikke forsvinner når siden oppdateres
+
+function byggNyttArrangement() {
+  const boks = el("div", "nytt-arrangement");
+  boks.append(el("h2", "kort-tittel", "Velg oppsett"));
+  const maler = el("div", "maler");
+  OPPSETT.forEach(o => {
+    const b = el("button", "mal" + (o === valgtOppsett ? " valgt" : ""));
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(o === valgtOppsett));
+    b.append(el("strong", "", o.navn), el("span", "", o.tema || "Ingen tema"));
+    b.addEventListener("click", () => { valgtOppsett = o; nyUtkast = {}; vis(); });
+    maler.append(b);
+  });
+  boks.append(maler);
+  boks.append(el("p", "hjelp mal-om", valgtOppsett.om));
+
+  const f = el("form", "vin-felt");
+  const felt = {};
+  [["tittel", "Tittel", "text", valgtOppsett.tittel], ["dato", "Dato", "date", ""], ["tid", "Klokkeslett", "time", valgtOppsett.tid],
+   ["sted", "Sted", "text", ""], ["tema", "Tema", "text", valgtOppsett.tema]].forEach(([k, n, type, verdi]) => {
+    const d = el("div", "felt");
+    const l = el("label", "", n);
+    l.htmlFor = "ny-" + k;
+    const i = el("input");
+    Object.assign(i, { id: "ny-" + k, type, value: k in nyUtkast ? nyUtkast[k] : verdi });
+    i.addEventListener("input", () => { nyUtkast[k] = i.value; });
+    felt[k] = i;
+    d.append(l, i);
+    f.append(d);
+  });
+  const avtales = el("label", "avkryss-linje");
+  const ak = el("input");
+  ak.type = "checkbox";
+  ak.checked = Boolean(nyUtkast.dato_avtales);
+  ak.addEventListener("change", () => { nyUtkast.dato_avtales = ak.checked; });
+  avtales.append(ak, document.createTextNode(" Dato avtales (folk kan foreslå datoer)"));
+  f.append(avtales);
+  const lagre = el("button", "knapp", "Opprett arrangement");
+  lagre.type = "submit";
+  f.append(lagre);
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    const d = { id: "", tittel: felt.tittel.value.trim(), dato: felt.dato.value, tid: felt.tid.value || "19:00",
+      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked, oppsett: valgtOppsett.nokkel };
+    if (!d.tittel) { melding("Gi arrangementet en tittel."); return; }
+    if (!d.dato && !d.dato_avtales) { melding("Velg en dato, eller kryss av for at datoen avtales."); return; }
+    lagre.disabled = true;
+    try {
+      await rpc("vert_lagre_samling", { p_pin: pin, p_data: d });
+      apne.delete("ny");
+      nyUtkast = {};
+      await hent();
+      melding("«" + d.tittel + "» er opprettet og står på forsiden.");
+    } catch (err) {
+      melding(err.message);
+      lagre.disabled = false;
+    }
+  });
+  boks.append(f);
+  return boks;
+}
+
 function samlingRad(s) {
   const rad = el("div", "samling-rad");
   const topp = el("div", "samling-topp");
@@ -324,6 +420,7 @@ function samlingRad(s) {
   t.append(el("h3", "samling-navn", s.tittel));
   t.append(el("p", "rang-meta", [s.dato_avtales ? "Dato avtales" : datoTekst(s.dato), !s.dato_avtales && s.tid ? String(s.tid).slice(0, 5) : "", s.sted,
     s.pameldte + " påmeldt", s.lagkveld ? s.lag + " lag" : ""].filter(Boolean).join(" · ")));
+  if (s.oppsett || s.tema) t.append(el("p", "rang-meta", [oppsettNavn(s.oppsett), s.tema].filter(Boolean).join(" · ")));
   if (s.vinnere) t.append(el("p", "rang-meta", "👑 " + s.vinnere));
   topp.append(t);
   const status = s.aktiv ? "I gang nå" : s.arkivert || s.resultat_steg === 3 ? "Ferdig" : s.lagkveld ? "Startet tidligere" : "Ikke startet";

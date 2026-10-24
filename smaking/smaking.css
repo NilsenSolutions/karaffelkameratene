@@ -52,3 +52,13 @@
 .sjekkliste li::before { content: "○"; font-weight: 700; color: #b3263e; }
 .sjekkliste li.ok::before { content: "✓"; color: #2e7d4f; }
 details.kort > summary { cursor: pointer; font-weight: 700; }
+
+/* «Hvem er du?»: navneknapper fra påmeldingslisten */
+.navnevalg { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 1rem; }
+.navneknapp {
+  font: inherit; font-weight: 700; font-size: 1.05rem; cursor: pointer; padding: .7rem 1.1rem;
+  background: #fff; color: #2b2b2b; border: 2px solid #2f5ba8; border-radius: 999px;
+}
+.navneknapp:hover { background: #eaf0fb; }
+.navneknapp[aria-pressed="true"] { background: #2f5ba8; color: #fff; }
+.navneknapp:disabled { opacity: .5; }

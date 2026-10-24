@@ -4,8 +4,6 @@
 
 const CONFIG = {
   // Påmeldinger lagres i databasen og vises for vertskapet på /kveld/vert/.
-  // Påmeldingen stenger så mange timer før start.
-  stengerTimerFoer: 24,
   // Samlingen står på forsiden som «i gang» så mange timer etter start.
   varerTimer: 8,
   // Dansegulvet med kveldens kamerater står til dette klokkeslettet morgenen etter (0 = midnatt).
@@ -73,9 +71,10 @@ function kveldens(naa) {
 const uavklarte = () => SMAKINGER.filter(s => s.dato_avtales);
 
 // Status for påmelding: apen eller stengt. Det er ingen plassgrense.
+// Påmeldingen er åpen til verten starter kvelden (eller starttidspunktet er passert). Da er det «Gjør deg klar» som gjelder.
 function pameldingStatus(s, naa) {
-  const stenger = new Date(startTid(s).getTime() - CONFIG.stengerTimerFoer * 3600 * 1000);
-  return naa >= stenger ? "stengt" : "apen";
+  if (s.lagkveld_aktiv || avsluttet(s)) return "stengt";
+  return !s.dato_avtales && naa >= startTid(s) ? "stengt" : "apen";
 }
 
 const STATUS_TEKST = {
@@ -114,7 +113,7 @@ function tikk() {
   const stripe = $("stripe");
   stripe.hidden = false;
   $("stripe-tekst").textContent =
-    "Neste smaking om " + (d > 0 ? d + " d " : "") + t + " t " + (d === 0 ? m + " min" : "") + (kveldenErApen(neste) ? ". Du kan bli med allerede nå: trykk her!" : ". Meld deg på.");
+    "Neste smaking om " + (d > 0 ? d + " d " : "") + t + " t " + (d === 0 ? m + " min" : "") + (kveldenErApen(neste) ? ". Kvelden er åpnet: trykk her og gjør deg klar!" : ". Meld deg på.");
 }
 
 // Etter start: ingen nedtelling, men samlingen står igjen med sted og påmeldte.
@@ -122,7 +121,7 @@ function visIGang() {
   $("nt-tittel").textContent = "I gang nå: " + neste.tittel;
   $("nt-tall").hidden = true;
   $("stripe").hidden = false;
-  $("stripe-tekst").textContent = neste.tittel + (kveldenErApen(neste) ? " er i gang nå. Trykk her for å være med!" : " er i gang nå. Skål!");
+  $("stripe-tekst").textContent = neste.tittel + (kveldenErApen(neste) ? " er i gang. Trykk her og gjør deg klar!" : " er i gang nå. Skål!");
 }
 
 // Dansegulvet: kveldens påmeldte så lenge kvelden varer (også etter at den er avsluttet), ellers neste samling.
@@ -208,10 +207,10 @@ function visPamelding(s) {
 
 // Status og antall påmeldte. Returnerer status.
 function visPlasser(s) {
-  const status = s.dato_avtales ? "apen" : pameldingStatus(s, new Date());
+  const status = pameldingStatus(s, new Date());
   const badge = $("pm-status-badge");
   badge.dataset.status = status;
-  badge.textContent = STATUS_TEKST[status];
+  badge.textContent = kveldenErApen(s) ? "Kvelden er åpnet: gjør deg klar" : STATUS_TEKST[status];
 
   $("plasser-blokk").hidden = false;
   $("plasser-tekst").textContent = s.paameldte > 0 ? s.paameldte + " påmeldt." : "Ingen påmeldt ennå.";
@@ -552,9 +551,7 @@ async function visLagkveld() {
   knapper.forEach(k => { k.hidden = !s; });
   $("stripe").href = s ? "smaking/" : "#pamelding";
   if (!s) return;
-  const m = s.moduler || {};
-  const solo = m.lag === false || Number(m.lagstr) === 1;
-  let tekst = m.vinkilde === "vert" ? "Bli med i smakingen" : solo ? "Bli med og registrer vin" : "Registrer lag og vin";
+  let tekst = "Gjør deg klar";
   let token = null;
   try { token = localStorage.getItem("karaffel-lag-token"); } catch (e) { token = null; }
   if (token) {

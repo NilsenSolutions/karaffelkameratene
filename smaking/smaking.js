@@ -42,7 +42,7 @@ async function hent() {
   visSidelinje();
   // Bygg hoveddelen på nytt bare når noe som endrer den har skjedd, så det man skriver ikke forsvinner.
   const nokkel = JSON.stringify(data && {
-    k: data.kveld.fase, s: data.kveld.resultat_steg, a: data.kveld.avsluttet, l: data.mitt_lag && data.mitt_lag.id, f: data.mitt_lag && data.mitt_lag.ferdig,
+    k: data.kveld.fase, s: data.kveld.resultat_steg, a: data.kveld.avsluttet, p: (data.pameldte || []).join("|"), l: data.mitt_lag && data.mitt_lag.id, f: data.mitt_lag && data.mitt_lag.ferdig,
     r: data.runde && [data.runde.lag_id, data.runde.viner.map(v => v.avslort)], vr: data.vinrangering && data.vinrangering.length,
     lp: data.lagpoeng && data.lagpoeng.length
   });
@@ -101,43 +101,95 @@ function visHoved() {
   visVenter(h);
 }
 
-// Opprett lag eller logg inn med lagkode.
+// «Hvem er du?»: de påmeldte trykker på navnet sitt. På lag lager én person laget og trykker på hvem som er med.
+// Står ingen på påmeldingslisten, skriver man navnet selv.
 function visBliMed(h) {
+  const pameldte = data.pameldte || [];
   const ny = el("form", "kort");
-  ny.append(el("h2", "kort-tittel", T("Lag dere", "Bli med")));
-  ny.append(el("p", "hjelp", T("Dere er " + LAGSTR() + " på hvert lag og bruker én mobil sammen.", "Skriv navnet ditt. Du bruker din egen mobil.")));
-  const felt = (id, tekst, plass) => {
-    const f = el("div", "felt");
-    const l = el("label", "", tekst);
-    l.htmlFor = id;
-    const i = el("input");
-    Object.assign(i, { id, type: "text", maxLength: 40, placeholder: plass || "" });
-    f.append(l, i);
-    ny.append(f);
-    return i;
-  };
-  const navn = SOLO() ? null : felt("lagnavn", "Lagnavn", "For eksempel Tanninene");
-  const m1 = felt("medlem1", T("Navn 1", "Navnet ditt"), "");
-  const flere = [];
-  for (let i = 2; i <= LAGSTR(); i++) flere.push(felt("medlem" + i, "Navn " + i, ""));
-  const knapp = el("button", "knapp", T("Opprett laget", "Bli med"));
-  knapp.type = "submit";
+  ny.append(el("h2", "kort-tittel", T("Gjør dere klare", "Hvem er du?")));
   const feil = el("p", "feil");
-  ny.append(knapp, feil);
-  ny.addEventListener("submit", async e => {
-    e.preventDefault();
+  const bliMed = async (lagnavn, medlemmer, knapp) => {
     feil.textContent = "";
-    knapp.disabled = true;
+    if (knapp) knapp.disabled = true;
     try {
-      const svar = await rpc("lk_opprett_lag", { p_navn: navn ? navn.value : m1.value, p_medlem1: m1.value, p_medlem2: flere.map(f => f.value.trim()).filter(Boolean).join(", ") });
+      const svar = await rpc("lk_opprett_lag", { p_navn: lagnavn, p_medlem1: medlemmer[0], p_medlem2: medlemmer.slice(1).join(", ") });
       skrivToken(svar.token);
       visningsnokkel = "";
       await hent();
     } catch (err) {
       feil.textContent = err.message;
-      knapp.disabled = false;
+      if (knapp) knapp.disabled = false;
     }
-  });
+  };
+
+  if (pameldte.length && SOLO()) {
+    ny.append(el("p", "hjelp", "Trykk på navnet ditt. Du bruker din egen mobil."));
+    const valg = el("div", "navnevalg");
+    pameldte.forEach(n => {
+      const b = el("button", "navneknapp", n);
+      b.type = "button";
+      b.addEventListener("click", () => bliMed(n, [n], b));
+      valg.append(b);
+    });
+    ny.append(valg, feil);
+  } else if (pameldte.length) {
+    ny.append(el("p", "hjelp", "Én av dere lager laget på denne mobilen: gi laget et navn og trykk på hvem som er med (opptil " + LAGSTR() + ")."));
+    const nf = el("div", "felt");
+    const nl = el("label", "", "Lagnavn");
+    nl.htmlFor = "lagnavn";
+    const navn = el("input");
+    Object.assign(navn, { id: "lagnavn", type: "text", maxLength: 40, placeholder: "For eksempel Tanninene" });
+    nf.append(nl, navn);
+    ny.append(nf);
+    const valgt = [];
+    const valg = el("div", "navnevalg");
+    pameldte.forEach(n => {
+      const b = el("button", "navneknapp", n);
+      b.type = "button";
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", () => {
+        const i = valgt.indexOf(n);
+        if (i >= 0) valgt.splice(i, 1);
+        else if (valgt.length < LAGSTR()) valgt.push(n);
+        else { feil.textContent = "Et lag har plass til " + LAGSTR() + "."; return; }
+        feil.textContent = "";
+        b.setAttribute("aria-pressed", String(valgt.includes(n)));
+      });
+      valg.append(b);
+    });
+    const knapp = el("button", "knapp", "Opprett laget");
+    knapp.type = "submit";
+    ny.append(valg, knapp, feil);
+    ny.addEventListener("submit", e => {
+      e.preventDefault();
+      if (!navn.value.trim()) { feil.textContent = "Gi laget et navn."; return; }
+      if (!valgt.length) { feil.textContent = "Trykk på hvem som er med på laget."; return; }
+      bliMed(navn.value.trim(), valgt.slice(), knapp);
+    });
+  } else {
+    ny.append(el("p", "hjelp", T("Dere er " + LAGSTR() + " på hvert lag og bruker én mobil sammen.", "Skriv navnet ditt. Du bruker din egen mobil.")));
+    const felt = (id, tekst, plass) => {
+      const f = el("div", "felt");
+      const l = el("label", "", tekst);
+      l.htmlFor = id;
+      const i = el("input");
+      Object.assign(i, { id, type: "text", maxLength: 40, placeholder: plass || "" });
+      f.append(l, i);
+      ny.append(f);
+      return i;
+    };
+    const navn = SOLO() ? null : felt("lagnavn", "Lagnavn", "For eksempel Tanninene");
+    const m1 = felt("medlem1", T("Navn 1", "Navnet ditt"), "");
+    const flere = [];
+    for (let i = 2; i <= LAGSTR(); i++) flere.push(felt("medlem" + i, "Navn " + i, ""));
+    const knapp = el("button", "knapp", T("Opprett laget", "Bli med"));
+    knapp.type = "submit";
+    ny.append(knapp, feil);
+    ny.addEventListener("submit", e => {
+      e.preventDefault();
+      bliMed(navn ? navn.value : m1.value, [m1.value].concat(flere.map(f => f.value.trim()).filter(Boolean)), knapp);
+    });
+  }
   h.append(ny);
 
   const inn = el("form", "kort");

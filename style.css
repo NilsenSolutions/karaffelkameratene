@@ -249,11 +249,8 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 @media (prefers-reduced-motion: reduce) { :is(.danser, .hopper) * { animation: none !important; } }
 
 /* Påskeegg: kveldens rangering, kameratene hopper rundt på hele skjermen. */
-.dansegulv.har-hemmelighet .dansere { cursor: pointer; }
+.dansegulv.har-hemmelighet .dansegulv-tekst { cursor: pointer; }
 .hoppeland { position: fixed; inset: 0; z-index: 60; overflow: hidden; background: rgba(238, 243, 234, .9); cursor: pointer; }
-.hopper { position: absolute; left: 0; top: 0; width: 76px; text-align: center; will-change: transform; pointer-events: none; }
-.hopper svg { display: block; width: 100%; height: auto; overflow: visible; }
-.krone { position: absolute; top: -24px; left: 0; width: 94%; text-align: center; font-size: 30px; line-height: 1; transform: rotate(-8deg); }
 .hopper-navn {
   display: inline-block; margin-top: .1rem; white-space: nowrap; font-weight: 700; font-size: .85rem; color: #2b2b2b;
   background: #fff; border: 2px solid #2f5ba8; border-radius: 999px; padding: .1rem .55rem;
@@ -269,24 +266,13 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 .hoppe-tavle ol li:first-child { font-weight: 700; }
 .hoppe-lukk { padding: .5rem 1.2rem; }
 
-/* Påskeegg: miniraveparty hvert femte minutt. Myke lys, ingen harde blink. */
-.rave-fest { position: fixed; inset: 0; z-index: 55; pointer-events: none; overflow: hidden; }
-.rave-lys { position: absolute; inset: -50%; mix-blend-mode: multiply; opacity: .55;
-  background: conic-gradient(from 0deg, #ff3d7f, #ffd23f, #3dd6ff, #7dff6a, #c56bff, #ff3d7f);
-  animation: rave-snurr 2.4s linear infinite, rave-puls .6s ease-in-out infinite alternate; }
-.diskokule { position: absolute; top: 12vh; left: 50%; width: clamp(56px, 7vw, 96px); aspect-ratio: 1; border-radius: 50%; transform: translateX(-50%);
-  background: radial-gradient(circle at 35% 30%, #fff 0 8%, transparent 22%), repeating-linear-gradient(0deg, #9aa3ad 0 3px, transparent 3px 11px), repeating-linear-gradient(90deg, #9aa3ad 0 3px, #e9edf1 3px 11px);
-  box-shadow: 0 0 24px #fff, 0 0 48px #c56bff;
-  animation: kule-ned .8s cubic-bezier(.2, .9, .3, 1.3) both, kule-sving 1.6s ease-in-out .8s infinite alternate; }
-.rave-tekst { position: absolute; left: 0; right: 0; bottom: 10%; margin: 0; text-align: center; max-width: none;
-  font-family: "Permanent Marker", cursive; font-size: clamp(2.5rem, 9vw, 7rem); color: #fff;
-  text-shadow: 0 0 12px #ff3d7f, 0 0 24px #3dd6ff; animation: rave-hopp .45s ease-in-out infinite alternate; }
-body.rave :is(.danser, .hopper) .kropp { animation-duration: .28s; }
-body.rave :is(.danser, .hopper) :is(.bein-v, .bein-h) { animation-duration: .28s; }
-body.rave :is(.danser, .hopper) .arm-fri { animation-duration: .4s; }
-@keyframes rave-snurr { to { transform: rotate(360deg); } }
-@keyframes rave-puls { from { opacity: .35; } to { opacity: .65; } }
-@keyframes kule-ned { from { transform: translate(-50%, -40vh); } to { transform: translate(-50%, 0); } }
-@keyframes kule-sving { from { transform: translate(-50%, 0) rotate(-12deg); } to { transform: translate(-50%, 0) rotate(12deg); } }
-@keyframes rave-hopp { from { transform: translateY(0) scale(1); } to { transform: translateY(-14px) scale(1.06); } }
-.diskokule::before { content: ""; position: absolute; left: 50%; bottom: 100%; width: 2px; height: 60vh; background: #555; }
+.hopper { position: absolute; left: 0; top: 0; width: 80px; text-align: center; will-change: transform; pointer-events: none; }
+.hopper-figur { position: relative; width: 66px; margin: 0 auto; }
+.hopper-figur svg { display: block; width: 100%; height: auto; overflow: visible; }
+.krone { position: absolute; top: -18px; left: 0; width: 92%; text-align: center; font-size: 26px; line-height: 1; transform: rotate(-8deg); }
+.hopper-vinner .hopper-navn { margin-bottom: 14px; }
+
+/* Etter kåringen: kveldens kamerater hopper rundt øverst på forsiden. */
+.hero { position: relative; }
+.hoppefelt { position: absolute; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; }
+body.kamerater-hopper .dansere { display: none; }

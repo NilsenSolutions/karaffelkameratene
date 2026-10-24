@@ -552,8 +552,22 @@ function styrDrikking() {
 const DANS_FARGER = ["#2f5ba8", "#2e7d4f", "#dda829", "#b3263e"];
 const MAKS_DANSERE = 40;
 
+// Små kjennetegn, så kameratene blir litt forskjellige strek-karikaturer.
+const PREG = [
+  '<path d="M21 11 L23 4 L27 9 L30 2 L33 9 L37 4 L39 11" stroke="#2b2b2b" stroke-width="2.5"/>',                         // piggete hår
+  '<path d="M19 15 C17 6 25 3 30 6 C35 3 43 6 41 15" stroke="#7a4a1f" stroke-width="5"/>',                                 // sveis
+  '<path d="M20 21 Q22 34 30 34 Q38 34 40 21" stroke="#7a4a1f" stroke-width="3"/>',                                       // skjegg
+  '<path d="M19 12 Q30 1 41 12 Z" fill="#b3263e" stroke="#b3263e" stroke-width="2.5"/><path d="M40 12 L49 13" stroke="#b3263e"/>', // caps
+  '<path d="M19 17 Q17 4 30 5 Q43 4 41 17 M19 17 L17 32 M41 17 L43 32" stroke="#dda829" stroke-width="3"/>',               // langt hår
+  '<path d="M18 9 Q30 -1 42 8 Q31 12 18 9 Z" fill="#2b2b2b" stroke="#2b2b2b" stroke-width="2"/><path d="M30 2 L30 -1" stroke="#2b2b2b" stroke-width="2"/>', // alpelue
+  '<path d="M24 23.5 Q27 21 30 23 Q33 21 36 23.5" stroke="#2b2b2b" stroke-width="2.5"/>',                                  // bart
+  '<path d="M21 9 Q24 3 28 7 Q31 2 35 7 Q39 4 40 11" stroke="#2b2b2b" stroke-width="2.5"/>'                                // krøller
+];
+const BRILLER = '<circle cx="26" cy="16" r="3.6" stroke="#2b2b2b" stroke-width="2"/><circle cx="34" cy="16" r="3.6" stroke="#2b2b2b" stroke-width="2"/><path d="M29.6 16 L30.4 16" stroke="#2b2b2b" stroke-width="2"/>';
+
 function kameratSvg(i) {
   const farge = DANS_FARGER[i % DANS_FARGER.length];
+  const preg = PREG[i % PREG.length] + (i % 3 === 1 ? BRILLER : "");
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 64 112");
@@ -563,7 +577,7 @@ function kameratSvg(i) {
       '<g class="kropp">' +
         '<circle cx="30" cy="18" r="11" stroke="#2f5ba8"/>' +
         '<circle cx="26" cy="16" r="1.4" fill="#2f5ba8" stroke="none"/><circle cx="34" cy="16" r="1.4" fill="#2f5ba8" stroke="none"/>' +
-        '<path d="M25 21 Q30 26 35 21" stroke="#2f5ba8"/>' +
+        '<path d="M25 21 Q30 26 35 21" stroke="#2f5ba8"/>' + preg +
         '<path d="M30 29 L30 70" stroke="' + farge + '"/>' +
         '<path class="bein bein-v" d="M30 70 L20 102" stroke="#2f5ba8"/>' +
         '<path class="bein bein-h" d="M30 70 L40 102" stroke="#2f5ba8"/>' +
@@ -598,93 +612,136 @@ function byggDansegulv(antall, tekst) {
   }
 }
 
-// ---------------- Påskeegg: kveldens rangering ----------------
-// Klikk på dansegulvet (eller skriv «skål») etter at vinnerne er kåret: kameratene får navn og plassering,
-// vinnerne får krone, og alle hopper rundt på skjermen.
+// ---------------- Kveldens kamerater hopper rundt ----------------
+// Når vinnerne er kåret (de to første døgnene etterpå), hopper kveldens kamerater rundt øverst på forsiden
+// med navnet over hodet. Vinnerne har krone. Klikk på teksten over dansegulvet (eller skriv «skål») for rangeringen.
 
 let RESULTAT = null;
 const rolig = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 async function lastResultat() {
-  try { RESULTAT = await kall("hent_kveldens_resultat", {}); } catch (e) { RESULTAT = null; }
-  $("dansegulv").classList.toggle("har-hemmelighet", Boolean(RESULTAT && RESULTAT.lag && RESULTAT.lag.length));
+  try { RESULTAT = await kall("hent_kveldens_resultat", {}); } catch (e) { return; }   // behold det vi har ved feil
+  const har = Boolean(RESULTAT && RESULTAT.lag && RESULTAT.lag.length);
+  $("dansegulv").classList.toggle("har-hemmelighet", har);
+  if (har) startHjemmeHopp(); else stoppHjemmeHopp();
 }
 
-// Én person per navn i lagene, med lagets plassering. Delt plass ved likt poeng og like mange fulltreff.
+// Én person per navn i lagene. Delt førsteplass ved likt poeng og like mange fulltreff.
 function kveldensPersoner() {
   const lag = RESULTAT.lag;
   const ut = [];
   lag.forEach(l => {
-    const plass = 1 + lag.findIndex(x => x.poeng === l.poeng && x.treff === l.treff);
+    const vinner = l.poeng === lag[0].poeng && l.treff === lag[0].treff;
     (l.medlemmer || l.lag).split("&").map(n => n.trim()).filter(Boolean)
-      .forEach(navn => ut.push({ navn, lag: l.lag, plass, vinner: plass === 1 }));
+      .forEach(navn => ut.push({ navn, lag: l.lag, vinner }));
   });
   return ut;
 }
 
-let hoppeland = null;
+// Én kamerat med navnet over hodet, og krone hvis laget vant.
+function lagHopper(p, i) {
+  const f = el("div", "hopper" + (p.vinner ? " hopper-vinner" : ""));
+  f.style.setProperty("--takt", (0.5 + Math.random() * 0.4).toFixed(2) + "s");
+  f.style.setProperty("--forsinkelse", (-Math.random() * 2).toFixed(2) + "s");
+  f.style.setProperty("--slurk", (2.5 + Math.random() * 2).toFixed(2) + "s");
+  const figur = el("div", "hopper-figur");
+  if (p.vinner) figur.append(el("span", "krone", "👑"));
+  figur.append(kameratSvg(i));
+  f.append(el("span", "hopper-navn", p.navn), figur);
+  return f;
+}
 
-function startHopp() {
-  if (hoppeland || !RESULTAT || !RESULTAT.lag || !RESULTAT.lag.length) return;
+// Spretter rundt innenfor et område. Returnerer en funksjon som stopper.
+function sprett(omrade, figurer) {
+  const tilstand = figurer.map(f => ({ f,
+    x: Math.random() * Math.max(1, omrade.clientWidth - 90), y: Math.random() * Math.max(1, omrade.clientHeight - 180),
+    vx: (Math.random() < .5 ? -1 : 1) * (0.8 + Math.random() * 1.6), vy: (Math.random() < .5 ? -1 : 1) * (0.5 + Math.random() * 1.2),
+    fase: Math.random() * 6.28 }));
+  if (rolig()) {
+    // Uten bevegelse: stå pent på rekke nederst i området.
+    tilstand.forEach((o, i) => {
+      const per = Math.max(1, Math.floor(omrade.clientWidth / 90));
+      o.f.style.transform = "translate(" + (8 + (i % per) * 90) + "px," + (omrade.clientHeight - 180 - Math.floor(i / per) * 170) + "px)";
+    });
+    return () => {};
+  }
+  let ramme = 0;
+  let aktiv = true;
+  const start = performance.now();
+  const steg = t => {
+    if (aktiv && !document.hidden) {
+      const w = omrade.clientWidth - 90, h = omrade.clientHeight - 180;
+      tilstand.forEach(o => {
+        o.x += o.vx; o.y += o.vy;
+        if (o.x < 0 || o.x > w) { o.vx = -o.vx; o.x = Math.max(0, Math.min(w, o.x)); }
+        if (o.y < 30 || o.y > h) { o.vy = -o.vy; o.y = Math.max(30, Math.min(h, o.y)); }
+        const hopp = Math.abs(Math.sin((t - start) / 260 + o.fase)) * 40;
+        o.f.style.transform = "translate(" + o.x.toFixed(1) + "px," + (o.y - hopp).toFixed(1) + "px)";
+      });
+    }
+    ramme = requestAnimationFrame(steg);
+  };
+  ramme = requestAnimationFrame(steg);
+  // Ikke regn når området er utenfor skjermen.
+  let observer = null;
+  if ("IntersectionObserver" in window) {
+    observer = new IntersectionObserver(([e]) => { aktiv = e.isIntersecting; });
+    observer.observe(omrade);
+  }
+  return () => { cancelAnimationFrame(ramme); if (observer) observer.disconnect(); };
+}
+
+let hjemmeHopp = null;   // { felt, stopp, antall }
+
+function startHjemmeHopp() {
   const personer = kveldensPersoner();
-  hoppeland = el("div", "hoppeland");
-  hoppeland.setAttribute("role", "dialog");
-  hoppeland.setAttribute("aria-label", "Kveldens rangering");
+  if (hjemmeHopp && hjemmeHopp.antall === personer.length) return;
+  stoppHjemmeHopp();
+  const hero = document.querySelector(".hero");
+  const felt = el("div", "hoppefelt");
+  felt.setAttribute("aria-hidden", "true");
+  const figurer = personer.map((p, i) => lagHopper(p, i));
+  felt.append(...figurer);
+  hero.append(felt);
+  document.body.classList.add("kamerater-hopper");
+  hjemmeHopp = { felt, stopp: sprett(felt, figurer), antall: personer.length };
+}
 
+function stoppHjemmeHopp() {
+  if (!hjemmeHopp) return;
+  hjemmeHopp.stopp();
+  hjemmeHopp.felt.remove();
+  hjemmeHopp = null;
+  document.body.classList.remove("kamerater-hopper");
+}
+
+// Rangeringen i et kort midt på skjermen.
+let rangeringKort = null;
+
+function visRangering() {
+  if (rangeringKort || !RESULTAT || !RESULTAT.lag || !RESULTAT.lag.length) return;
+  rangeringKort = el("div", "hoppeland");
+  rangeringKort.setAttribute("role", "dialog");
+  rangeringKort.setAttribute("aria-label", "Kveldens rangering");
   const tavle = el("div", "hoppe-tavle");
-  tavle.append(el("p", "hoppe-tittel", "👑 Kveldens rangering"));
-  tavle.append(el("p", "hoppe-under", RESULTAT.tittel));
+  tavle.append(el("p", "hoppe-tittel", "👑 Kveldens rangering"), el("p", "hoppe-under", RESULTAT.tittel));
   const ol = el("ol");
   RESULTAT.lag.forEach(l => ol.append(el("li", "", l.lag + (l.medlemmer ? " (" + l.medlemmer + ")" : "") + " – " + l.poeng + " poeng")));
   const lukk = el("button", "knapp hoppe-lukk", "Lukk");
   lukk.type = "button";
   tavle.append(ol, lukk);
-  hoppeland.append(tavle);
-
-  const figurer = personer.map((p, i) => {
-    const f = el("div", "hopper" + (p.vinner ? " hopper-vinner" : ""));
-    f.style.setProperty("--takt", (0.5 + Math.random() * 0.4).toFixed(2) + "s");
-    f.style.setProperty("--forsinkelse", (-Math.random() * 2).toFixed(2) + "s");
-    f.style.setProperty("--slurk", (2.5 + Math.random() * 2).toFixed(2) + "s");
-    if (p.vinner) f.append(el("span", "krone", "👑"));
-    f.append(kameratSvg(i), el("span", "hopper-navn", p.plass + ". " + p.navn));
-    hoppeland.append(f);
-    return { f, x: Math.random() * Math.max(1, innerWidth - 90), y: 120 + Math.random() * Math.max(1, innerHeight - 300),
-      vx: (Math.random() < .5 ? -1 : 1) * (1.2 + Math.random() * 2.3), vy: (Math.random() < .5 ? -1 : 1) * (0.8 + Math.random() * 1.8),
-      fase: Math.random() * 6.28 };
-  });
-  document.body.append(hoppeland);
-
-  let ramme = 0;
-  const start = performance.now();
-  const steg = t => {
-    const w = innerWidth - 90, h = innerHeight - 170;
-    figurer.forEach(o => {
-      o.x += o.vx; o.y += o.vy;
-      if (o.x < 0 || o.x > w) { o.vx = -o.vx; o.x = Math.max(0, Math.min(w, o.x)); }
-      if (o.y < 20 || o.y > h) { o.vy = -o.vy; o.y = Math.max(20, Math.min(h, o.y)); }
-      const hopp = Math.abs(Math.sin((t - start) / 230 + o.fase)) * 45;
-      o.f.style.transform = "translate(" + o.x.toFixed(1) + "px," + (o.y - hopp).toFixed(1) + "px)";
-    });
-    ramme = requestAnimationFrame(steg);
-  };
-  if (rolig()) {
-    // Uten bevegelse: stå pent på rekke nederst.
-    figurer.forEach((o, i) => { o.f.style.transform = "translate(" + (16 + (i % 8) * 90) + "px," + (innerHeight - 190 - Math.floor(i / 8) * 150) + "px)"; });
-  } else {
-    ramme = requestAnimationFrame(steg);
-  }
+  rangeringKort.append(tavle);
+  document.body.append(rangeringKort);
 
   const stopp = () => {
-    cancelAnimationFrame(ramme);
     clearTimeout(tidsfrist);
     document.removeEventListener("keydown", esc);
-    if (hoppeland) hoppeland.remove();
-    hoppeland = null;
+    if (rangeringKort) rangeringKort.remove();
+    rangeringKort = null;
   };
   const esc = e => { if (e.key === "Escape") stopp(); };
   const tidsfrist = setTimeout(stopp, 60000);   // en PC som står på forsiden går tilbake av seg selv
-  hoppeland.addEventListener("click", e => { if (!tavle.contains(e.target) || e.target === lukk) stopp(); });
+  rangeringKort.addEventListener("click", e => { if (!tavle.contains(e.target) || e.target === lukk) stopp(); });
   document.addEventListener("keydown", esc);
   lukk.focus();
 }
@@ -696,20 +753,8 @@ function lyttEtterSkal() {
     if (e.target.closest && e.target.closest("input, textarea, select")) return;
     if (e.key.length !== 1) return;
     buffer = (buffer + e.key.toLowerCase()).slice(-4);
-    if (buffer === "skål" || buffer === "skal") startHopp();
+    if (buffer === "skål" || buffer === "skal") visRangering();
   });
-}
-
-// ---------------- Påskeegg: miniraveparty hvert femte minutt ----------------
-
-function rave() {
-  if (document.hidden || rolig() || document.body.classList.contains("rave")) return;
-  const fest = el("div", "rave-fest");
-  fest.setAttribute("aria-hidden", "true");
-  fest.append(el("div", "rave-lys"), el("span", "diskokule"), el("p", "rave-tekst", "Rave! 🍷🎶"));
-  document.body.append(fest);
-  document.body.classList.add("rave");
-  setTimeout(() => { fest.remove(); document.body.classList.remove("rave"); }, 10000);
 }
 
 // Stopp dansen når gulvet ikke vises.
@@ -730,10 +775,8 @@ lastSmakinger();
 lastResultat();
 // Hent samlingene på nytt hvert minutt, så en PC som står på forsiden bytter til neste samling når kvelden avsluttes.
 setInterval(() => { if (!document.hidden) { lastSmakinger(); lastResultat(); } }, 60000);
-$("dansere").addEventListener("click", startHopp);
+$("dansegulv-tekst").addEventListener("click", visRangering);
 lyttEtterSkal();
-setInterval(rave, 5 * 60 * 1000);
-if (/[?&]rave\b/.test(location.search)) setTimeout(rave, 1500);   // ?rave for å se festen med en gang
 byggFilter();
 lastVinlogg();
 $("skjema").addEventListener("submit", sendSkjema);

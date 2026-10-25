@@ -318,7 +318,7 @@ function byggLoddtrekning(k, lag) {
 // Oversikten: velg hvilket arrangement du vil styre.
 function visOversikt(rot) {
   // Arkivet: kvelder der vinnerne er kåret, og passerte samlinger som ikke er i gang.
-  const iDag = new Date().toISOString().slice(0, 10);
+  const iDag = idag();
   const iArkiv = s => !s.aktiv && (s.arkivert || (!s.dato_avtales && s.dato < iDag));
   const kommende = data.filter(s => !iArkiv(s));
   const arkiv = data.filter(iArkiv).reverse();   // nyeste først
@@ -472,6 +472,9 @@ function byggModulvelger(m0, endre) {
   return boks;
 }
 
+const DATO_HJELP = "La datoen stå tom hvis den ikke er bestemt. Da kan folk foreslå datoer når de melder seg på, og starter du kvelden, holdes den samme dag. Sted og tema kan også stå tomme.";
+const idag = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+
 let valgtOppsett = OPPSETT[0];
 let nyUtkast = {};   // det som er skrevet inn, så det ikke forsvinner når siden oppdateres
 
@@ -504,13 +507,7 @@ function byggNyttArrangement() {
     d.append(l, i);
     f.append(d);
   });
-  const avtales = el("label", "avkryss-linje");
-  const ak = el("input");
-  ak.type = "checkbox";
-  ak.checked = Boolean(nyUtkast.dato_avtales);
-  ak.addEventListener("change", () => { nyUtkast.dato_avtales = ak.checked; });
-  avtales.append(ak, document.createTextNode(" Dato avtales (folk kan foreslå datoer)"));
-  f.append(avtales);
+  f.append(el("p", "hjelp", DATO_HJELP));
   const modNy = nyUtkast.moduler || valgtOppsett.moduler;
   f.append(byggModulvelger(modNy, ny => { nyUtkast.moduler = ny; vis(); }));
   const lagre = el("button", "knapp", "Opprett arrangement");
@@ -518,17 +515,16 @@ function byggNyttArrangement() {
   f.append(lagre);
   f.addEventListener("submit", async e => {
     e.preventDefault();
-    const d = { id: "", tittel: felt.tittel.value.trim(), dato: felt.dato.value, tid: felt.tid.value || "19:00",
-      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked, oppsett: valgtOppsett.nokkel, moduler: normaliserModuler(modNy) };
-    if (!d.tittel) { melding("Gi arrangementet en tittel."); return; }
-    if (!d.dato && !d.dato_avtales) { melding("Velg en dato, eller kryss av for at datoen avtales."); return; }
+    const d = { id: "", tittel: felt.tittel.value.trim() || valgtOppsett.tittel || "Vinsmaking", dato: felt.dato.value, tid: felt.tid.value || "19:00",
+      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), oppsett: valgtOppsett.nokkel, moduler: normaliserModuler(modNy) };
+    if (d.dato && d.dato < idag()) { melding("Datoen har vært. Velg en dato fra i dag og fremover, eller la den stå tom."); return; }
     lagre.disabled = true;
     try {
       await rpc("vert_lagre_samling", { p_pin: pin, p_data: d });
       apne.delete("ny");
       nyUtkast = {};
       await hent();
-      melding("«" + d.tittel + "» er opprettet og står på forsiden.");
+      melding("«" + d.tittel + "» er opprettet og står på forsiden" + (d.dato ? "." : " under «Dato avtales»."));
     } catch (err) {
       melding(err.message);
       lagre.disabled = false;
@@ -552,7 +548,8 @@ function byggDetaljer(k) {
 
   const f = el("form", "vin-felt");
   const felt = {};
-  [["tittel", "Tittel", "text", k.tittel], ["dato", "Dato", "date", k.dato], ["tid", "Klokkeslett", "time", k.tid],
+  // Et arrangement uten bestemt dato har en plassholderdato i databasen. Den skal ikke vises.
+  [["tittel", "Tittel", "text", k.tittel], ["dato", "Dato", "date", k.dato_avtales ? "" : k.dato], ["tid", "Klokkeslett", "time", k.tid],
    ["sted", "Sted", "text", k.sted], ["tema", "Tema", "text", k.tema]].forEach(([n, navn, type, std]) => {
     const boks = el("div", "felt");
     const l = el("label", "", navn);
@@ -564,13 +561,7 @@ function byggDetaljer(k) {
     boks.append(l, i);
     f.append(boks);
   });
-  const avtales = el("label", "avkryss-linje");
-  const ak = el("input");
-  ak.type = "checkbox";
-  ak.checked = Boolean(verdi("dato_avtales", k.dato_avtales));
-  ak.addEventListener("change", () => { detaljUtkast.dato_avtales = ak.checked; });
-  avtales.append(ak, document.createTextNode(" Dato avtales (folk kan foreslå datoer)"));
-  f.append(avtales);
+  f.append(el("p", "hjelp", DATO_HJELP));
 
   const modD = verdi("moduler", k.moduler || {});
   f.append(byggModulvelger(modD, ny => { detaljUtkast.moduler = ny; vis(); }));
@@ -590,8 +581,7 @@ function byggDetaljer(k) {
   f.addEventListener("submit", async e => {
     e.preventDefault();
     const data_ = { id: k.samling_id, tittel: felt.tittel.value.trim(), dato: felt.dato.value, tid: felt.tid.value || "19:00",
-      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), dato_avtales: ak.checked, moduler: normaliserModuler(modD) };
-    if (!data_.dato && !data_.dato_avtales) { melding("Velg en dato, eller kryss av for at datoen avtales."); return; }
+      sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), moduler: normaliserModuler(modD) };
     lagre.disabled = true;
     try {
       await rpc("vert_lagre_samling", { p_pin: pin, p_data: data_ });

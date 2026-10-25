@@ -150,6 +150,6 @@ Hvert arrangement har byggeklosser som slås av og på under «Detaljer» på `/
 | Hva tar du med? | Feltet i påmeldingen og listen over hvem som tar med hva |
 | Poeng per felt | Land, distrikt, drue, årgang og pris får hver sin vekt. 0 = feltet gjettes ikke |
 
-Score 0–100 og kåring er alltid med. Datoen settes av verten, eller folk foreslår datoer når «Dato avtales» er krysset av.
+Score 0–100 og kåring er alltid med. Bare tittelen trengs for å opprette et arrangement (tom tittel blir «Vinsmaking»). Står datoen tom, er den ikke bestemt: forsiden viser «Dato avtales», folk kan foreslå datoer, og starter verten kvelden, får den dagens dato. Klokkeslett kan skrives som 18:00, 18.00 eller 1800, og tomt blir 19:00. Testene ligger i `supabase/tester/nytt_arrangement.sql`.
 
 Ved kåringen arkiveres kvelden, og hver persons score lagres i vinloggen (på lagkvelder får begge på laget lagets score). På forsiden kan vinloggen vises med scoren til én person. SQL: `supabase/migreringer/10_moduler.sql`.

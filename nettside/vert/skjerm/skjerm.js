@@ -200,10 +200,43 @@ function visFasit(rot, data, L) {
       dl.append(el("dt", "", navn), el("dd", "", felt === "pris" && /^\d+([.,]\d+)?$/.test(v[felt].trim()) ? v[felt].trim() + " kr" : v[felt]));
     });
     kort.append(dl);
+    kort.append(...smak(v, (data.runde.aromasky || {})[v.id] || []));
     rad.append(kort);
   });
   rot.append(rad);
   if ((data.kveld.moduler || {}).vinkilde !== "vert") rot.append(el("p", "under midt", "Tatt med av " + data.runde.lag));
+}
+
+// Lukt og smak i fasit: strukturen som små skalaer, aromaene i fasit, og det bordet kjente (flest først).
+function smak(v, sky) {
+  const ut = [];
+  const s = v.struktur || {};
+  if (STRUKTUR.some(x => s[x.felt] != null)) {
+    const ul = el("ul", "struktur");
+    STRUKTUR.forEach(x => {
+      if (s[x.felt] == null) return;
+      const li = el("li");
+      const skala = el("span", "prikker");
+      for (let i = 1; i <= 5; i++) skala.append(el("span", i <= s[x.felt] ? "fylt" : ""));
+      li.append(el("span", "", x.navn), skala, el("span", "struktur-ord", s[x.felt] <= 2 ? x.lav : s[x.felt] >= 4 ? x.hoy : ""));
+      ul.append(li);
+    });
+    ut.push(ul);
+  }
+  const fasit = (v.aromaer || []).map(a => a.toLowerCase());
+  if (fasit.length) ut.push(el("p", "aroma-fasit", "Aromaer: " + v.aromaer.join(", ")));
+  if (sky.length) {
+    const boks = el("div", "sky");
+    boks.append(el("p", "sky-tittel", "Bordet kjente"));
+    const maks = sky[0].antall;
+    sky.slice(0, 12).forEach(a => {
+      const ord = el("span", "sky-ord" + (fasit.includes(a.aroma.toLowerCase()) ? " treff" : ""), a.aroma + " ×" + a.antall);
+      ord.style.fontSize = (0.8 + 0.7 * a.antall / maks) + "em";
+      boks.append(ord);
+    });
+    ut.push(boks);
+  }
+  return ut;
 }
 
 // ---------------- Mellom rundene ----------------

@@ -76,3 +76,6 @@
 .modul-poeng small { display: block; opacity: .7; font-size: .85rem; }
 .vertsvin { border-top: 1px solid rgba(0, 0, 0, .1); padding: .5rem 0; }
 .vertsvin summary { cursor: pointer; font-weight: 600; }
+
+/* Varianter av et oppsett (Vertikal, Horisontal) */
+.varianter { display: flex; flex-wrap: wrap; gap: .45rem; margin: .8rem 0 0; }

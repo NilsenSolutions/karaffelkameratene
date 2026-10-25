@@ -404,9 +404,31 @@ const OPPSETT_MODULER = {
 };
 OPPSETT.forEach(o => { o.moduler = OPPSETT_MODULER[o.nokkel]; });   // normaliseres når de brukes (POENG_STANDARD er definert lenger ned)
 
+// Varianter av et oppsett: velges under oppsettet og overstyrer tema, beskrivelse og byggeklosser. Den første er standard.
+const VARIANTER = {
+  vertikal: [
+    { navn: "Samme vin", tema: "Samme vin, ulike årganger", om: OPPSETT.find(o => o.nokkel === "vertikal").om, moduler: OPPSETT_MODULER.vertikal },
+    { navn: "Samme distrikt", tema: "Samme distrikt, ulike produsenter og årganger",
+      om: "Alle tar med én vin fra samme distrikt (for eksempel Barolo, Rioja eller Chablis), fra ulike produsenter og årganger. Land og drue er gitt, så gjett årgangen og prisen. Lukt og smak hjelper: modning kjennes på tannin, frukt og aromaer.",
+      moduler: Object.assign({}, SOLO, { notater: true, poeng: Object.assign(P(0, 0, 0, 4, 3), { struktur: 1, aroma: 1 }) }) },
+    { navn: "Samme drue", tema: "Samme drue, ulike årganger",
+      om: "Alle tar med én vin av samme drue, fra ulike land og årganger. Gjett land, distrikt og årgang.",
+      moduler: Object.assign({}, SOLO, { poeng: P(2, 3, 0, 4, 2) }) }
+  ],
+  horisontal: [
+    { navn: "Samme distrikt", tema: "Samme distrikt og årgang, ulike produsenter", om: OPPSETT.find(o => o.nokkel === "horisontal").om, moduler: OPPSETT_MODULER.horisontal },
+    { navn: "Samme årgang", tema: "Samme årgang, ulike distrikter",
+      om: "Alle tar med én vin fra samme årgang (for eksempel 2019), fra hvor som helst. Årgangen er gitt, så gjett land, distrikt, drue og pris.",
+      moduler: Object.assign({}, SOLO, { poeng: P(2, 4, 2, 0, 3) }) },
+    { navn: "Samme drue og årgang", tema: "Samme drue og årgang, ulike land",
+      om: "Alle tar med én vin av samme drue og årgang, fra ulike land. Gjett land, distrikt og pris.",
+      moduler: Object.assign({}, SOLO, { poeng: P(3, 3, 0, 0, 3) }) }
+  ]
+};
+
 // Byggeklossene for et arrangement. endre(ny) kalles med en kopi hver gang noe endres.
 // Score 0–100 og kåring er alltid med. Datoforslag følger «Dato avtales».
-const POENG_STANDARD = { land: 2, distrikt: 5, drue: 2, aargang: 3, pris: 3 };
+const POENG_STANDARD = { land: 2, distrikt: 5, drue: 2, aargang: 3, pris: 3, struktur: 0, aroma: 0 };
 
 // Fyller ut og rydder byggeklossene, så eldre arrangementer og malene får samme form.
 function normaliserModuler(m0) {
@@ -421,6 +443,9 @@ function normaliserModuler(m0) {
   if (!m0 || !m0.poeng) ALLE_GJETT.forEach(([f]) => { if (m.gjett && !m.gjett.includes(f)) m.poeng[f] = 0; });
   if (!m.poeng.land) m.poeng.distrikt = 0;   // distrikt gir bare mening når landet gjettes
   m.gjett = ALLE_GJETT.map(([f]) => f).filter(f => m.poeng[f] > 0);
+  // Lukt og smak: poeng for struktur og aroma krever at smaksnotatene er slått på.
+  m.notater = m.notater === true;
+  if (!m.notater) { m.poeng.struktur = 0; m.poeng.aroma = 0; }
   m.score = true;
   m.kaaring = true;
   m.datoforslag = true;
@@ -475,9 +500,38 @@ function byggModulvelger(m0, endre) {
     rad.append(l);
   });
   p.append(rad);
-  const maks = ALLE_GJETT.reduce((s, [f]) => s + (m.poeng[f] || 0), 0);
+  const maks = ALLE_GJETT.reduce((s, [f]) => s + (m.poeng[f] || 0), 0) + STRUKTUR.length * m.poeng.struktur + MAKS_AROMAER * m.poeng.aroma;
   p.append(el("small", "", "Maks " + maks + " poeng per vin. Distrikt gir delpoeng etter avstand, årgang og pris i tre trinn. Score 0–100 og kåring er alltid med."));
   boks.append(p);
+
+  // Lukt og smak: struktur og aromaer. Med poeng må den som tar med vinen legge inn fasit for dem.
+  const ln = el("label", "modul");
+  const ni = el("input");
+  ni.type = "checkbox";
+  ni.checked = m.notater;
+  ni.addEventListener("change", () => sett({ notater: ni.checked }));
+  const nt = el("span");
+  nt.append(el("strong", "", "Lukt og smak"), el("small", "", "Struktur (syre, tannin, sødme, fylde, ettersmak) og aromaer under hver vin. Aromaene vises på storskjermen ved fasit."));
+  ln.append(ni, nt);
+  boks.append(ln);
+  if (m.notater) {
+    const sp = el("div", "modul-poeng");
+    sp.append(el("span", "modul-tittel", "Poeng for lukt og smak (0 = bare notater)"));
+    const srad = el("div", "poeng-rad");
+    [["struktur", "Struktur, per felt"], ["aroma", "Aroma, per treff"]].forEach(([f, navn]) => {
+      const l = el("label", "");
+      const i = el("input");
+      Object.assign(i, { type: "number", min: 0, max: 5, step: 1, value: m.poeng[f] });
+      i.addEventListener("change", () => sett({ poeng: Object.assign({}, m.poeng, { [f]: Math.max(0, Math.min(5, Number(i.value) || 0)) }) }));
+      l.append(el("span", "", navn), i);
+      srad.append(l);
+    });
+    sp.append(srad);
+    sp.append(el("small", "", m.poeng.struktur || m.poeng.aroma
+      ? "Den som tar med vinen (eller verten) legger inn fasit for struktur og aroma sammen med resten. Ett trinn unna på struktur gir halvparten."
+      : "Notatene gir ingen poeng. Fasit for struktur og aroma kan legges inn om man vil."));
+    boks.append(sp);
+  }
   return boks;
 }
 
@@ -485,7 +539,11 @@ const DATO_HJELP = "La datoen stå tom hvis den ikke er bestemt. Da kan folk for
 const idag = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 
 let valgtOppsett = OPPSETT[0];
+let valgtVariant = 0;
 let nyUtkast = {};   // det som er skrevet inn, så det ikke forsvinner når siden oppdateres
+
+// Oppsettet slik det er valgt, med varianten lagt over.
+const oppsettMedVariant = () => Object.assign({}, valgtOppsett, (VARIANTER[valgtOppsett.nokkel] || [])[valgtVariant] || {}, { navn: valgtOppsett.navn });
 
 function byggNyttArrangement() {
   const boks = el("div", "nytt-arrangement");
@@ -496,16 +554,31 @@ function byggNyttArrangement() {
     b.type = "button";
     b.setAttribute("aria-pressed", String(o === valgtOppsett));
     b.append(el("strong", "", o.navn), el("span", "", o.tema || "Ingen tema"));
-    b.addEventListener("click", () => { valgtOppsett = o; nyUtkast = {}; vis(); });
+    b.addEventListener("click", () => { valgtOppsett = o; valgtVariant = 0; nyUtkast = {}; vis(); });
     maler.append(b);
   });
   boks.append(maler);
-  boks.append(el("p", "hjelp mal-om", valgtOppsett.om));
+  const varianter = VARIANTER[valgtOppsett.nokkel];
+  if (varianter) {
+    const rad = el("div", "varianter");
+    rad.setAttribute("role", "group");
+    rad.setAttribute("aria-label", "Variant");
+    varianter.forEach((v, i) => {
+      const b = el("button", "brikke", v.navn);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(i === valgtVariant));
+      b.addEventListener("click", () => { valgtVariant = i; nyUtkast = {}; vis(); });
+      rad.append(b);
+    });
+    boks.append(rad);
+  }
+  const valgt = oppsettMedVariant();
+  boks.append(el("p", "hjelp mal-om", valgt.om));
 
   const f = el("form", "vin-felt");
   const felt = {};
-  [["tittel", "Tittel", "text", valgtOppsett.tittel], ["dato", "Dato", "date", ""], ["tid", "Klokkeslett", "time", valgtOppsett.tid],
-   ["sted", "Sted", "text", ""], ["tema", "Tema", "text", valgtOppsett.tema]].forEach(([k, n, type, verdi]) => {
+  [["tittel", "Tittel", "text", valgt.tittel], ["dato", "Dato", "date", ""], ["tid", "Klokkeslett", "time", valgt.tid],
+   ["sted", "Sted", "text", ""], ["tema", "Tema", "text", valgt.tema]].forEach(([k, n, type, verdi]) => {
     const d = el("div", "felt");
     const l = el("label", "", n);
     l.htmlFor = "ny-" + k;
@@ -517,7 +590,7 @@ function byggNyttArrangement() {
     f.append(d);
   });
   f.append(el("p", "hjelp", DATO_HJELP));
-  const modNy = nyUtkast.moduler || valgtOppsett.moduler;
+  const modNy = nyUtkast.moduler || valgt.moduler;
   f.append(byggModulvelger(modNy, ny => { nyUtkast.moduler = ny; vis(); }));
   const lagre = el("button", "knapp", "Opprett arrangement");
   lagre.type = "submit";
@@ -776,6 +849,8 @@ function byggVertsviner(k, vertLag, aktivt, iGang) {
     f.addEventListener("submit", async e => {
       e.preventDefault();
       if (!verdier.navn) { melding("Vinen må ha et navn."); return; }
+      const mangler = smaksfasitMangler(verdier, normaliserModuler(k.moduler));
+      if (mangler.length) { melding("Legg inn " + listeTekst(mangler) + " i fasit for lukt og smak."); return; }
       document.activeElement.blur();
       const b = await handling("lk_admin_vertsvin", { p_samling: k.samling_id, p_data: Object.assign({}, verdier) });
       if (b) {
@@ -804,7 +879,8 @@ const vinUtkast = {};
 
 function vinFelter(id, start) {
   const verdier = vinUtkast[id] || (vinUtkast[id] = { navn: start.navn || "", produsent: start.produsent || "", land: start.land || "",
-    distrikt: start.distrikt || "", drue: start.drue || "", aargang: start.aargang || "", type: start.type || "", pris: start.pris || "" });
+    distrikt: start.distrikt || "", drue: start.drue || "", aargang: start.aargang || "", type: start.type || "", pris: start.pris || "",
+    struktur: Object.assign({}, start.struktur), aromaer: (start.aromaer || []).slice() });
   const ingenting = () => {};
   const rutenett = el("div", "vin-felt");
   rutenett.append(
@@ -815,6 +891,13 @@ function vinFelter(id, start) {
     tekstfelt(id + "-aargang", "Årgang", verdier, "aargang", ingenting, { numerisk: true, plass: "2019" }),
     velgfelt(id + "-type", "Type", TYPER, verdier, "type", ingenting),
     tekstfelt(id + "-pris", "Pris (kr)", verdier, "pris", ingenting, { numerisk: true, plass: "299" }));
+  const mod = normaliserModuler(data.kveld && data.kveld.moduler);
+  if (mod.notater) {
+    const poeng = mod.poeng.struktur > 0 || mod.poeng.aroma > 0;
+    rutenett.append(smaksfelt(id + "-smak", verdier, ingenting, { tittel: "Lukt og smak (fasit" + (poeng ? ")" : ", valgfritt)"),
+      apen: smaksfasitMangler(verdier, mod).length > 0,
+      hjelp: poeng ? "Gjestene får poeng for å treffe det du legger inn her." : "Vises ved fasit, men gir ingen poeng." }));
+  }
   return [rutenett, verdier];
 }
 
@@ -874,14 +957,16 @@ function poengregler(p) {
     ["Distrikt", p.distrikt, "Riktig distrikt " + d[0] + ". Ellers etter avstand: under 100 km " + d[1] + ", under 300 km " + d[2] + ", under 600 km " + d[3] + ". Feil land gir 0."],
     ["Drue", p.drue, "Riktig drue. Ved blanding gjelder den dominerende druen. Druer med to navn (Syrah / Shiraz) gir treff på begge."],
     ["Årgang", p.aargang, "Riktig " + a1 + ", ett år unna " + a2 + ", to år unna " + a3 + "."],
-    ["Pris", p.pris, "Innenfor 10 % " + p1 + ", innenfor 25 % " + p2 + ", innenfor 50 % " + p3 + "."]
+    ["Pris", p.pris, "Innenfor 10 % " + p1 + ", innenfor 25 % " + p2 + ", innenfor 50 % " + p3 + "."],
+    ["Struktur", p.struktur, p.struktur + " per felt (syre, tannin, sødme, fylde, ettersmak) som treffer fasit, ett trinn unna " + Math.floor(p.struktur / 2) + ".", STRUKTUR.length * p.struktur],
+    ["Aroma", p.aroma, p.aroma + " per aroma som står i fasit. Hver velger høyst " + MAKS_AROMAER + ".", MAKS_AROMAER * p.aroma]
   ].filter(r => r[1] > 0);
 }
 
 function byggPoengregler(lag) {
   const mod = normaliserModuler(data.kveld.moduler);
   const regler = poengregler(mod.poeng);
-  const maksVin = regler.reduce((s, r) => s + r[1], 0);
+  const maksVin = regler.reduce((s, r) => s + (r[3] == null ? r[1] : r[3]), 0);
   const d = el("details", "kort poengregler");
   d.open = apne.has("regler");
   d.addEventListener("toggle", () => { d.open ? apne.add("regler") : apne.delete("regler"); });

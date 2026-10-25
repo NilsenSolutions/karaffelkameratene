@@ -12,6 +12,9 @@ const VERT = () => MOD().vinkilde === "vert";   // verten stiller med alle vinen
 const T = (medLag, uten) => (SOLO() ? uten : medLag);
 const GJETTES = f => (MOD().gjett || ["land", "distrikt", "drue", "aargang", "pris"]).includes(f);
 const VINER_PER = () => MOD().viner_per || 2;
+// Lukt og smak: på når byggeklossen er slått på, eller når struktur eller aroma gir poeng (da trengs fasit).
+const SMAKSPOENG = () => ((MOD().poeng || {}).struktur > 0) || ((MOD().poeng || {}).aroma > 0);
+const NOTATER = () => MOD().notater === true || SMAKSPOENG();
 
 let data = null;              // fra lk_hent
 let visningsnokkel = "";
@@ -270,7 +273,8 @@ function byggVinskjema(bokstav, v) {
   const boks = el("fieldset", "kort vinskjema");
   boks.append(el("legend", "", VINER_PER() === 1 ? "Vinen" : "Vin " + bokstav));
   const verdier = { navn: v.navn || "", produsent: v.produsent || "", land: v.land || "", distrikt: v.distrikt || "",
-    drue: v.drue || "", aargang: v.aargang || "", type: v.type || "", pris: v.pris || "" };
+    drue: v.drue || "", aargang: v.aargang || "", type: v.type || "", pris: v.pris || "",
+    struktur: Object.assign({}, v.struktur), aromaer: (v.aromaer || []).slice() };
   const status = el("p", "status lagre-status");
   status.setAttribute("role", "status");
   status.textContent = v.id ? "Lagret ✓" : "Ikke lagret ennå";
@@ -281,13 +285,20 @@ function byggVinskjema(bokstav, v) {
   boks.append(tekstfelt("v" + bokstav + "-produsent", "Produsent", verdier, "produsent", lagre));
   boks.append(...gjettefelt("v" + bokstav, verdier, lagre));
   boks.append(velgfelt("v" + bokstav + "-type", "Type", TYPER, verdier, "type", lagre));
+  if (NOTATER()) {
+    boks.append(smaksfelt("v" + bokstav + "-smak", verdier, lagre, {
+      tittel: "Lukt og smak (fasit" + (SMAKSPOENG() ? ")" : ", valgfritt)"), apen: smaksfasitMangler(verdier, MOD()).length > 0,
+      hjelp: (SMAKSPOENG() ? "De andre får poeng for å treffe det du legger inn her." : "Vises ved fasit, men gir ingen poeng.") +
+        " Bruk gjerne produsentens smaksnotat, ofte bak på flasken eller hos Vinmonopolet." }));
+  }
 
   const knapp = el("button", "knapp", "Lagre vin " + bokstav);
   knapp.type = "button";
   const feil = el("p", "feil");
   feil.setAttribute("role", "alert");
   knapp.addEventListener("click", async () => {
-    const mangler = PAKREVD.filter(([felt]) => ["navn", "produsent", "type"].includes(felt) || GJETTES(felt)).filter(([felt]) => !String(verdier[felt] || "").trim()).map(([, navn]) => navn);
+    const mangler = PAKREVD.filter(([felt]) => ["navn", "produsent", "type"].includes(felt) || GJETTES(felt)).filter(([felt]) => !String(verdier[felt] || "").trim()).map(([, navn]) => navn)
+      .concat(smaksfasitMangler(verdier, MOD()));
     if (mangler.length) {
       feil.textContent = "Fyll ut " + listeTekst(mangler.map(n => n.toLowerCase())) + T(" før dere lagrer.", " før du lagrer.");
       return;
@@ -337,7 +348,8 @@ function byggGjetteskjema(vin, g) {
   const boks = el("fieldset", "kort vinskjema");
   boks.append(el("legend", "", "Vin " + vin.bokstav));
   const verdier = { land: g.land || "", distrikt: g.distrikt || "", drue: g.drue || "", aargang: g.aargang || "",
-    pris: g.pris || "", score: g.score == null ? "" : String(g.score) };
+    pris: g.pris || "", score: g.score == null ? "" : String(g.score),
+    struktur: Object.assign({}, g.struktur), aromaer: (g.aromaer || []).slice(), notat: g.notat || "" };
   const status = el("p", "status lagre-status");
   status.setAttribute("role", "status");
   status.textContent = g.land || g.score != null ? "Lagret ✓" : "";
@@ -353,6 +365,14 @@ function byggGjetteskjema(vin, g) {
   });
   const id = "g" + vin.bokstav;
   boks.append(...gjettefelt(id, verdier, lagre));
+  if (NOTATER()) {
+    const p = MOD().poeng || {};
+    boks.append(smaksfelt(id + "-smak", verdier, lagre, { notat: true, apen: !GJETTES("land") && !GJETTES("drue"),
+      hjelp: SMAKSPOENG()
+        ? "Gir poeng:" + (p.struktur > 0 ? " " + p.struktur + " per strukturfelt som treffer fasit (ett trinn unna gir halvparten)" : "") +
+          (p.struktur > 0 && p.aroma > 0 ? ", og" : "") + (p.aroma > 0 ? " " + p.aroma + " per aroma som står i fasit" : "") + "."
+        : "Gir ingen poeng, men aromaene vises på storskjermen når vinen avsløres." }));
+  }
   if (MOD().score !== false) boks.append(scorefelt(id + "-score", verdier, lagre));
   boks.append(status);
   return boks;
@@ -387,6 +407,7 @@ function fasitkort(v, overskrift, gjett) {
     const dl = el("dl", "fasit-liste");
     rader.forEach(([n, t]) => { if (t) dl.append(el("dt", "", n), el("dd", "", t)); });
     k.append(dl);
+    k.append(...smaksfasit(v, null));
     return k;
   }
   const tabell = el("table", "fasit-tabell");
@@ -407,7 +428,37 @@ function fasitkort(v, overskrift, gjett) {
     tabell.append(tr);
   }
   k.append(tabell);
+  k.append(...smaksfasit(v, gjett));
+  if (gjett.notat) k.append(el("p", "hjelp", "Notatet ditt: " + gjett.notat));
   return k;
+}
+
+// Struktur og aromaer i fasit, med det laget kjente ved siden av. Treff på aroma er merket med ✓.
+function smaksfasit(v, gjett) {
+  const s = v.struktur || {}, a = v.aromaer || [];
+  const gs = (gjett && gjett.struktur) || {}, ga = ((gjett && gjett.aromaer) || []).map(x => x.toLowerCase());
+  const ut = [];
+  if (STRUKTUR.some(x => s[x.felt] != null)) {
+    const tabell = el("table", "fasit-tabell");
+    const hode = el("tr");
+    ["Struktur", "Fasit", gjett ? T("Dere", "Du") : ""].forEach(t => hode.append(el("th", "", t)));
+    tabell.append(hode);
+    STRUKTUR.forEach(x => {
+      if (s[x.felt] == null) return;
+      const tr = el("tr");
+      const tekst = n => n == null ? "–" : n + " " + (n <= 2 ? x.lav.toLowerCase() : n >= 4 ? x.hoy.toLowerCase() : "middels");
+      tr.append(el("th", "", x.navn), el("td", "", tekst(s[x.felt])), el("td", "gjettet", gjett ? tekst(gs[x.felt]) : ""));
+      tabell.append(tr);
+    });
+    ut.push(tabell);
+  }
+  if (a.length) {
+    const p = el("p", "fasit-aromaer");
+    p.append(el("strong", "", "Aromaer: "));
+    p.append(document.createTextNode(a.map(x => ga.includes(x.toLowerCase()) ? x + " ✓" : x).join(", ")));
+    ut.push(p);
+  }
+  return ut;
 }
 
 // Resultater, ett steg om gangen.

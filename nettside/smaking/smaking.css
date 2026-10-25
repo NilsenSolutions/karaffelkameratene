@@ -62,3 +62,9 @@ details.kort > summary { cursor: pointer; font-weight: 700; }
 .navneknapp:hover { background: #eaf0fb; }
 .navneknapp[aria-pressed="true"] { background: #2f5ba8; color: #fff; }
 .navneknapp:disabled { opacity: .5; }
+
+/* Lukt og smak */
+.smaksnotater .aroma-gruppe { margin: .7rem 0 .35rem; font-size: .85rem; }
+.smaksnotater .glider:first-of-type { margin-top: .4rem; }
+.vin-felt > .smaksnotater { grid-column: 1 / -1; }
+.fasit-aromaer { margin: .6rem 0 0; }

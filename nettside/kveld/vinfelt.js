@@ -146,3 +146,75 @@ function druefelt(id, verdier, lagre) {
   return f;
 }
 
+
+// Lukt og smak: struktur som glidebrytere (1–5) og aromaer som brikker, høyst MAKS_AROMAER.
+// verdier.struktur er { syre: 4, … }, verdier.aromaer en liste. Med valg.notat kommer et fritt notat i verdier.notat.
+function smaksfelt(id, verdier, lagre, valg = {}) {
+  verdier.struktur = verdier.struktur || {};
+  verdier.aromaer = verdier.aromaer || [];
+  const d = el("details", "kort smaksnotater");
+  d.open = Boolean(valg.apen);
+  d.append(el("summary", "kort-tittel", valg.tittel || "Lukt og smak"));
+  if (valg.hjelp) d.append(el("p", "hjelp", valg.hjelp));
+
+  d.append(el("p", "gruppe", "Struktur"));
+  STRUKTUR.forEach(s => {
+    const rad = el("div", "glider");
+    const l = el("label", "", s.navn);
+    l.htmlFor = id + "-" + s.felt;
+    const verdi = verdier.struktur[s.felt];
+    const r = el("input");
+    Object.assign(r, { type: "range", id: id + "-" + s.felt, min: 1, max: 5, step: 1, value: verdi || 3 });
+    r.dataset.satt = String(verdi != null);
+    r.addEventListener("input", () => { verdier.struktur[s.felt] = Number(r.value); r.dataset.satt = "true"; lagre(); });
+    const skala = el("div", "skala");
+    skala.append(el("span", "", s.lav), el("span", "", s.hoy));
+    rad.append(l, r, skala);
+    d.append(rad);
+  });
+
+  const teller = el("p", "gruppe", "");
+  const tell = () => { teller.textContent = "Aromaer (" + verdier.aromaer.length + " av " + MAKS_AROMAER + ")"; };
+  tell();
+  d.append(teller);
+  const feil = el("p", "feil");
+  Object.entries(AROMAER).forEach(([gruppe, ord]) => {
+    d.append(el("p", "hjelp aroma-gruppe", gruppe));
+    const brikker = el("div", "brikker");
+    ord.forEach(o => {
+      const b = el("button", "brikke", o);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(verdier.aromaer.includes(o)));
+      b.addEventListener("click", () => {
+        const i = verdier.aromaer.indexOf(o);
+        if (i === -1 && verdier.aromaer.length >= MAKS_AROMAER) { feil.textContent = "Høyst " + MAKS_AROMAER + " aromaer. Fjern en først."; return; }
+        feil.textContent = "";
+        if (i === -1) verdier.aromaer.push(o); else verdier.aromaer.splice(i, 1);
+        b.setAttribute("aria-pressed", String(i === -1));
+        tell();
+        lagre();
+      });
+      brikker.append(b);
+    });
+    d.append(brikker);
+  });
+  d.append(feil);
+
+  if (valg.notat) {
+    const f = el("div", "felt");
+    const l = el("label", "", "Notat (bare du ser det)");
+    l.htmlFor = id + "-notat";
+    const ta = el("textarea");
+    Object.assign(ta, { id: id + "-notat", rows: 2, maxLength: 500, placeholder: "Hva minner den deg om?", value: verdier.notat || "" });
+    ta.addEventListener("input", () => { verdier.notat = ta.value; lagre(); });
+    f.append(l, ta);
+    d.append(f);
+  }
+  return d;
+}
+
+// Er strukturen og aromaene fylt ut nok til å være fasit?
+const smaksfasitMangler = (verdier, mod) => [
+  (mod.poeng || {}).struktur > 0 && STRUKTUR.some(s => verdier.struktur[s.felt] == null) && "hele strukturen",
+  (mod.poeng || {}).aroma > 0 && !verdier.aromaer.length && "minst én aroma"
+].filter(Boolean);

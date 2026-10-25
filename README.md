@@ -153,3 +153,25 @@ Hvert arrangement har byggeklosser som slås av og på under «Detaljer» på `/
 Score 0–100 og kåring er alltid med. Bare tittelen trengs for å opprette et arrangement (tom tittel blir «Vinsmaking»). Står datoen tom, er den ikke bestemt: forsiden viser «Dato avtales», folk kan foreslå datoer, og starter verten kvelden, får den dagens dato. Klokkeslett kan skrives som 18:00, 18.00 eller 1800, og tomt blir 19:00. Testene ligger i `supabase/tester/nytt_arrangement.sql`.
 
 Ved kåringen arkiveres kvelden, og hver persons score lagres i vinloggen (på lagkvelder får begge på laget lagets score). På forsiden kan vinloggen vises med scoren til én person. SQL: `supabase/migreringer/10_moduler.sql`.
+
+### Lukt og smak
+
+Byggeklossen «Lukt og smak» gir hver vin en del med struktur (syre, tannin, sødme, fylde og ettersmak på 1–5) og aromaer (høyst 5, fra en fast liste). Den som gjetter, har i tillegg et eget notat som bare de selv ser.
+
+- **Uten poeng:** bare notater. Aromaene alle valgte vises som «Bordet kjente» på storskjermen når vinen avsløres.
+- **Med poeng:** struktur gir poeng per felt som treffer fasit (ett trinn unna gir halvparten), aroma gir poeng per aroma som står i fasit. Fasit legges inn av den som tar med vinen, eller av verten for vertens viner, sammen med resten av fasiten. Den er skjult til vinen avsløres.
+
+SQL: `supabase/migreringer/20_smaksnotater.sql`. Test: `supabase/tester/smaksnotater.sql`.
+
+### Varianter
+
+Vertikal og Horisontal har varianter som velges under oppsettet:
+
+| Oppsett | Variant | Poeng (land/distrikt/drue/årgang/pris) |
+|---|---|---|
+| Vertikal | Samme vin (verten stiller) | 0/0/0/5/0 |
+| Vertikal | Samme distrikt, ulike produsenter og årganger | 0/0/0/4/3, pluss lukt og smak 1/1 |
+| Vertikal | Samme drue, ulike årganger | 2/3/0/4/2 |
+| Horisontal | Samme distrikt og årgang (verten stiller) | 0/0/0/0/4 |
+| Horisontal | Samme årgang, ulike distrikter | 2/4/2/0/3 |
+| Horisontal | Samme drue og årgang | 3/3/0/0/3 |

@@ -179,3 +179,19 @@ async function lastTema() {
 if (tilkoblet()) lastTema();
 
 const vinTittel = v =>[v.produsent, v.navn].filter(Boolean).join(" ") || "Vin " + v.bokstav;
+
+// Smaksnotater: struktur på 1–5 og aromaer (høyst MAKS_AROMAER). Samme lister på mobilen, vertssiden og storskjermen.
+const STRUKTUR = [
+  { felt: "syre", navn: "Syre", lav: "Myk", hoy: "Frisk" },
+  { felt: "tannin", navn: "Tannin", lav: "Silke", hoy: "Snerp" },
+  { felt: "sodme", navn: "Sødme", lav: "Tørr", hoy: "Søt" },
+  { felt: "fylde", navn: "Fylde", lav: "Lett", hoy: "Fyldig" },
+  { felt: "ettersmak", navn: "Ettersmak", lav: "Kort", hoy: "Lang" }
+];
+const AROMAER = {
+  "Frukt": ["Kirsebær", "Bringebær", "Jordbær", "Solbær", "Plomme", "Sitrus", "Eple", "Fersken", "Tropisk", "Tørket frukt"],
+  "Blomst og urt": ["Rose", "Fiol", "Urter", "Mynte", "Grønn paprika", "Te"],
+  "Krydder": ["Pepper", "Lakris", "Kanel", "Nellik", "Vanilje"],
+  "Eik og modning": ["Eik", "Røyk", "Tobakk", "Lær", "Jord", "Sopp", "Tjære", "Smør", "Brød", "Mineral"]
+};
+const MAKS_AROMAER = 5;

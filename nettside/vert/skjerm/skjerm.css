@@ -104,6 +104,19 @@ h2 { font-family: var(--tittel); font-weight: 400; color: var(--blaa); font-size
 .fasitkort dt { color: var(--dempet); }
 .fasitkort dd { margin: 0; font-weight: 700; }
 
+/* Lukt og smak i fasit */
+.struktur { list-style: none; margin: 2vh 0 0; padding: 0; display: grid; gap: .6vh; }
+.struktur li { display: grid; grid-template-columns: 6.5em auto 1fr; align-items: center; gap: 1vw; color: var(--dempet); }
+.prikker { display: inline-flex; gap: .35em; }
+.prikker span { width: .8em; height: .8em; border-radius: 50%; border: 2px solid var(--blaa); }
+.prikker span.fylt { background: var(--blaa); }
+.struktur-ord { font-size: .85em; }
+.aroma-fasit { margin: 1.5vh 0 0; font-weight: 700; }
+.sky { margin-top: 2vh; padding-top: 1.5vh; border-top: 2px dashed var(--linje); display: flex; flex-wrap: wrap; align-items: baseline; gap: .4vh 1vw; }
+.sky-tittel { width: 100%; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .75em; color: var(--rod); }
+.sky-ord { color: var(--dempet); line-height: 1.2; }
+.sky-ord.treff { color: var(--blaa); font-weight: 700; }
+
 /* Mellom rundene */
 .galleri { list-style: none; margin: 0 0 3vh; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(22vw, 1fr)); gap: 1.5vh 1.5vw; }
 .galleri li {

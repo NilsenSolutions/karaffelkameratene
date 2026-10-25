@@ -861,7 +861,7 @@ function forhandsvisning() {
   return d;
 }
 
-// Poengreglene for kvelden, med vektene fra byggeklossene. Samme utregning som lk_poeng i supabase/iterasjon2.sql.
+// Poengreglene for kvelden, med vektene fra byggeklossene. Samme utregning som lk_poeng i supabase/migreringer/13_iterasjon2.sql.
 const tredeler = w => [w, Math.round(w * 2 / 3), Math.round(w / 3)];
 function poengregler(p) {
   const [a1, a2, a3] = tredeler(p.aargang), [p1, p2, p3] = tredeler(p.pris);

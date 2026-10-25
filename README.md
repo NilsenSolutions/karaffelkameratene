@@ -11,20 +11,24 @@ Ren HTML, CSS og JavaScript. Ingen byggesteg og ingen avhengigheter utenom Googl
 - **Legg i kalenderen**: laster ned en `.ics`-fil for smakingen.
 - **Vinlogg** som kan filtreres på vintype og sorteres på dato eller poeng.
 - **Kveldsmodus** på `/kveld/`: smakeskjema på mobilen under selve smakingen, med struktur, aromaer, notat, poeng og blindgjetting. Verten avslører vinene og ser hvem som traff best.
-- **Vertskap** på `/vert/` (PIN): arrangementer med ferdige oppsett, påmeldte, lagkvelden, kåring, storskjerm (`/vert/skjerm/`) og arkiv. Gamle adresser (`/kveld/vert/`, `/styring-k7q2/`) sender videre hit.
+- **Vertskap** på `/vert/` (PIN): arrangementer med ferdige oppsett, påmeldte, lagkvelden, kåring, storskjerm (`/vert/skjerm/`) og arkiv. Den gamle adressen `/kveld/vert/` sender videre hit.
 
 ## Filer
 
+Bare mappen `nettside/` publiseres. Resten av repoet (databasen, README, verktøy) blir aldri en del av nettsiden.
+
 | Fil | Innhold |
 | --- | --- |
-| `index.html` | Sidestruktur og tekst |
-| `style.css` | Utseende |
-| `script.js` | Innhold, innstillinger og all dynamikk |
-| `kveld/` | Kveldsmodus for deltakerne, felles kode (`felles.js`) og databasetilkobling (`oppsett.js`) |
-| `vert/` | Vertssiden (arrangementer, påmeldte, lagkveld, arkiv) |
-| `supabase/oppsett.sql` | Tabeller og funksjoner i databasen |
-| `404.html` | Siden som vises når en adresse ikke finnes |
-| `CNAME` | Domenet for GitHub Pages |
+| `nettside/index.html` | Sidestruktur og tekst |
+| `nettside/style.css` | Utseende |
+| `nettside/script.js` | Innhold, innstillinger og all dynamikk |
+| `nettside/kveld/` | Kveldsmodus for deltakerne, felles kode (`felles.js`) og databasetilkobling (`oppsett.js`) |
+| `nettside/smaking/` | Lagkvelden for lagene |
+| `nettside/vert/` | Vertssiden (arrangementer, påmeldte, lagkveld, arkiv) |
+| `nettside/404.html` | Siden som vises når en adresse ikke finnes |
+| `supabase/migreringer/` | Tabeller og funksjoner i databasen, nummerert i den rekkefølgen de kjøres |
+| `supabase/tester/` | Testkvelder som rulles tilbake (endrer ingenting) |
+| `.github/workflows/publiser.yml` | Publiserer `nettside/` til GitHub Pages ved hver push til `main` |
 
 ## Oppdatere innhold
 
@@ -32,7 +36,7 @@ Ren HTML, CSS og JavaScript. Ingen byggesteg og ingen avhengigheter utenom Googl
 
 **Påmeldte** ligger under «Påmeldte (N)» på hver samling: navn, hva de tar med og når de meldte seg på. Verten kan legge til noen som har meldt seg muntlig og fjerne folk. Samme navn to ganger på samme samling gir ikke dobbel påmelding.
 
-Resten ligger øverst i `script.js`:
+Resten ligger øverst i `nettside/script.js`:
 
 - `VINLOGG`: vin, land, type (`rod`, `hvit`, `rose`, `musserende`), dato og poeng.
 - `CONFIG`: når påmeldingen stenger (standard 24 timer før start).
@@ -75,7 +79,7 @@ Lag en QR-kode til `https://karaffelkameratene.no/kveld/` og sett den på bordet
 
 ## Database (Supabase)
 
-Samlinger, viner og gjetninger ligger i Supabase-prosjektet `hylnvfljjusphgshmwql`. Tilkoblingen står i `kveld/oppsett.js` (offentlig nøkkel, trygg å publisere). Hele oppsettet ligger i `supabase/oppsett.sql`, og nederst i den står hvordan vertens PIN byttes. Tabellene er stengt for direkte tilgang. Alt går gjennom funksjoner, og alt som endrer noe krever PIN.
+Samlinger, viner og gjetninger ligger i Supabase-prosjektet `hylnvfljjusphgshmwql`. Tilkoblingen står i `nettside/kveld/oppsett.js` (offentlig nøkkel, trygg å publisere). Grunnoppsettet ligger i `supabase/migreringer/01_oppsett.sql`, og nederst i den står hvordan vertens PIN byttes. Endringene etterpå ligger i de nummererte filene etter den, og en ny endring får neste nummer. Tabellene er stengt for direkte tilgang. Alt går gjennom funksjoner, og alt som endrer noe krever PIN.
 
 ## Hvordan påmeldingen virker
 
@@ -88,8 +92,10 @@ Plasstallet oppdateres ikke av seg selv. Det gjør verten på vertssiden.
 
 ## Publisere med GitHub Pages
 
-1. Gå til **Settings → Pages**, velg **Deploy from a branch**, branch `main`, mappe `/ (root)`.
+1. Gå til **Settings → Pages** og velg **GitHub Actions** under **Source**.
 2. Under **Custom domain** skriver du `karaffelkameratene.no` og slår på **Enforce HTTPS** når den er tilgjengelig.
+
+Hver push til `main` som endrer noe i `nettside/` publiseres av seg selv (se fanen **Actions**). Lokalt serverer `.claude/server.ps1` mappen `nettside/` på http://localhost:8080/.
 
 ## DNS hos domeneleverandøren
 
@@ -115,9 +121,9 @@ Lag på to med én mobil. Lagene bruker `/smaking/`, vertskapet styrer fra `/ver
 3. Admin: «Lukk gjettingen», «Avslør vinene» (bare fasit vises, ingen poeng) og «Ferdig, til neste lag».
 4. Til slutt: vis resultatene i tre trinn (vinrangering og beste vin, poeng per lag, beste vinkjenner), og «Legg vinene i vinloggen».
 
-Poeng per vin (maks 15): land 2, drue 2, årgang 3/2/1 (0, 1 og 2 år unna), pris 3/2/1 (innenfor 10, 25 og 50 %), distrikt 5 for samme, ellers etter avstand: under 100 km 3, under 300 km 2, under 600 km 1. Feil land gir 0 for distrikt. Distriktene med koordinater ligger i `supabase/distrikter.sql`, og admin kan legge til flere.
+Poeng per vin (maks 15): land 2, drue 2, årgang 3/2/1 (0, 1 og 2 år unna), pris 3/2/1 (innenfor 10, 25 og 50 %), distrikt 5 for samme, ellers etter avstand: under 100 km 3, under 300 km 2, under 600 km 1. Feil land gir 0 for distrikt. Distriktene med koordinater ligger i `supabase/migreringer/03_distrikter.sql`, og admin kan legge til flere.
 
-Databasen: `supabase/lagkveld.sql` og `supabase/distrikter.sql` (kjøres etter `oppsett.sql`).
+Databasen: `supabase/migreringer/02_lagkveld.sql` og `03_distrikter.sql`.
 
 ## Modulære arrangementer
 
@@ -132,4 +138,4 @@ Hvert arrangement har byggeklosser som slås av og på under «Detaljer» på `/
 
 Score 0–100 og kåring er alltid med. Datoen settes av verten, eller folk foreslår datoer når «Dato avtales» er krysset av.
 
-Ved kåringen arkiveres kvelden, og hver persons score lagres i vinloggen (på lagkvelder får begge på laget lagets score). På forsiden kan vinloggen vises med scoren til én person. SQL: `supabase/moduler.sql`.
+Ved kåringen arkiveres kvelden, og hver persons score lagres i vinloggen (på lagkvelder får begge på laget lagets score). På forsiden kan vinloggen vises med scoren til én person. SQL: `supabase/migreringer/10_moduler.sql`.

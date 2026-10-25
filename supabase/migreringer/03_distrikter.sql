@@ -1,5 +1,5 @@
 -- Vindistrikter med omtrentlige koordinater (midt i distriktet) for avstandspoeng.
--- Kjøres etter lagkveld.sql. Trygt å kjøre flere ganger. Admin kan legge til flere på adminsiden.
+-- Kjøres etter 02_lagkveld.sql. Trygt å kjøre flere ganger. Admin kan legge til flere på adminsiden.
 insert into public.lk_distrikt (land, navn, lat, lon) values
 -- Frankrike
 ('Frankrike', 'Alsace', 48.20, 7.35),

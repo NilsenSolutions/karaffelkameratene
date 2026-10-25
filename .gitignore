@@ -1,5 +1,14 @@
+# System
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Editor og lokale verktøy
 .vscode/
 .claude/
+
+# Lokale filer som ikke skal publiseres
+presentasjoner/
+.env
+.env.*
+*.local.*

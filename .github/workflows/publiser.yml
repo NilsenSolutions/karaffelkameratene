@@ -1,0 +1,32 @@
+# Publiserer bare mappen nettside/ til GitHub Pages. SQL, README og alt annet i repoet blir ikke en del av nettsiden.
+name: Publiser nettsiden
+
+on:
+  push:
+    branches: [main]
+    paths: ["nettside/**", ".github/workflows/publiser.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publiser:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.publisering.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: nettside
+      - id: publisering
+        uses: actions/deploy-pages@v4

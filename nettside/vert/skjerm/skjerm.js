@@ -55,6 +55,11 @@ function vis(data) {
   rot.append(el("p", "kveld", [k.tittel, k.sted].filter(Boolean).join(" · ")));
 
   if (k.resultat_steg > 0) return visResultat(rot, data, solo);
+  if (k.avsluttet) {
+    rot.append(el("h1", "stor", "Kvelden er avsluttet"));
+    rot.append(el("p", "under", "Takk for i kveld 🍷"));
+    return;
+  }
   if (data.runde && k.fase === "avslort") return visFasit(rot, data, L);
   if (data.runde) return visRunde(rot, data, L);
   const lag = data.lag || [];

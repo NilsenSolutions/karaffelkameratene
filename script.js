@@ -57,7 +57,7 @@ const avsluttet = s => Boolean(s.kveld_avsluttet || s.resultat_steg >= 3);
 // til lagkvelden avsluttes eller det har gått CONFIG.varerTimer timer.
 function kommende(naa) {
   return SMAKINGER
-    .filter(s => !s.dato_avtales && (startTid(s) > naa || (sluttTid(s) > naa && !avsluttet(s))))
+    .filter(s => !s.dato_avtales && (kveldenErApen(s) || startTid(s) > naa || (sluttTid(s) > naa && !avsluttet(s))))
     .sort((a, b) => startTid(a) - startTid(b));
 }
 
@@ -77,7 +77,7 @@ function pameldingStatus(s) {
 
 const STATUS_TEKST = {
   apen: "Påmeldingen er åpen",
-  klar: "Kvelden er åpnet: gjør deg klar"
+  klar: "Kvelden er i gang: trykk «Gjør deg klar» øverst"
 };
 
 // ---------------- Nedtelling og stripe ----------------
@@ -90,7 +90,7 @@ function tikk() {
   if (!neste) return;
   let ms = startTid(neste) - naa;
   if (ms <= 0) {
-    if (naa < sluttTid(neste)) return visIGang();
+    if (naa < sluttTid(neste) || kveldenErApen(neste)) return visIGang();   // en åpen kveld står til den er kåret eller avsluttet
     clearInterval(timer);
     startNedtelling();
     return;
@@ -544,8 +544,9 @@ async function kall(navn, args) {
 // Når kvelden er åpen fra vertssiden, peker knappene og banneret rett til smakingen.
 // Har denne mobilen allerede et lag (eller en deltaker), står det «Fortsett som …», så ingen tror de må begynne på nytt.
 async function visLagkveld() {
-  const s = SMAKINGER.find(x => x.lagkveld_aktiv && !avsluttet(x));
-  const knapper = [$("lagkveld-knapp"), $("nt-smaking")];
+  // Bare én knapp, i kortet øverst, og bare for kvelden som vises der.
+  const s = neste && kveldenErApen(neste) ? neste : null;
+  const knapper = [$("nt-smaking")];
   knapper.forEach(k => { k.hidden = !s; });
   $("stripe").href = s ? "smaking/" : "#pamelding";
   if (!s) return;

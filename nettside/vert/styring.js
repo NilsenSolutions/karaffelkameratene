@@ -140,6 +140,9 @@ function vis() {
     k.aktiv ? FASE_TEKST[k.fase] : "Kvelden er ikke i gang", k.aktiv ? STEG_TEKST[k.resultat_steg] : ""].filter(Boolean).join(" · ")));
   if (k.aktiv) {
     topp.append(el("p", "hjelp", L("Lagene", "Deltakerne") + " bruker karaffelkameratene.no/smaking/ på mobilen."));
+    const skjermLenke = el("a", "knapp lys-knapp", "Åpne storskjerm ↗");
+    Object.assign(skjermLenke, { href: "skjerm/", target: "_blank", rel: "noopener" });
+    topp.append(el("p", "hjelp", "Storskjermen følger hele kvelden: QR-kode og " + L("lagene", "deltakerne") + " før start, runden og hvem som har gjettet, fasit og kåringen. Sett skjermen på «Utvid» (Win + P), dra vinduet til TV-en og trykk F for fullskjerm."), skjermLenke);
   } else {
     topp.append(el("p", "hjelp", data.annen_aktiv
       ? "«" + data.annen_aktiv.tittel + "» er i gang nå. Starter du her, avsluttes den (data beholdes)."
@@ -209,9 +212,7 @@ function vis() {
   const res = el("section", "kort");
   res.append(el("h2", "kort-tittel", "Resultater"));
   res.append(el("p", "hjelp", "Vises på alle mobilene, ett trinn om gangen. Gjør dette når alle er ferdige."));
-  const skjermLenke = el("a", "knapp lys-knapp", "Åpne storskjerm ↗");
-  Object.assign(skjermLenke, { href: "skjerm/", target: "_blank", rel: "noopener" });
-  res.append(el("p", "hjelp", "Storskjermen følger trinnene du velger her. Dra vinduet til den utvidede skjermen og trykk F for fullskjerm."), skjermLenke);
+  res.append(el("p", "hjelp", "Storskjermen følger trinnene du velger her."));
   const ferdige = lag.filter(l => l.ferdig).length;
   if (ferdige < lag.length) res.append(el("p", "varsel", ferdige + " av " + lag.length + L(" lag", " deltakere") + " er ferdige."));
   const rad = el("div", "samling-knapper");

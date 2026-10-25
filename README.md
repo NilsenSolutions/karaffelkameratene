@@ -125,6 +125,20 @@ Poeng per vin (maks 15): land 2, drue 2, årgang 3/2/1 (0, 1 og 2 år unna), pri
 
 Databasen: `supabase/migreringer/02_lagkveld.sql` og `03_distrikter.sql`.
 
+### Storskjerm
+
+`/vert/skjerm/` åpnes fra toppen av kvelden på `/vert/` («Åpne storskjerm ↗»). Med PC-en koblet til TV-en: velg **Utvid** med Win + P (ikke Dupliser), dra vinduet til TV-en og trykk F for fullskjerm. Skjermen følger kvelden av seg selv:
+
+| Når | På TV-en |
+|---|---|
+| Før start | QR-kode til `/smaking/`, lagene som har meldt seg inn (✓ når vinene er lagt inn) og påmeldte som ikke er med i et lag ennå |
+| Runden | Hvem som presenterer, Vin A/B og hvem som har gjettet (`lk_fremdrift`, viser bare status, aldri gjetningene) |
+| Lukket / avslørt | «Fasit kommer», så fasit for vinene i runden |
+| Mellom rundene | Vinene som er smakt så langt og lagene som gjenstår |
+| Kåring | De tre resultattrinnene |
+
+Poeng vises aldri før kåringen. Fremdriften krever `supabase/migreringer/17_storskjerm.sql`. Uten den vises skjermen som før, bare uten fremdriften.
+
 ## Modulære arrangementer
 
 Hvert arrangement har byggeklosser som slås av og på under «Detaljer» på `/vert/` (eller ved «Nytt arrangement», der de ferdige oppsettene fyller dem inn):

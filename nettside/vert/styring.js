@@ -338,8 +338,11 @@ function visOversikt(rot) {
   rot.append(boks);
 
   if (arkiv.length) {
-    const ark = el("section", "kort");
-    ark.append(el("h2", "kort-tittel", "Arkiv"));
+    // Lukket til verten åpner det. Står åpent mens siden tegnes på nytt.
+    const ark = el("details", "kort");
+    ark.open = apne.has("arkiv");
+    ark.addEventListener("toggle", () => { ark.open ? apne.add("arkiv") : apne.delete("arkiv"); });
+    ark.append(el("summary", "kort-tittel", "Arkiv (" + arkiv.length + ")"));
     ark.append(el("p", "hjelp", "Kvelder som er ferdige. Åpne en for å se deltakerne, rangeringen og vinene."));
     arkiv.forEach(s => ark.append(samlingRad(s)));
     rot.append(ark);

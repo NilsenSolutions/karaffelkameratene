@@ -23,7 +23,7 @@ Bare mappen `nettside/` publiseres. Resten av repoet (databasen, README, verktø
 | `nettside/style.css` | Utseende |
 | `nettside/script.js` | Innhold, innstillinger og all dynamikk |
 | `nettside/kveld/` | Kveldsmodus for deltakerne, felles kode (`felles.js`) og databasetilkobling (`oppsett.js`) |
-| `nettside/smaking/` | Lagkvelden for lagene |
+| `nettside/smaking/` | Lagkvelden for lagene (holder skjermen våken mens man er med på en kveld som pågår) |
 | `nettside/vert/` | Vertssiden (arrangementer, påmeldte, lagkveld, arkiv) |
 | `nettside/app.js` | Appoppførsel når siden er lagt på hjemskjermen: dra ned for å oppdatere (sidene setter `window.oppfrisk` for å hente på nytt uten å miste det som er skrevet) |
 | `nettside/site.webmanifest` | Navn, ikon og snarveier (Smaking, Vertskap) for hjemskjermen |

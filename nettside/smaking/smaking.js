@@ -43,6 +43,7 @@ async function hent() {
   data = ny;
   visInfo();
   visSidelinje();
+  holdVaken(!!(data && data.mitt_lag && !data.kveld.avsluttet));
   // Bygg hoveddelen på nytt bare når noe som endrer den har skjedd, så det man skriver ikke forsvinner.
   const nokkel = JSON.stringify(data && {
     k: data.kveld.fase, s: data.kveld.resultat_steg, a: data.kveld.avsluttet, p: (data.pameldte || []).join("|"), l: data.mitt_lag && data.mitt_lag.id, f: data.mitt_lag && data.mitt_lag.ferdig,
@@ -53,6 +54,18 @@ async function hent() {
     visningsnokkel = nokkel;
     visHoved();
   }
+}
+
+// Hold skjermen våken mens man er med på en kveld som pågår, så telefonen ikke slukker mens glasset går rundt.
+// Nettleseren slipper låsen når siden skjules; hent() kjører igjen når den vises og tar den tilbake.
+let vakelas = null, berOmLas = false;
+async function holdVaken(pa) {
+  if (!("wakeLock" in navigator)) return;
+  if (!pa) { if (vakelas) { vakelas.release().catch(() => {}); vakelas = null; } return; }
+  if (document.hidden || berOmLas || (vakelas && !vakelas.released)) return;
+  berOmLas = true;
+  try { vakelas = await navigator.wakeLock.request("screen"); } catch (e) { /* lite batteri eller ikke tillatt */ }
+  berOmLas = false;
 }
 
 function visInfo() {

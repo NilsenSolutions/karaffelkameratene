@@ -307,3 +307,17 @@ input[aria-invalid="true"] { border-color: var(--vin); }
 /* Knappen til kveldens smaking i «Neste smaking»-kortet */
 .nt-knapp { margin-top: .75rem; }
 .nt-knapp[hidden] { display: none; }
+
+/* Lagt på hjemskjermen (app.js): egen dra-ned-for-å-oppdatere, uten at hele siden spretter */
+html.app { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+.dra-oppdater {
+  position: fixed; top: 0; left: 50%; z-index: 100; transform: translate(-50%, -60px); opacity: 0;
+  display: flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border-radius: 999px;
+  background: #fff; color: #2b2b2b; font: 600 .9rem/1.2 system-ui, sans-serif;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .18); pointer-events: none; white-space: nowrap;
+}
+.dra-oppdater.slipper { transition: transform .25s ease, opacity .25s ease; }
+.dra-pil { display: inline-block; color: #2f5ba8; font-size: 1.1rem; transition: transform .2s ease; }
+.dra-oppdater.klar .dra-pil { transform: rotate(180deg); }
+.dra-oppdater.laster .dra-pil { animation: dra-snurr .8s linear infinite; }
+@keyframes dra-snurr { to { transform: rotate(360deg); } }

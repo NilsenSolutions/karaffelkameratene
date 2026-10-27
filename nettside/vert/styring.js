@@ -1031,4 +1031,6 @@ if (!tilkoblet()) {
   pin = lesPin();
   valgt = lesValgt();
   if (pin) start(); else $("logg-inn").hidden = false;
+  // Dra ned for å oppdatere (app.js): hent på nytt uten å miste skjemaer som er halvveis utfylt.
+  window.oppfrisk = () => pin ? hent() : location.reload();
 }

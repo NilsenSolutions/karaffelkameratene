@@ -906,6 +906,8 @@ lastSmakinger();
 lastResultat();
 // Hent samlingene på nytt hvert minutt, så en PC som står på forsiden bytter til neste samling når kvelden avsluttes.
 setInterval(() => { if (!document.hidden) { lastSmakinger(); lastResultat(); } }, 60000);
+// Dra ned for å oppdatere (app.js) når siden er lagt på hjemskjermen.
+window.oppfrisk = () => Promise.all([lastSmakinger(), lastResultat(), lastVinlogg()]);
 $("dansegulv-tekst").addEventListener("click", visRangering);
 lyttEtterSkal();
 byggFilter();

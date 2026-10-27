@@ -578,4 +578,6 @@ if (!tilkoblet()) {
   hent();
   setInterval(() => { if (!document.hidden) hent(); }, OPPDATER_MS);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) hent(); });
+  // Dra ned for å oppdatere (app.js): hent på nytt uten å miste gjetninger som ikke er sendt.
+  window.oppfrisk = hent;
 }

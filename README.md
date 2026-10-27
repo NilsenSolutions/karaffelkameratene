@@ -25,6 +25,8 @@ Bare mappen `nettside/` publiseres. Resten av repoet (databasen, README, verktø
 | `nettside/kveld/` | Kveldsmodus for deltakerne, felles kode (`felles.js`) og databasetilkobling (`oppsett.js`) |
 | `nettside/smaking/` | Lagkvelden for lagene |
 | `nettside/vert/` | Vertssiden (arrangementer, påmeldte, lagkveld, arkiv) |
+| `nettside/app.js` | Appoppførsel når siden er lagt på hjemskjermen: dra ned for å oppdatere (sidene setter `window.oppfrisk` for å hente på nytt uten å miste det som er skrevet) |
+| `nettside/site.webmanifest` | Navn, ikon og snarveier (Smaking, Vertskap) for hjemskjermen |
 | `nettside/404.html` | Siden som vises når en adresse ikke finnes |
 | `supabase/migreringer/` | Tabeller og funksjoner i databasen, nummerert i den rekkefølgen de kjøres |
 | `supabase/tester/` | Testkvelder som rulles tilbake (endrer ingenting) |

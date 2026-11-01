@@ -1107,6 +1107,13 @@ function gjengRad(g) {
   tekst.append(el("p", "rang-meta", ["/" + g.slug, neste, g.kvelder + (g.kvelder === 1 ? " kveld" : " kvelder"), g.vinlogg + " i vinloggen"].join(" · ")));
   const mangler = [!g.har_gjengkode && "gjengkode", !g.har_vertskode && g.slug !== "ggmm" && "vertskode"].filter(Boolean);
   if (mangler.length) tekst.append(el("p", "feil", "Mangler " + mangler.join(" og ") + ". Åpne gjengen for å sette."));
+  // Skjult til du ber om dem, siden denne PC-en ofte står koblet til TV-en.
+  const nokkel = "koder:" + g.slug;
+  if (apne.has(nokkel)) {
+    const ukjent = har => (har ? "ukjent, sett den på nytt for å se den" : "ikke satt");
+    tekst.append(el("p", "rang-meta", "Gjengkode: " + (g.gjengkode || ukjent(g.har_gjengkode))));
+    tekst.append(el("p", "rang-meta", "Vertskode: " + (g.vertskode || ukjent(g.har_vertskode))));
+  }
   topp.append(tekst);
   rad.append(topp);
 
@@ -1114,6 +1121,10 @@ function gjengRad(g) {
   const apneLenke = el("a", "knapp", "Åpne");
   apneLenke.href = "?g=" + encodeURIComponent(g.slug);
   knapper.append(apneLenke);
+  knapper.append(knapp(apne.has(nokkel) ? "Skjul koder" : "Vis koder", "knapp lys-knapp", () => {
+    apne.has(nokkel) ? apne.delete(nokkel) : apne.add(nokkel);
+    vis();
+  }));
   knapper.append(knapp("Kopier gjestelenke", "knapp lys-knapp", () => kopier(gjesteLenke(g.slug))));
   knapper.append(knapp("Kopier vertslenke", "knapp lys-knapp", () => kopier(vertLenke(g.slug))));
   if (!g.samlinger && !g.vinlogg) knapper.append(knapp("Slett", "lenkeknapp", async () => {
@@ -1139,7 +1150,7 @@ function byggNyGjeng() {
   });
   adresse.inn.addEventListener("input", () => { nyGjeng.egenAdresse = true; });
   const kode = skjemaFelt("Gjengkode", "ny-gjeng-kode", nyGjeng.kode, { utkast: nyGjeng, nokkel: "kode",
-    hjelp: "Minst 4 tegn. Alle i gjengen bruker den for å komme inn. Den kan ikke vises igjen, bare byttes." });
+    hjelp: "Minst 4 tegn. Alle i gjengen bruker den for å komme inn." });
   const vertskode = skjemaFelt("Vertskode", "ny-gjeng-vert", nyGjeng.vert, { utkast: nyGjeng, nokkel: "vert",
     hjelp: "Minst 6 tegn. Gir vertskapet tilgang til vertssiden, og bare for denne gjengen." });
   const lagre = el("button", "knapp", "Opprett gjeng");
@@ -1155,7 +1166,7 @@ function byggNyGjeng() {
       apne.delete("ny-gjeng");
       document.activeElement.blur();
       await hent();
-      melding("Gjengen er opprettet: " + gjesteLenke(slug) + ". Husk kodene, de kan ikke vises igjen.");
+      melding("Gjengen er opprettet: " + gjesteLenke(slug) + ". Kodene finner du under «Vis koder».");
     } catch (err) {
       melding(err.message);
       lagre.disabled = false;
@@ -1194,6 +1205,7 @@ function byggGjengKort() {
   lenker.append(knapp("Kopier gjestelenke", "knapp lys-knapp", () => kopier(gjesteLenke(gjengInfo.slug))));
   lenker.append(knapp("Kopier vertslenke", "knapp lys-knapp", () => kopier(vertLenke(gjengInfo.slug))));
   boks.append(lenker);
+  if (gjengInfo.gjengkode) boks.append(el("p", "hjelp", "Gjengkoden er «" + gjengInfo.gjengkode + "». Den gir du til dem som skal være med."));
 
   const om = el("form", "samling-skjema");
   const navn = skjemaFelt("Navn", "gjeng-navn", gjengUtkast.navn ?? gjengInfo.navn, { utkast: gjengUtkast, nokkel: "navn" });
@@ -1216,7 +1228,7 @@ function byggGjengKort() {
 
   const koder = el("form", "samling-skjema");
   const kode = skjemaFelt("Ny gjengkode", "gjeng-kode", gjengUtkast.kode, { utkast: gjengUtkast, nokkel: "kode",
-    hjelp: gjengInfo.har_gjengkode ? "Minst 4 tegn. Alle i gjengen må logge inn på nytt når den byttes." : "Ikke satt ennå. Minst 4 tegn." });
+    hjelp: gjengInfo.har_gjengkode ? "Minst 4 tegn. Bytter du til en ny kode, må alle i gjengen logge inn på nytt." : "Ikke satt ennå. Minst 4 tegn." });
   const vertskode = skjemaFelt("Ny vertskode", "gjeng-vert", gjengUtkast.vert, { utkast: gjengUtkast, nokkel: "vert",
     hjelp: gjengInfo.har_vertskode ? "Minst 6 tegn. Andre som er logget inn som vert, logges ut." : "Ikke satt ennå. Minst 6 tegn." });
   const lagreKoder = el("button", "knapp", "Bytt koder");
@@ -1226,13 +1238,13 @@ function byggGjengKort() {
     e.preventDefault();
     const nyKode = kode.inn.value.trim(), nyVert = vertskode.inn.value.trim();
     if (!nyKode && !nyVert) { melding("Skriv inn en ny kode først."); return; }
-    if (nyKode && gjengInfo.har_gjengkode && !(await bekreft("Bytte gjengkoden? Alle i gjengen må logge inn på nytt med den nye koden.", "Bytt"))) return;
+    if (nyKode && gjengInfo.gjengkode && nyKode.toLowerCase() !== gjengInfo.gjengkode.toLowerCase() && !(await bekreft("Bytte gjengkoden? Alle i gjengen må logge inn på nytt med den nye koden.", "Bytt"))) return;
     try {
       await vertRpc("gjeng_sett_koder", { p_gjengkode: nyKode || null, p_vertskode: nyVert || null });
       gjengUtkast = {};
       document.activeElement.blur();
       await lastGjengInfo();
-      melding("Koden er byttet. Den kan ikke vises igjen, så skriv den ned.");
+      melding("Koden er lagret.");
     } catch (err) { melding(err.message); }
   });
   boks.append(koder);

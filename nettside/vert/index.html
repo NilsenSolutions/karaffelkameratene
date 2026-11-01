@@ -24,16 +24,16 @@
 <body class="kveld styring">
   <header class="topp">
     <a class="merke" href="../">Karaffelkameratene</a>
-    <span class="kveld-merke">Vertskap</span>
+    <span class="kveld-merke" id="gjeng-merke">Vertskap</span>
   </header>
 
   <main>
     <p class="melding" id="melding" role="status" hidden></p>
 
     <form class="kort" id="logg-inn" hidden>
-      <h1>For vertskapet</h1>
+      <h1 id="logg-inn-tittel">For vertskapet</h1>
       <div class="felt">
-        <label for="pin">PIN</label>
+        <label for="pin">Kode</label>
         <input id="pin" type="password" autocomplete="current-password" required>
       </div>
       <button class="knapp" type="submit">Logg inn</button>
@@ -49,7 +49,7 @@
   <script src="../kveld/oppsett.js?v=20261025f"></script>
   <script src="../kveld/felles.js?v=20261025f"></script>
   <script src="../kveld/vinfelt.js?v=20261025f"></script>
-  <script src="styring.js?v=20261027a"></script>
+  <script src="styring.js?v=20261101b"></script>
   <script src="../app.js?v=20261027a"></script>
 </body>
 </html>

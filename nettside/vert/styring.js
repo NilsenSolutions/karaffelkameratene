@@ -1,11 +1,16 @@
 // Adminside for lagkvelden. Brukes fra PC. Styrer det som skjer på mobilene.
 
-const PIN_NOKKEL = "karaffel-vert-pin";
+const OKT_NOKKEL = "karaffel-vert-okt";
+const ROLLE_NOKKEL = "karaffel-vert-rolle";
 const VALGT_NOKKEL = "karaffel-valgt-samling";
 const FASE_TEKST = { venter: "Venter på neste runde", gjetting: "Gjetting åpen", lukket: "Gjetting lukket", avslort: "Vinene avslørt" };
 const STEG_TEKST = ["Ingen resultater vist", "Vinrangering og beste vin vises", "Poengene vises uten lagnavn", "Vinnerne er kåret med lagnavn"];
 
-let pin = "";
+// Adressen avgjør siden: /vert/ er adminoversikten over gjengene, /vert/?g=slekta er vertssiden til én gjeng.
+const gjeng = new URLSearchParams(location.search).get("g") || "";
+let pin = "";      // økten fra vert_start_okt, sendes i stedet for koden
+let rolle = "";    // admin eller vert
+let gjengInfo = null;
 let valgt = "";    // id-en til arrangementet som er åpnet, tom = oversikten
 let data = null;
 let timer = null;
@@ -21,8 +26,16 @@ function melding(tekst) {
   m.textContent = tekst || "";
   m.hidden = !tekst;
 }
-const lesPin = () => { try { return sessionStorage.getItem(PIN_NOKKEL) || ""; } catch (e) { return ""; } };
-const lagrePin = p => { try { p ? sessionStorage.setItem(PIN_NOKKEL, p) : sessionStorage.removeItem(PIN_NOKKEL); } catch (e) { /* ignorer */ } };
+const lesOkt = () => { try { return { okt: sessionStorage.getItem(OKT_NOKKEL) || "", rolle: sessionStorage.getItem(ROLLE_NOKKEL) || "" }; } catch (e) { return { okt: "", rolle: "" }; } };
+function lagreOkt(okt, r) {
+  try {
+    sessionStorage.removeItem("karaffel-vert-pin");   // eldre versjoner lagret selve koden
+    if (okt) { sessionStorage.setItem(OKT_NOKKEL, okt); sessionStorage.setItem(ROLLE_NOKKEL, r); }
+    else { sessionStorage.removeItem(OKT_NOKKEL); sessionStorage.removeItem(ROLLE_NOKKEL); }
+  } catch (e) { /* ignorer */ }
+}
+// Kall som vertskapet gjør: økten og gjengen følger alltid med.
+const vertRpc = (navn, args) => rpc(navn, Object.assign({ p_pin: pin, p_gjeng: gjeng }, args || {}));
 const lesValgt = () => { try { return sessionStorage.getItem(VALGT_NOKKEL) || ""; } catch (e) { return ""; } };
 
 function velg(id) {
@@ -39,19 +52,23 @@ function velg(id) {
 
 async function loggInn(e) {
   e.preventDefault();
-  const forsok = $("pin").value;
   $("pin-feil").textContent = "";
   try {
-    if (!(await rpc("vert_logg_inn", { p_pin: forsok }))) { $("pin-feil").textContent = "Feil PIN."; return; }
+    const svar = await rpc("vert_start_okt", { p_pin: $("pin").value, p_gjeng: gjeng || null });
+    if (svar.feil) { $("pin-feil").textContent = svar.feil + "."; return; }
+    pin = svar.okt;
+    rolle = svar.rolle;
   } catch (err) { $("pin-feil").textContent = err.message; return; }
-  pin = forsok;
-  lagrePin(pin);
+  $("pin").value = "";
+  lagreOkt(pin, rolle);
   start();
 }
 
 function loggUt() {
+  if (pin) rpc("vert_logg_ut", { p_okt: pin }).catch(() => {});
   pin = "";
-  lagrePin("");
+  rolle = "";
+  lagreOkt("");
   clearInterval(timer);
   $("styring").hidden = true;
   $("logg-inn").hidden = false;
@@ -60,7 +77,10 @@ function loggUt() {
 function start() {
   $("logg-inn").hidden = true;
   $("styring").hidden = false;
-  lastDistrikter(() => { if (data) vis(); });   // distriktene til nedtrekkslistene
+  if (gjeng) {
+    lastDistrikter(() => { if (data) vis(); });   // distriktene til nedtrekkslistene
+    lastGjengInfo();
+  }
   hent();
   clearInterval(timer);
   timer = setInterval(() => { if (!document.hidden) hent(); }, 3000);
@@ -70,13 +90,15 @@ async function hent() {
   try {
     const id = valgt;
     let svar;
-    if (id) {
+    if (!gjeng) {
+      svar = await rpc("gjeng_oversikt", { p_pin: pin });
+    } else if (id) {
       // Samlingen og de påmeldte hentes sammen.
-      const [samling, pameldte] = await Promise.all([rpc("lk_admin_samling", { p_pin: pin, p_samling: id }),
-        rpc("vert_hent_pameldinger", { p_pin: pin, p_samling: id }).catch(() => [])]);
+      const [samling, pameldte] = await Promise.all([vertRpc("lk_admin_samling", { p_samling: id }),
+        vertRpc("vert_hent_pameldinger", { p_samling: id }).catch(() => [])]);
       svar = Object.assign(samling, { pameldte: pameldte || [] });
     } else {
-      svar = await rpc("lk_admin_samlinger", { p_pin: pin });
+      svar = await vertRpc("lk_admin_samlinger");
     }
     if (id !== valgt) return;   // byttet side mens vi ventet
     data = svar;
@@ -96,7 +118,7 @@ async function hent() {
 async function handling(navn, args, bekreftTekst, knappTekst) {
   if (bekreftTekst && !(await bekreft(bekreftTekst, knappTekst || "OK"))) return false;
   try {
-    const svar = await rpc(navn, Object.assign({ p_pin: pin }, args || {}));
+    const svar = await vertRpc(navn, args);
     await hent();
     return svar === null ? true : svar;
   } catch (err) {
@@ -118,6 +140,7 @@ function knapp(tekst, klasse, fn, deaktivert) {
 function vis() {
   const rot = $("innhold");
   rot.textContent = "";
+  if (!gjeng) return visGjenger(rot);
   if (!valgt) return visOversikt(rot);
 
   const k = data.kveld;
@@ -317,6 +340,7 @@ function byggLoddtrekning(k, lag) {
 
 // Oversikten: velg hvilket arrangement du vil styre.
 function visOversikt(rot) {
+  if (rolle === "admin") rot.append(gjengLenke());
   // Arkivet: kvelder der vinnerne er kåret, og passerte samlinger som ikke er i gang.
   const iDag = idag();
   const iArkiv = s => !s.aktiv && (s.arkivert || (!s.dato_avtales && s.dato < iDag));
@@ -347,6 +371,7 @@ function visOversikt(rot) {
     arkiv.forEach(s => ark.append(samlingRad(s)));
     rot.append(ark);
   }
+  rot.append(byggGjengKort());
 }
 
 // ---------------- Nytt arrangement fra ferdige oppsett ----------------
@@ -602,7 +627,7 @@ function byggNyttArrangement() {
     if (d.dato && d.dato < idag()) { melding("Datoen har vært. Velg en dato fra i dag og fremover, eller la den stå tom."); return; }
     lagre.disabled = true;
     try {
-      await rpc("vert_lagre_samling", { p_pin: pin, p_data: d });
+      await vertRpc("vert_lagre_samling", { p_data: d });
       apne.delete("ny");
       nyUtkast = {};
       await hent();
@@ -654,7 +679,7 @@ function byggDetaljer(k) {
   rad.append(knapp("Slett arrangementet", "lenkeknapp", async () => {
     if (!(await bekreft("Slette «" + k.tittel + "»? Det forsvinner fra forsiden sammen med påmeldingene og et eventuelt arkiv. Vinene i vinloggen blir stående.", "Slett"))) return;
     try {
-      await rpc("vert_slett_samling", { p_pin: pin, p_id: k.samling_id });
+      await vertRpc("vert_slett_samling", { p_id: k.samling_id });
       velg("");
       melding("«" + k.tittel + "» er slettet.");
     } catch (err) { melding(err.message); }
@@ -666,7 +691,7 @@ function byggDetaljer(k) {
       sted: felt.sted.value.trim(), tema: felt.tema.value.trim(), moduler: normaliserModuler(modD) };
     lagre.disabled = true;
     try {
-      await rpc("vert_lagre_samling", { p_pin: pin, p_data: data_ });
+      await vertRpc("vert_lagre_samling", { p_data: data_ });
       detaljUtkast = {};
       document.activeElement.blur();
       await hent();
@@ -1021,6 +1046,215 @@ function byggDistrikt() {
   return boks;
 }
 
+// ---------------- Gjengene ----------------
+
+const gjesteLenke = slug => location.origin + "/" + slug;
+const vertLenke = slug => location.origin + "/vert/?g=" + slug;
+
+async function kopier(tekst) {
+  try {
+    await navigator.clipboard.writeText(tekst);
+    melding("Kopiert: " + tekst);
+  } catch (e) {
+    melding("Kopier denne: " + tekst);
+  }
+}
+
+function skjemaFelt(tekst, id, verdi, valg = {}) {
+  const f = el("div", "felt");
+  const lapp = el("label", "", tekst);
+  lapp.htmlFor = id;
+  const inn = el(valg.flerlinjet ? "textarea" : "input");
+  inn.id = id;
+  inn.value = verdi || "";
+  if (valg.flerlinjet) inn.rows = 4;
+  else { inn.type = "text"; inn.autocomplete = "off"; }
+  if (valg.utkast) inn.addEventListener("input", () => { valg.utkast[valg.nokkel] = inn.value; });
+  f.append(lapp, inn);
+  if (valg.hjelp) f.append(el("p", "hjelp", valg.hjelp));
+  return { boks: f, inn };
+}
+
+// Forslag til adresse fra navnet: Tante Åse → tante-ase.
+const tilAdresse = navn => String(navn || "").toLowerCase().replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a")
+  .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+
+let nyGjeng = {};
+
+function visGjenger(rot) {
+  const boks = el("section", "kort");
+  boks.append(el("h1", "", "Gjengene"));
+  boks.append(el("p", "hjelp", "Hver gjeng har sin egen lenke, sine egne arrangementer og sin egen vinlogg. Bare du ser denne listen."));
+  const ny = el("div", "samling-knapper");
+  ny.append(knapp(apne.has("ny-gjeng") ? "Avbryt" : "+ Ny gjeng", apne.has("ny-gjeng") ? "lenkeknapp" : "knapp", () => {
+    apne.has("ny-gjeng") ? apne.delete("ny-gjeng") : apne.add("ny-gjeng");
+    vis();
+  }));
+  boks.append(ny);
+  if (apne.has("ny-gjeng")) boks.append(byggNyGjeng());
+  data.forEach(g => boks.append(gjengRad(g)));
+  rot.append(boks);
+}
+
+function gjengRad(g) {
+  const rad = el("div", "samling-rad" + (g.aktiv ? " aktiv" : ""));
+  const topp = el("div", "samling-topp");
+  const tekst = el("div");
+  tekst.append(el("h2", "samling-navn", g.navn));
+  const neste = g.aktiv ? "I gang nå: " + g.aktiv
+    : g.neste ? "Neste: " + g.neste.tittel + (g.neste.dato_avtales ? " (dato avtales)" : ", " + datoTekst(g.neste.dato))
+    : "Ingen kommende arrangementer";
+  tekst.append(el("p", "rang-meta", ["/" + g.slug, neste, g.kvelder + (g.kvelder === 1 ? " kveld" : " kvelder"), g.vinlogg + " i vinloggen"].join(" · ")));
+  const mangler = [!g.har_gjengkode && "gjengkode", !g.har_vertskode && g.slug !== "ggmm" && "vertskode"].filter(Boolean);
+  if (mangler.length) tekst.append(el("p", "feil", "Mangler " + mangler.join(" og ") + ". Åpne gjengen for å sette."));
+  topp.append(tekst);
+  rad.append(topp);
+
+  const knapper = el("div", "samling-knapper");
+  const apneLenke = el("a", "knapp", "Åpne");
+  apneLenke.href = "?g=" + encodeURIComponent(g.slug);
+  knapper.append(apneLenke);
+  knapper.append(knapp("Kopier gjestelenke", "knapp lys-knapp", () => kopier(gjesteLenke(g.slug))));
+  knapper.append(knapp("Kopier vertslenke", "knapp lys-knapp", () => kopier(vertLenke(g.slug))));
+  if (!g.samlinger && !g.vinlogg) knapper.append(knapp("Slett", "lenkeknapp", async () => {
+    if (!(await bekreft("Slette gjengen «" + g.navn + "»? Lenken slutter å virke.", "Slett"))) return;
+    try {
+      await rpc("gjeng_slett", { p_pin: pin, p_gjeng: g.slug });
+      await hent();
+      melding("«" + g.navn + "» er slettet.");
+    } catch (err) { melding(err.message); }
+  }));
+  rad.append(knapper);
+  return rad;
+}
+
+function byggNyGjeng() {
+  const f = el("form", "samling-skjema");
+  const navn = skjemaFelt("Navn", "ny-gjeng-navn", nyGjeng.navn, { utkast: nyGjeng, nokkel: "navn" });
+  const adresse = skjemaFelt("Adresse", "ny-gjeng-adresse", nyGjeng.adresse, { utkast: nyGjeng, nokkel: "adresse",
+    hjelp: "Blir karaffelkameratene.no/adressen. Små bokstaver, tall og bindestrek. Kan ikke endres etterpå." });
+  // Adressen følger navnet til noen skriver i den selv.
+  navn.inn.addEventListener("input", () => {
+    if (!nyGjeng.egenAdresse) { adresse.inn.value = tilAdresse(navn.inn.value); nyGjeng.adresse = adresse.inn.value; }
+  });
+  adresse.inn.addEventListener("input", () => { nyGjeng.egenAdresse = true; });
+  const kode = skjemaFelt("Gjengkode", "ny-gjeng-kode", nyGjeng.kode, { utkast: nyGjeng, nokkel: "kode",
+    hjelp: "Minst 4 tegn. Alle i gjengen bruker den for å komme inn. Den kan ikke vises igjen, bare byttes." });
+  const vertskode = skjemaFelt("Vertskode", "ny-gjeng-vert", nyGjeng.vert, { utkast: nyGjeng, nokkel: "vert",
+    hjelp: "Minst 6 tegn. Gir vertskapet tilgang til vertssiden, og bare for denne gjengen." });
+  const lagre = el("button", "knapp", "Opprett gjeng");
+  lagre.type = "submit";
+  f.append(navn.boks, adresse.boks, kode.boks, vertskode.boks, lagre);
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    lagre.disabled = true;
+    try {
+      const slug = await rpc("gjeng_opprett", { p_pin: pin, p_slug: adresse.inn.value, p_navn: navn.inn.value,
+        p_gjengkode: kode.inn.value, p_vertskode: vertskode.inn.value });
+      nyGjeng = {};
+      apne.delete("ny-gjeng");
+      document.activeElement.blur();
+      await hent();
+      melding("Gjengen er opprettet: " + gjesteLenke(slug) + ". Husk kodene, de kan ikke vises igjen.");
+    } catch (err) {
+      melding(err.message);
+      lagre.disabled = false;
+    }
+  });
+  return f;
+}
+
+function gjengLenke() {
+  const a = el("a", "lenkeknapp tilbake", "← Alle gjenger");
+  a.href = "./";
+  return a;
+}
+
+async function lastGjengInfo() {
+  try {
+    gjengInfo = await vertRpc("vert_gjeng_info");
+    $("gjeng-merke").textContent = gjengInfo.navn;
+    if (data && !valgt) vis();
+  } catch (e) { /* hent() logger ut ved feil økt */ }
+}
+
+let gjengUtkast = {};
+
+// Innstillingene til gjengen, nederst på vertssiden.
+function byggGjengKort() {
+  const boks = el("details", "kort");
+  boks.open = apne.has("gjeng");
+  boks.addEventListener("toggle", () => { boks.open ? apne.add("gjeng") : apne.delete("gjeng"); });
+  boks.append(el("summary", "kort-tittel", "Gjengen"));
+  if (!gjengInfo) return boks;
+
+  const lenker = el("div", "samling-knapper");
+  lenker.append(knapp("Kopier gjestelenke", "knapp lys-knapp", () => kopier(gjesteLenke(gjengInfo.slug))));
+  lenker.append(knapp("Kopier vertslenke", "knapp lys-knapp", () => kopier(vertLenke(gjengInfo.slug))));
+  boks.append(lenker);
+
+  const om = el("form", "samling-skjema");
+  const navn = skjemaFelt("Navn", "gjeng-navn", gjengUtkast.navn ?? gjengInfo.navn, { utkast: gjengUtkast, nokkel: "navn" });
+  const omOss = skjemaFelt("Om oss", "gjeng-om", gjengUtkast.om ?? gjengInfo.om_oss, { utkast: gjengUtkast, nokkel: "om", flerlinjet: true,
+    hjelp: "Vises på siden til gjengen." });
+  const lagreOm = el("button", "knapp", "Lagre");
+  lagreOm.type = "submit";
+  om.append(navn.boks, omOss.boks, lagreOm);
+  om.addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      await vertRpc("gjeng_lagre", { p_navn: navn.inn.value, p_om_oss: omOss.inn.value });
+      gjengUtkast = {};
+      document.activeElement.blur();
+      await lastGjengInfo();
+      melding("Lagret.");
+    } catch (err) { melding(err.message); }
+  });
+  boks.append(om);
+
+  const koder = el("form", "samling-skjema");
+  const kode = skjemaFelt("Ny gjengkode", "gjeng-kode", gjengUtkast.kode, { utkast: gjengUtkast, nokkel: "kode",
+    hjelp: gjengInfo.har_gjengkode ? "Minst 4 tegn. Alle i gjengen må logge inn på nytt når den byttes." : "Ikke satt ennå. Minst 4 tegn." });
+  const vertskode = skjemaFelt("Ny vertskode", "gjeng-vert", gjengUtkast.vert, { utkast: gjengUtkast, nokkel: "vert",
+    hjelp: gjengInfo.har_vertskode ? "Minst 6 tegn. Andre som er logget inn som vert, logges ut." : "Ikke satt ennå. Minst 6 tegn." });
+  const lagreKoder = el("button", "knapp", "Bytt koder");
+  lagreKoder.type = "submit";
+  koder.append(kode.boks, vertskode.boks, lagreKoder);
+  koder.addEventListener("submit", async e => {
+    e.preventDefault();
+    const nyKode = kode.inn.value.trim(), nyVert = vertskode.inn.value.trim();
+    if (!nyKode && !nyVert) { melding("Skriv inn en ny kode først."); return; }
+    if (nyKode && gjengInfo.har_gjengkode && !(await bekreft("Bytte gjengkoden? Alle i gjengen må logge inn på nytt med den nye koden.", "Bytt"))) return;
+    try {
+      await vertRpc("gjeng_sett_koder", { p_gjengkode: nyKode || null, p_vertskode: nyVert || null });
+      gjengUtkast = {};
+      document.activeElement.blur();
+      await lastGjengInfo();
+      melding("Koden er byttet. Den kan ikke vises igjen, så skriv den ned.");
+    } catch (err) { melding(err.message); }
+  });
+  boks.append(koder);
+  return boks;
+}
+
+// Innloggingen sier hvem den gjelder. Finnes ikke gjengen, sier den det i stedet for å spørre om kode.
+function forberedInnlogging() {
+  if (!gjeng) {
+    $("logg-inn-tittel").textContent = "For administrator";
+    $("gjeng-merke").textContent = "Administrator";
+    return;
+  }
+  rpc("gjeng_info", { p_slug: gjeng }).then(g => {
+    if (!g) {
+      melding("Finner ikke gjengen «" + gjeng + "».");
+      $("logg-inn").hidden = true;
+      return;
+    }
+    if (!gjengInfo) $("gjeng-merke").textContent = g.navn;
+    $("logg-inn-tittel").textContent = "Vertskapet i " + g.navn;
+  }).catch(() => {});
+}
+
 // ---------------- Start ----------------
 
 if (!tilkoblet()) {
@@ -1028,8 +1262,11 @@ if (!tilkoblet()) {
 } else {
   $("logg-inn").addEventListener("submit", loggInn);
   $("logg-ut").addEventListener("click", loggUt);
-  pin = lesPin();
+  const okt = lesOkt();
+  pin = okt.okt;
+  rolle = okt.rolle;
   valgt = lesValgt();
+  forberedInnlogging();
   if (pin) start(); else $("logg-inn").hidden = false;
   // Dra ned for å oppdatere (app.js): hent på nytt uten å miste skjemaer som er halvveis utfylt.
   window.oppfrisk = () => pin ? hent() : location.reload();

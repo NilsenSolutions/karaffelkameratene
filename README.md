@@ -177,3 +177,16 @@ Vertikal og Horisontal har varianter som velges under oppsettet:
 | Horisontal | Samme distrikt og årgang (verten stiller) | 0/0/0/0/4 |
 | Horisontal | Samme årgang, ulike distrikter | 2/4/2/0/3 |
 | Horisontal | Samme drue og årgang | 3/3/0/0/3 |
+
+## Gjenger
+
+Appen kan brukes av flere gjenger, som ikke ser hverandres data. Karaffelkameratene er gjengen `ggmm`.
+
+| Hvem | Adresse | Kode |
+| --- | --- | --- |
+| Administrator | `/vert/` | Adminkoden. Viser alle gjengene, og oppretter og sletter dem |
+| Vertskapet | `/vert/?g=adressen` | Vertskoden, eller adminkoden. Bare denne gjengen |
+
+Gjengkoden slipper deltakerne inn, vertskoden slipper vertskapet inn, og adminkoden virker overalt. Kodene lagres bare som hash og kan byttes under «Gjengen» på vertssiden. Feil koder låses etter 10 forsøk fra samme sted (15 minutter).
+
+Testene ligger i `supabase/tester/skille_gjenger.sql`, `koder.sql` og `gjengoversikt.sql`.

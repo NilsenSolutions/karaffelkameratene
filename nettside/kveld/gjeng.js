@@ -35,6 +35,37 @@ window.GJENG = (function () {
     try { history.replaceState(null, "", pen); } catch (e) { /* behold adressen */ }
   });
 
+  // Hver gjeng blir sin egen app på hjemskjermen, med eget navn og egen startadresse.
+  // Vertssiden åpner vertssiden. Telefoner som ikke leser dette, bruker adressen siden har, som også er riktig.
+  function settNavn(navn) {
+    const start = slug ? "/" + slug + (side === "vert" ? "/vert" : "") : "/vert/";
+    const absolutt = s => location.origin + s;
+    const ikon = (src, sizes) => ({ src: absolutt(src), sizes, type: "image/png", purpose: "any" });
+    const hvert = { src: absolutt("/ikon-192.png"), sizes: "192x192" };
+    const manifest = {
+      id: absolutt(start),
+      name: navn,
+      short_name: navn.length > 12 ? "Karaffel" : navn,
+      description: "Vinsmaking med fasit og kåring.",
+      lang: "nb",
+      start_url: absolutt(start),
+      scope: absolutt("/"),
+      display: "standalone",
+      background_color: "#eef3ea",
+      theme_color: "#eef3ea",
+      icons: [ikon("/ikon-192.png", "192x192"), ikon("/ikon-512.png", "512x512")],
+      shortcuts: slug ? [
+        { name: "Smaking", url: absolutt("/" + slug + "/smaking"), icons: [hvert] },
+        { name: "Vertskap", url: absolutt("/" + slug + "/vert"), icons: [hvert] }
+      ] : []
+    };
+    const lenke = document.querySelector('link[rel="manifest"]');
+    if (lenke) lenke.href = "data:application/manifest+json," + encodeURIComponent(JSON.stringify(manifest));
+    const tittel = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (tittel) tittel.content = manifest.short_name;
+  }
+  settNavn(slug || "Karaffel admin");
+
   async function kall(navn, args) {
     const k = window.KARAFFEL;
     const headere = { "Content-Type": "application/json", "apikey": k.nokkel };
@@ -147,9 +178,11 @@ window.GJENG = (function () {
       const info = await kall("gjeng_info", { p_slug: slug }).catch(() => ({ navn: "Vinsmaking" }));
       vis();
       if (!info) { visTom(); return new Promise(() => {}); }
+      settNavn(info.navn);
       g = await visPort(info.navn);
       nokkel = g.tilgang;
     }
+    if (g.navn) settNavn(g.navn);
     tilgang = nokkel;
     skriv(tilgangNokkel, nokkel);
     skriv(SISTE_NOKKEL, slug);
@@ -161,6 +194,7 @@ window.GJENG = (function () {
     slug,
     side,
     klar,
+    settNavn,
     tilgang: () => tilgang,
     sti: s => "/" + slug + (s ? "/" + s : ""),
     // Lagringsnøkkel per gjeng. ggmm beholder de gamle, så lag som allerede er med ikke mister plassen.

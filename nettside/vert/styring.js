@@ -1174,6 +1174,7 @@ async function lastGjengInfo() {
   try {
     gjengInfo = await vertRpc("vert_gjeng_info");
     $("gjeng-merke").textContent = gjengInfo.navn;
+    GJENG.settNavn(gjengInfo.navn);
     document.querySelector(".merke").textContent = gjengInfo.navn;
     if (data) vis();
   } catch (e) { /* hent() logger ut ved feil økt */ }
@@ -1252,6 +1253,7 @@ function forberedInnlogging() {
       return;
     }
     if (!gjengInfo) $("gjeng-merke").textContent = g.navn;
+    GJENG.settNavn(g.navn);
     $("logg-inn-tittel").textContent = "Vertskapet i " + g.navn;
   }).catch(() => {});
 }

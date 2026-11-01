@@ -192,4 +192,6 @@ Appen kan brukes av flere gjenger, som ikke ser hverandres data. Karaffelkamerat
 
 Gjengkoden slipper deltakerne inn, vertskoden slipper vertskapet inn, og adminkoden virker overalt. Kodene lagres bare som hash og kan byttes under «Gjengen» på vertssiden. Feil koder låses etter 10 forsøk fra samme sted (15 minutter).
 
+På hjemskjermen blir hver gjeng sin egen app: `kveld/gjeng.js` lager navn, startadresse og snarveier ut fra gjengen.
+
 Testene ligger i `supabase/tester/skille_gjenger.sql`, `koder.sql` og `gjengoversikt.sql`. Testene i `supabase/tester/eldre/` er fra før gjengene og må få gjeng og nøkkel før de kan kjøres igjen.

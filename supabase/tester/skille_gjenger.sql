@@ -1,9 +1,10 @@
 -- Test av 22_skille_gjenger.sql: to gjenger med hver sin kveld skal ikke kunne se eller endre hverandre.
 -- Setter midlertidige koder inne i transaksjonen. Rulles tilbake til slutt, og endrer ingenting.
+-- Etter 23_koder.sql bruker vertene økter i stedet for koden.
 do $$
 declare
   ga uuid; gb uuid; ta uuid; tb uuid; sa uuid; sb uuid; tok uuid; lag_b uuid; vin_b uuid; pam_b uuid;
-  r text := '';
+  r text := ''; oa text; ob text;
   vin constant jsonb := '{"navn":"Testvin","produsent":"Test","type":"Rød","land":"Frankrike"}';
   mod constant jsonb := '{"lag": false, "lagstr": 1, "vinkilde": "deltakere", "viner_per": 1, "gjett": ["land"], "poeng": {"land": 2}}';
 
@@ -12,11 +13,14 @@ begin
   insert into gjeng (slug, navn, vert_hash) values ('test-b', 'Gjeng B', extensions.crypt('kode-b', extensions.gen_salt('bf', 4))) returning id, tilgang into gb, tb;
   update innstillinger set pin_hash = extensions.crypt('test-admin', extensions.gen_salt('bf', 4)) where id = 1;
 
+  oa := vert_start_okt('kode-a', 'test-a')->>'okt';
+  ob := vert_start_okt('kode-b', 'test-b')->>'okt';
+
   -- Vertene lager hvert sitt arrangement og starter kvelden samtidig.
-  sa := vert_lagre_samling('kode-a', jsonb_build_object('tittel', 'A-kveld', 'moduler', mod), 'test-a');
-  sb := vert_lagre_samling('kode-b', jsonb_build_object('tittel', 'B-kveld', 'moduler', mod), 'test-b');
-  perform lk_admin_aktiver('kode-a', sa, 'test-a');
-  perform lk_admin_aktiver('kode-b', sb, 'test-b');
+  sa := vert_lagre_samling(oa, jsonb_build_object('tittel', 'A-kveld', 'moduler', mod), 'test-a');
+  sb := vert_lagre_samling(ob, jsonb_build_object('tittel', 'B-kveld', 'moduler', mod), 'test-b');
+  perform lk_admin_aktiver(oa, sa, 'test-a');
+  perform lk_admin_aktiver(ob, sb, 'test-b');
   r := r || format('BEGGE AKTIVE: a=%s b=%s | ',
     (select aktiv from lk_kveld where samling_id = sa), (select aktiv from lk_kveld where samling_id = sb));
   r := r || format('RIKTIG GJENG: a=%s b=%s | ',
@@ -48,42 +52,42 @@ begin
   exception when others then r := r || 'UKJENT TILGANG stoppet: ' || sqlerrm || ' | '; end;
 
   -- Vert i A prøver å nå B: med sin egen gjeng og et arrangement i B ...
-  begin perform lk_admin_samling('kode-a', sb, 'test-a'); r := r || 'A LESER B: LEKKASJE | ';
+  begin perform lk_admin_samling(oa, sb, 'test-a'); r := r || 'A LESER B: LEKKASJE | ';
   exception when others then r := r || 'A LESER B stoppet: ' || sqlerrm || ' | '; end;
-  begin perform vert_hent_pameldinger('kode-a', sb, 'test-a'); r := r || 'A PÅMELDTE B: LEKKASJE | ';
+  begin perform vert_hent_pameldinger(oa, sb, 'test-a'); r := r || 'A PÅMELDTE B: LEKKASJE | ';
   exception when others then r := r || 'A PÅMELDTE B stoppet: ' || sqlerrm || ' | '; end;
-  begin perform vert_slett_samling('kode-a', sb, 'test-a'); r := r || 'A SLETTER B: LEKKASJE | ';
+  begin perform vert_slett_samling(oa, sb, 'test-a'); r := r || 'A SLETTER B: LEKKASJE | ';
   exception when others then r := r || 'A SLETTER B stoppet: ' || sqlerrm || ' | '; end;
-  begin perform vert_lagre_samling('kode-a', jsonb_build_object('id', sb, 'tittel', 'Kapret'), 'test-a'); r := r || 'A ENDRER B: LEKKASJE | ';
+  begin perform vert_lagre_samling(oa, jsonb_build_object('id', sb, 'tittel', 'Kapret'), 'test-a'); r := r || 'A ENDRER B: LEKKASJE | ';
   exception when others then r := r || 'A ENDRER B stoppet: ' || sqlerrm || ' | '; end;
-  begin perform lk_admin_aktiver('kode-a', sb, 'test-a'); r := r || 'A STARTER B: LEKKASJE | ';
+  begin perform lk_admin_aktiver(oa, sb, 'test-a'); r := r || 'A STARTER B: LEKKASJE | ';
   exception when others then r := r || 'A STARTER B stoppet: ' || sqlerrm || ' | '; end;
-  begin perform lk_admin_vertsvin('kode-a', sb, vin, 'test-a'); r := r || 'A VERTSVIN B: LEKKASJE | ';
+  begin perform lk_admin_vertsvin(oa, sb, vin, 'test-a'); r := r || 'A VERTSVIN B: LEKKASJE | ';
   exception when others then r := r || 'A VERTSVIN B stoppet: ' || sqlerrm || ' | '; end;
-  begin perform lk_admin_arkiver('kode-a', sb, 'test-a'); r := r || 'A ARKIVERER B: LEKKASJE | ';
+  begin perform lk_admin_arkiver(oa, sb, 'test-a'); r := r || 'A ARKIVERER B: LEKKASJE | ';
   exception when others then r := r || 'A ARKIVERER B stoppet: ' || sqlerrm || ' | '; end;
-  begin perform lk_admin_start_lag('kode-a', lag_b, 'test-a'); r := r || 'A STARTER LAG B: LEKKASJE | ';
+  begin perform lk_admin_start_lag(oa, lag_b, 'test-a'); r := r || 'A STARTER LAG B: LEKKASJE | ';
   exception when others then r := r || 'A STARTER LAG B stoppet: ' || sqlerrm || ' | '; end;
 
   -- ... sletting og endring som ikke feiler, skal ikke røre noe.
-  perform lk_admin_slett_lag('kode-a', lag_b, 'test-a');
-  perform lk_admin_slett_vin('kode-a', vin_b, 'test-a');
-  perform lk_admin_lagre_vin('kode-a', vin_b, '{"navn":"Kapret"}', 'test-a');
-  perform vert_fjern_pamelding('kode-a', pam_b, 'test-a');
+  perform lk_admin_slett_lag(oa, lag_b, 'test-a');
+  perform lk_admin_slett_vin(oa, vin_b, 'test-a');
+  perform lk_admin_lagre_vin(oa, vin_b, '{"navn":"Kapret"}', 'test-a');
+  perform vert_fjern_pamelding(oa, pam_b, 'test-a');
   r := r || format('B URØRT: lag=%s vin=%s påmelding=%s | ', (select count(*) from lk_lag where id = lag_b),
     (select navn from lk_vin where id = vin_b), (select count(*) from pamelding where id = pam_b));
 
   -- A avslutter og nullstiller sin kveld, og B skal gå videre.
-  perform lk_admin_nullstill('kode-a', 'test-a');
-  perform lk_admin_deaktiver('kode-a', 'test-a');
+  perform lk_admin_nullstill(oa, 'test-a');
+  perform lk_admin_deaktiver(oa, 'test-a');
   r := r || format('A AV, B PÅ: a=%s b=%s lag_b=%s | ', (select aktiv from lk_kveld where samling_id = sa),
     (select aktiv from lk_kveld where samling_id = sb), (select count(*) from lk_lag where samling_id = sb));
 
   -- Vertskode gir bare sin egen gjeng.
-  begin perform lk_admin_samlinger('kode-a', 'test-b'); r := r || 'A-KODE PÅ B: LEKKASJE | ';
+  begin perform lk_admin_samlinger(oa, 'test-b'); r := r || 'A-KODE PÅ B: LEKKASJE | ';
   exception when others then r := r || 'A-KODE PÅ B stoppet: ' || sqlerrm || ' | '; end;
   r := r || format('LOGG INN: a på a=%s a på b=%s a uten gjeng=%s | ',
-    vert_logg_inn('kode-a', 'test-a'), vert_logg_inn('kode-a', 'test-b'), vert_logg_inn('kode-a'));
+    vert_logg_inn(oa, 'test-a'), vert_logg_inn(oa, 'test-b'), vert_logg_inn(oa));
 
   -- Adminkoden virker overalt, og ser likevel bare gjengen den ber om.
   r := r || format('ADMIN: logg inn b=%s, samlinger a=%s b=%s | ', vert_logg_inn('test-admin', 'test-b'),
@@ -91,7 +95,7 @@ begin
     (select string_agg(e->>'tittel', ',') from jsonb_array_elements(lk_admin_samlinger('test-admin', 'test-b')) e));
 
   -- Vinlogg og arkiv havner hos riktig gjeng.
-  perform lk_admin_arkiver('kode-b', sb, 'test-b');
+  perform lk_admin_arkiver(ob, sb, 'test-b');
   r := r || format('VINLOGG: gjeng b=%s, b ser %s, a ser %s, ggmm ser testvin=%s | ', (select count(*) from vinlogg where samling_id = sb and gjeng_id = gb),
     jsonb_array_length(hent_vinlogg(tb)), jsonb_array_length(hent_vinlogg(ta)),
     exists (select 1 from jsonb_array_elements(hent_vinlogg()) e where e->>'samling_id' = sb::text));

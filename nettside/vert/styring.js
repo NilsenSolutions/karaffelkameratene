@@ -21,7 +21,9 @@ let MODUS_LAG = true;
 let VINER_PER = 2;
 const L = (medLag, uten) => (MODUS_LAG ? medLag : uten);
 
+let meldingVist = 0;
 function melding(tekst) {
+  if (tekst) meldingVist = Date.now();
   const m = $("melding");
   m.textContent = tekst || "";
   m.hidden = !tekst;
@@ -102,7 +104,7 @@ async function hent() {
     }
     if (id !== valgt) return;   // byttet side mens vi ventet
     data = svar;
-    melding("");
+    if (Date.now() - meldingVist > 8000) melding("");   // beskjeder skal rekke å bli lest
   } catch (err) {
     if (/PIN/.test(err.message)) return loggUt();
     if (/Finner ikke arrangementet/.test(err.message)) return velg("");
@@ -1068,7 +1070,7 @@ function skjemaFelt(tekst, id, verdi, valg = {}) {
   inn.id = id;
   inn.value = verdi || "";
   if (valg.flerlinjet) inn.rows = 4;
-  else { inn.type = "text"; inn.autocomplete = "off"; }
+  else { inn.type = valg.hemmelig ? "password" : "text"; inn.autocomplete = valg.hemmelig ? "new-password" : "off"; }
   if (valg.utkast) inn.addEventListener("input", () => { valg.utkast[valg.nokkel] = inn.value; });
   f.append(lapp, inn);
   if (valg.hjelp) f.append(el("p", "hjelp", valg.hjelp));
@@ -1094,6 +1096,45 @@ function visGjenger(rot) {
   if (apne.has("ny-gjeng")) boks.append(byggNyGjeng());
   data.forEach(g => boks.append(gjengRad(g)));
   rot.append(boks);
+  rot.append(byggAdminkode());
+}
+
+let adminUtkast = {};
+
+// Bytte av adminkoden. Lukket til den åpnes, og koden vises aldri.
+function byggAdminkode() {
+  const boks = el("details", "kort");
+  boks.open = apne.has("adminkode");
+  boks.addEventListener("toggle", () => { boks.open ? apne.add("adminkode") : apne.delete("adminkode"); });
+  boks.append(el("summary", "kort-tittel", "Bytt adminkode"));
+  const f = el("form", "samling-skjema");
+  const gammel = skjemaFelt("Nåværende adminkode", "admin-gammel", adminUtkast.gammel, { utkast: adminUtkast, nokkel: "gammel", hemmelig: true });
+  const ny = skjemaFelt("Ny adminkode", "admin-ny", adminUtkast.ny, { utkast: adminUtkast, nokkel: "ny", hemmelig: true,
+    hjelp: "Minst 10 tegn. Velg noe som ikke ligner på vertskodene. Koden kan ikke vises igjen, så ta vare på den." });
+  const gjenta = skjemaFelt("Gjenta ny adminkode", "admin-gjenta", adminUtkast.gjenta, { utkast: adminUtkast, nokkel: "gjenta", hemmelig: true });
+  const lagre = el("button", "knapp", "Bytt adminkode");
+  lagre.type = "submit";
+  f.append(gammel.boks, ny.boks, gjenta.boks, lagre);
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (ny.inn.value !== gjenta.inn.value) { melding("De to nye kodene er ikke like."); return; }
+    lagre.disabled = true;
+    try {
+      const svar = await rpc("admin_bytt_kode", { p_pin: pin, p_gammel: gammel.inn.value, p_ny: ny.inn.value });
+      if (svar.feil) { melding(svar.feil + "."); return; }
+      adminUtkast = {};
+      apne.delete("adminkode");
+      document.activeElement.blur();
+      vis();
+      melding("Adminkoden er byttet. Andre som var logget inn som administrator, er logget ut.");
+    } catch (err) {
+      melding(err.message);
+    } finally {
+      lagre.disabled = false;
+    }
+  });
+  boks.append(f);
+  return boks;
 }
 
 function gjengRad(g) {

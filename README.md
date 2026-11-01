@@ -190,7 +190,7 @@ Appen kan brukes av flere gjenger, som ikke ser hverandres data. Karaffelkamerat
 | Administrator | `/vert/` | Adminkoden. Viser alle gjengene, og oppretter og sletter dem |
 | Vertskapet | `/adressen/vert`, `/adressen/skjerm` | Vertskoden, eller adminkoden. Bare denne gjengen |
 
-Gjengkoden slipper deltakerne inn, vertskoden slipper vertskapet inn, og adminkoden virker overalt. Kodene kan byttes under «Gjengen» på vertssiden. Administrator ser dem under «Vis koder», og vertskapet ser gjengkoden sin. De ligger i klartekst i en tabell som er stengt utenfra, ved siden av hashen innloggingen sjekker mot. Feil koder låses etter 10 forsøk fra samme sted (15 minutter).
+Gjengkoden slipper deltakerne inn, vertskoden slipper vertskapet inn, og adminkoden virker overalt. Adminkoden byttes under «Bytt adminkode» på `/vert/`. Kodene kan byttes under «Gjengen» på vertssiden. Administrator ser dem under «Vis koder», og vertskapet ser gjengkoden sin. De ligger i klartekst i en tabell som er stengt utenfra, ved siden av hashen innloggingen sjekker mot. Feil koder låses etter 10 forsøk fra samme sted (15 minutter).
 
 På hjemskjermen blir hver gjeng sin egen app: `kveld/gjeng.js` lager navn, startadresse og snarveier ut fra gjengen.
 

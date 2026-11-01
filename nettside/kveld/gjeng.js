@@ -77,18 +77,41 @@ window.GJENG = (function () {
     return data;
   }
 
+  // Sidene har egne regler for overskrifter og skjemaer, så reglene her må veie tyngre.
   const STIL = `
-    .gjeng-port { position: fixed; inset: 0; z-index: 90; overflow: auto; display: flex; align-items: center; justify-content: center;
-      padding: 1.5rem; background: #eef3ea; color: #2b2b2b; font-family: "Space Grotesk", system-ui, sans-serif; }
-    .gjeng-port form, .gjeng-port div.tom { width: 100%; max-width: 24rem; background: #fff; border: 3px solid #2f5ba8; border-radius: 20px; padding: 1.75rem; }
-    .gjeng-port h1 { margin: 0 0 .5rem; font: 400 clamp(1.5rem, 7vw, 2.2rem)/1.1 "Permanent Marker", cursive; color: #2f5ba8; overflow-wrap: anywhere; }
-    .gjeng-port p { margin: 0 0 1rem; }
-    .gjeng-port label { display: block; font-weight: 700; margin-bottom: .35rem; }
-    .gjeng-port input { display: block; box-sizing: border-box; width: 100%; font: inherit; font-size: 1.1rem; padding: .7rem .8rem; border: 2px solid #d6dfd1; border-radius: 10px; background: #fff; color: inherit; margin-bottom: 1rem; }
-    .gjeng-port input:focus { outline: 0; border-color: #2f5ba8; }
-    .gjeng-port button { width: 100%; font: inherit; font-weight: 700; padding: .75rem 1rem; border: 0; border-radius: 999px; background: #b3263e; color: #fff; cursor: pointer; }
-    .gjeng-port button:disabled { opacity: .6; }
-    .gjeng-port .port-feil { margin: .75rem 0 0; color: #b3263e; font-weight: 700; min-height: 1.4em; }`;
+    html body .gjeng-port { position: fixed; inset: 0; z-index: 90; overflow: auto; display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; background: #eef3ea; color: #2b2b2b; font-family: "Space Grotesk", system-ui, sans-serif; font-size: 1rem; }
+    html body .gjeng-port.gjeng-port form, html body .gjeng-port div.tom { width: 100%; max-width: 24rem; margin: 0; background: #fff; border: 3px solid #2f5ba8; border-radius: 20px; padding: 1.5rem; box-shadow: 0 8px 28px rgba(47, 91, 168, .12); }
+    html body .gjeng-port img { display: block; width: 3.25rem; height: auto; margin: 0 0 .75rem; }
+    html body .gjeng-port h1 { margin: 0 0 .75rem; font: 400 2.2rem/1.1 "Permanent Marker", cursive; color: #2f5ba8; transform: none; overflow-wrap: normal; hyphens: none; letter-spacing: 0; }
+    html body .gjeng-port p { margin: 0 0 1.25rem; font-size: 1rem; line-height: 1.45; }
+    html body .gjeng-port label { display: block; font-weight: 700; margin: 0 0 .35rem; }
+    html body .gjeng-port input { display: block; box-sizing: border-box; width: 100%; font: inherit; font-size: 1.1rem; padding: .7rem .8rem; border: 2px solid #c9d4c3; border-radius: 10px; background: #fff; color: inherit; margin: 0 0 1rem; }
+    html body .gjeng-port input:focus { outline: 0; border-color: #2f5ba8; }
+    html body .gjeng-port button { display: block; width: 100%; font: inherit; font-weight: 700; padding: .8rem 1rem; border: 0; border-radius: 999px; background: #b3263e; color: #fff; cursor: pointer; }
+    html body .gjeng-port button:disabled { opacity: .6; }
+    html body .gjeng-port .port-feil { margin: .85rem 0 0; color: #b3263e; font-weight: 700; }
+    html body .gjeng-port .port-feil:empty { display: none; }`;
+
+  // Lange navn skal stå samlet: skriften krymper til det lengste ordet får plass, i stedet for å deles midt i ordet.
+  function tilpassTittel(h) {
+    const tilpass = () => {
+      h.style.fontSize = "";
+      let storrelse = parseFloat(getComputedStyle(h).fontSize);
+      while (h.scrollWidth > h.clientWidth && storrelse > 16) {
+        storrelse -= 1;
+        h.style.fontSize = storrelse + "px";
+      }
+    };
+    tilpass();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(tilpass);
+  }
+
+  function lagMerke() {
+    const bilde = document.createElement("img");
+    Object.assign(bilde, { src: "/favicon.svg", alt: "" });
+    return bilde;
+  }
 
   // Kodeskjermen dekker hele siden til riktig kode er skrevet inn.
   function visPort(navn) {
@@ -114,7 +137,7 @@ window.GJENG = (function () {
       const feil = document.createElement("p");
       feil.className = "port-feil";
       feil.setAttribute("role", "alert");
-      skjema.append(tittel, hjelp, lapp, inn, knapp, feil);
+      skjema.append(lagMerke(), tittel, hjelp, lapp, inn, knapp, feil);
       port.append(skjema);
       skjema.addEventListener("submit", async e => {
         e.preventDefault();
@@ -138,6 +161,7 @@ window.GJENG = (function () {
       });
       document.head.append(stil);
       document.body.append(port);
+      tilpassTittel(tittel);
       inn.focus();
     });
   }
@@ -153,10 +177,11 @@ window.GJENG = (function () {
     tittel.textContent = "Denne karaffelen er tom.";
     const tekst = document.createElement("p");
     tekst.textContent = "Vi finner ingen gjeng med denne adressen. Sjekk lenken du fikk.";
-    boks.append(tittel, tekst);
+    boks.append(lagMerke(), tittel, tekst);
     port.append(boks);
     document.head.append(stil);
     document.body.append(port);
+    tilpassTittel(tittel);
   }
 
   // Sjekker en lagret nøkkel. Nettfeil regnes ikke som feil nøkkel, så man ikke kastes ut når dekningen forsvinner.

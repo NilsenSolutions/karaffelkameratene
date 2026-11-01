@@ -19,7 +19,7 @@ Bare mappen `nettside/` publiseres. Resten av repoet (databasen, README, verktø
 
 | Fil | Innhold |
 | --- | --- |
-| `nettside/index.html` | Startsiden: bare navnet. Åpnet fra hjemskjermen går den rett til gjengen |
+| `nettside/index.html`, `forside.css`, `forside.js` | Startsiden: beskriver konseptet og har et felt for adressen til gjengen. Viser ingen gjenger. Åpnet fra hjemskjermen går den rett til gjengen |
 | `nettside/gjeng/index.html` | Siden til en gjeng: påmelding, vinlogg og «Om oss» |
 | `nettside/kveld/gjeng.js` | Hvilken gjeng siden gjelder, og kodeskjermen |
 | `nettside/style.css` | Utseende |

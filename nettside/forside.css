@@ -1,0 +1,26 @@
+/* Startsiden: samme form som siden til en gjeng, men med konseptet i stedet for påmelding og vinlogg. */
+
+.inngang label { display: block; font-weight: 600; margin-bottom: .35rem; }
+.adresse-felt {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0 .15rem; margin-bottom: .85rem; padding: .55rem .75rem;
+  background: #fff; border: 2px solid var(--k-linje); border-radius: 10px;
+}
+.adresse-felt:focus-within { border-color: var(--k-blaa); }
+.adresse-felt span { color: var(--k-dempet); }
+html[data-tema="kamerater"] .adresse-felt input { flex: 1 1 6rem; min-width: 0; width: auto; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; font-weight: 700; color: inherit; outline: 0; }
+.inngang .knapp { display: block; width: 100%; border: 0; cursor: pointer; font: inherit; font-weight: 700; color: #fff; }
+
+.forside-steg, .forside-fordeler { list-style: none; margin: 1.75rem 0 0; padding: 0; display: grid; gap: 1.25rem; }
+.forside-steg { grid-template-columns: repeat(4, minmax(0, 1fr)); counter-reset: fsteg; }
+.forside-fordeler { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.forside-steg li, .forside-fordeler li { background: var(--k-kort); border: 2px solid var(--k-linje); border-radius: 18px; padding: 1.25rem; }
+.forside-fordeler li { background: var(--k-bakgrunn); }
+.forside-steg li { counter-increment: fsteg; }
+.forside-steg li::before { content: counter(fsteg); display: block; font-family: var(--tittel); font-size: 2.2rem; line-height: 1; color: var(--k-rod); margin-bottom: .5rem; }
+.forside-steg h3, .forside-fordeler h3 { margin: 0 0 .4rem; font-size: 1.15rem; color: var(--k-blaa); }
+.forside-steg p, .forside-fordeler p { margin: 0; }
+
+@media (max-width: 900px) {
+  .forside-steg, .forside-fordeler { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) { .forside-steg, .forside-fordeler { grid-template-columns: 1fr; } }

@@ -1,7 +1,7 @@
 // Lagkveld på mobil: ett lag per mobil. Laget registrerer egne viner, gjetter de andre lagenes
 // viner med score 0–100, ser fasit etter hver runde og resultatene når admin viser dem.
 
-const TOKEN_NOKKEL = "karaffel-lag-token";
+const TOKEN_NOKKEL = GJENG.nokkel("karaffel-lag-token");
 const OPPDATER_MS = 3000;
 
 // Kveldens byggeklosser (fra vertssiden). Uten lag er hver deltaker et «lag» på én.
@@ -34,7 +34,7 @@ function melding(tekst) {
 async function hent() {
   let ny;
   try {
-    ny = await rpc("lk_hent", { p_token: lesToken() || null });
+    ny = await rpc("lk_hent", { p_token: lesToken() || null, p_tilgang: GJENG.tilgang() });
     melding("");
   } catch (err) {
     melding(err.message + " Prøver igjen…");
@@ -102,7 +102,7 @@ function visHoved() {
     takk.append(el("h2", "kort-tittel", "Takk for i kveld! 🍷"));
     takk.append(el("p", "", "Kvelden er avsluttet. Resultatene står under, og vinene ligger i vinloggen."));
     const lenke = el("a", "knapp", "Til forsiden");
-    lenke.href = "../";
+    lenke.href = GJENG.sti("");
     takk.append(lenke);
     h.append(takk);
     return visResultater(h);
@@ -128,7 +128,7 @@ function visBliMed(h) {
     feil.textContent = "";
     if (knapp) knapp.disabled = true;
     try {
-      const svar = await rpc("lk_opprett_lag", { p_navn: lagnavn, p_medlem1: medlemmer[0], p_medlem2: medlemmer.slice(1).join(", ") });
+      const svar = await rpc("lk_opprett_lag", { p_tilgang: GJENG.tilgang(), p_navn: lagnavn, p_medlem1: medlemmer[0], p_medlem2: medlemmer.slice(1).join(", ") });
       skrivToken(svar.token);
       visningsnokkel = "";
       await hent();
@@ -225,7 +225,7 @@ function visBliMed(h) {
     e.preventDefault();
     kfeil.textContent = "";
     try {
-      const svar = await rpc("lk_bli_med", { p_kode: kode.value });
+      const svar = await rpc("lk_bli_med", { p_kode: kode.value, p_tilgang: GJENG.tilgang() });
       skrivToken(svar.token);
       visningsnokkel = "";
       await hent();
@@ -587,10 +587,18 @@ function scorefelt(id, verdier, lagre) {
 if (!tilkoblet()) {
   melding("Siden er ikke koblet til databasen.");
 } else {
-  rpc("lk_distrikter", {}).then(d => { distrikter = d || {}; visningsnokkel = ""; visHoved(); }).catch(() => {});
-  hent();
-  setInterval(() => { if (!document.hidden) hent(); }, OPPDATER_MS);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) hent(); });
-  // Dra ned for å oppdatere (app.js): hent på nytt uten å miste gjetninger som ikke er sendt.
-  window.oppfrisk = hent;
+  // Ingenting hentes før gjengkoden er godkjent.
+  GJENG.klar().then(g => {
+    if (g.navn) {
+      document.querySelector(".merke").textContent = g.navn;
+      document.title = "Vinsmaking – " + g.navn;
+    }
+    document.querySelector(".merke").href = GJENG.sti("");
+    rpc("lk_distrikter", {}).then(d => { distrikter = d || {}; visningsnokkel = ""; visHoved(); }).catch(() => {});
+    hent();
+    setInterval(() => { if (!document.hidden) hent(); }, OPPDATER_MS);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) hent(); });
+    // Dra ned for å oppdatere (app.js): hent på nytt uten å miste gjetninger som ikke er sendt.
+    window.oppfrisk = hent;
+  });
 }

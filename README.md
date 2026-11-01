@@ -19,7 +19,9 @@ Bare mappen `nettside/` publiseres. Resten av repoet (databasen, README, verktø
 
 | Fil | Innhold |
 | --- | --- |
-| `nettside/index.html` | Sidestruktur og tekst |
+| `nettside/index.html` | Startsiden: bare navnet. Åpnet fra hjemskjermen går den rett til gjengen |
+| `nettside/gjeng/index.html` | Siden til en gjeng: påmelding, vinlogg og «Om oss» |
+| `nettside/kveld/gjeng.js` | Hvilken gjeng siden gjelder, og kodeskjermen |
 | `nettside/style.css` | Utseende |
 | `nettside/script.js` | Innhold, innstillinger og all dynamikk |
 | `nettside/kveld/` | Kveldsmodus for deltakerne, felles kode (`felles.js`) og databasetilkobling (`oppsett.js`) |
@@ -27,7 +29,7 @@ Bare mappen `nettside/` publiseres. Resten av repoet (databasen, README, verktø
 | `nettside/vert/` | Vertssiden (arrangementer, påmeldte, lagkveld, arkiv) |
 | `nettside/app.js` | Appoppførsel når siden er lagt på hjemskjermen: dra ned for å oppdatere (sidene setter `window.oppfrisk` for å hente på nytt uten å miste det som er skrevet) |
 | `nettside/site.webmanifest` | Navn, ikon og snarveier (Smaking, Vertskap) for hjemskjermen |
-| `nettside/404.html` | Siden som vises når en adresse ikke finnes |
+| `nettside/404.html` | Sender `/adressen` videre til siden til gjengen. Ellers siden som vises når en adresse ikke finnes |
 | `supabase/migreringer/` | Tabeller og funksjoner i databasen, nummerert i den rekkefølgen de kjøres |
 | `supabase/tester/` | Testkvelder som rulles tilbake (endrer ingenting) |
 | `.github/workflows/publiser.yml` | Publiserer `nettside/` til GitHub Pages ved hver push til `main` |
@@ -184,8 +186,9 @@ Appen kan brukes av flere gjenger, som ikke ser hverandres data. Karaffelkamerat
 
 | Hvem | Adresse | Kode |
 | --- | --- | --- |
+| Deltaker | `/adressen`, `/adressen/smaking` | Gjengkoden, som huskes på enheten |
 | Administrator | `/vert/` | Adminkoden. Viser alle gjengene, og oppretter og sletter dem |
-| Vertskapet | `/vert/?g=adressen` | Vertskoden, eller adminkoden. Bare denne gjengen |
+| Vertskapet | `/adressen/vert`, `/adressen/skjerm` | Vertskoden, eller adminkoden. Bare denne gjengen |
 
 Gjengkoden slipper deltakerne inn, vertskoden slipper vertskapet inn, og adminkoden virker overalt. Kodene lagres bare som hash og kan byttes under «Gjengen» på vertssiden. Feil koder låses etter 10 forsøk fra samme sted (15 minutter).
 

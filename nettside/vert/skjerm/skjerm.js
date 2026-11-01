@@ -9,7 +9,7 @@ let sistSteg = 0;   // kåringen avslutter kvelden, men storskjermen skal bli st
 async function hent() {
   let data;
   try {
-    data = await rpc("lk_hent", {});
+    data = await rpc("lk_hent", { p_tilgang: GJENG.tilgang() });
   } catch (err) {
     return;   // prøver igjen ved neste runde
   }
@@ -20,7 +20,7 @@ async function hent() {
   let fremdrift = null;
   const fase = data && data.kveld && data.kveld.fase;
   if (data && data.runde && (fase === "gjetting" || fase === "lukket") && !sistSteg) {
-    try { fremdrift = await rpc("lk_fremdrift", {}); } catch (err) { fremdrift = null; }
+    try { fremdrift = await rpc("lk_fremdrift", { p_tilgang: GJENG.tilgang() }); } catch (err) { fremdrift = null; }
   }
 
   // Tegn bare på nytt når noe har endret seg, så animasjonene ikke starter om igjen.
@@ -77,8 +77,9 @@ function visVelkommen(rot, data, L) {
   rot.append(el("h1", "", "Velkommen!"));
 
   const qr = el("div", "qr-kort");
-  const adresse = location.origin + "/smaking/";
-  qr.append(qrKode(adresse), el("p", "qr-tekst", "Skann og bli med"), el("p", "qr-adresse", adresse.replace(/^https?:\/\//, "").replace(/\/$/, "")));
+  // Nøkkelen i QR-koden slipper gjestene inn uten å skrive gjengkoden. Adressen på skjermen viser den ikke.
+  const adresse = location.origin + GJENG.sti("smaking");
+  qr.append(qrKode(adresse + "#t=" + GJENG.tilgang()), el("p", "qr-tekst", "Skann og bli med"), el("p", "qr-adresse", adresse.replace(/^https?:\/\//, "").replace(/\/$/, "")));
 
   const deltakere = el("div", "deltakere");
   const egneViner = mod.vinkilde !== "vert";
@@ -323,8 +324,11 @@ document.addEventListener("keydown", e => { if (e.key === "f" || e.key === "F") 
 document.addEventListener("fullscreenchange", () => { $("fullskjerm").hidden = Boolean(document.fullscreenElement); });
 
 if (tilkoblet()) {
-  hent();
-  setInterval(hent, 2000);
+  // Ingenting hentes før gjengkoden er godkjent.
+  GJENG.klar().then(() => {
+    hent();
+    setInterval(hent, 2000);
+  });
 } else {
   $("skjerm").textContent = "Siden er ikke koblet til databasen.";
 }

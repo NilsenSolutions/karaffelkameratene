@@ -7,7 +7,7 @@ const FASE_TEKST = { venter: "Venter på neste runde", gjetting: "Gjetting åpen
 const STEG_TEKST = ["Ingen resultater vist", "Vinrangering og beste vin vises", "Poengene vises uten lagnavn", "Vinnerne er kåret med lagnavn"];
 
 // Adressen avgjør siden: /vert/ er adminoversikten over gjengene, /vert/?g=slekta er vertssiden til én gjeng.
-const gjeng = new URLSearchParams(location.search).get("g") || "";
+const gjeng = GJENG.slug;
 let pin = "";      // økten fra vert_start_okt, sendes i stedet for koden
 let rolle = "";    // admin eller vert
 let gjengInfo = null;
@@ -162,14 +162,14 @@ function vis() {
   topp.append(el("p", "kveld-info", [k.dato_avtales ? "Dato avtales" : datoTekst(k.dato), k.sted, lag.length + L(" lag", lag.length === 1 ? " deltaker" : " deltakere"),
     k.aktiv ? FASE_TEKST[k.fase] : "Kvelden er ikke i gang", k.aktiv ? STEG_TEKST[k.resultat_steg] : ""].filter(Boolean).join(" · ")));
   if (k.aktiv) {
-    topp.append(el("p", "hjelp", L("Lagene", "Deltakerne") + " bruker karaffelkameratene.no/smaking/ på mobilen."));
+    topp.append(el("p", "hjelp", L("Lagene", "Deltakerne") + " bruker karaffelkameratene.no" + GJENG.sti("smaking") + " på mobilen."));
     const skjermLenke = el("a", "knapp lys-knapp", "Åpne storskjerm ↗");
-    Object.assign(skjermLenke, { href: "skjerm/", target: "_blank", rel: "noopener" });
+    Object.assign(skjermLenke, { href: GJENG.sti("skjerm") + (gjengInfo ? "#t=" + gjengInfo.tilgang : ""), target: "_blank", rel: "noopener" });
     topp.append(el("p", "hjelp", "Storskjermen følger hele kvelden: QR-kode og " + L("lagene", "deltakerne") + " før start, runden og hvem som har gjettet, fasit og kåringen. Sett skjermen på «Utvid» (Win + P), dra vinduet til TV-en og trykk F for fullskjerm."), skjermLenke);
   } else {
     topp.append(el("p", "hjelp", data.annen_aktiv
       ? "«" + data.annen_aktiv.tittel + "» er i gang nå. Starter du her, avsluttes den (data beholdes)."
-      : "Når du starter kvelden, kan " + L("lagene", "deltakerne") + " melde seg inn på karaffelkameratene.no/smaking/."));
+      : "Når du starter kvelden, kan " + L("lagene", "deltakerne") + " melde seg inn på karaffelkameratene.no" + GJENG.sti("smaking") + "."));
     topp.append(knapp(lag.length ? "Start kvelden igjen" : "Start kvelden her", "knapp", () => handling("lk_admin_aktiver", { p_samling: k.samling_id },
       data.annen_aktiv ? "Avslutte «" + data.annen_aktiv.tittel + "» og starte kvelden for «" + k.tittel + "»?" : "", "Start")));
   }
@@ -1049,7 +1049,7 @@ function byggDistrikt() {
 // ---------------- Gjengene ----------------
 
 const gjesteLenke = slug => location.origin + "/" + slug;
-const vertLenke = slug => location.origin + "/vert/?g=" + slug;
+const vertLenke = slug => location.origin + "/" + slug + "/vert";
 
 async function kopier(tekst) {
   try {
@@ -1166,7 +1166,7 @@ function byggNyGjeng() {
 
 function gjengLenke() {
   const a = el("a", "lenkeknapp tilbake", "← Alle gjenger");
-  a.href = "./";
+  a.href = "/vert/";
   return a;
 }
 
@@ -1174,7 +1174,8 @@ async function lastGjengInfo() {
   try {
     gjengInfo = await vertRpc("vert_gjeng_info");
     $("gjeng-merke").textContent = gjengInfo.navn;
-    if (data && !valgt) vis();
+    document.querySelector(".merke").textContent = gjengInfo.navn;
+    if (data) vis();
   } catch (e) { /* hent() logger ut ved feil økt */ }
 }
 
@@ -1267,6 +1268,7 @@ if (!tilkoblet()) {
   rolle = okt.rolle;
   valgt = lesValgt();
   forberedInnlogging();
+  if (gjeng) document.querySelector(".merke").href = GJENG.sti("");
   if (pin) start(); else $("logg-inn").hidden = false;
   // Dra ned for å oppdatere (app.js): hent på nytt uten å miste skjemaer som er halvveis utfylt.
   window.oppfrisk = () => pin ? hent() : location.reload();

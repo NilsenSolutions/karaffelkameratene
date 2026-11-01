@@ -13,11 +13,30 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <script src="/kveld/oppsett.js?v=20261025f"></script>
+  <script>
+    // GitHub Pages svarer med denne siden på alle ukjente adresser. Er første del av adressen en gjeng, går vi videre
+    // til den ekte siden (gjeng.js setter adressen tilbake). Ellers vises 404-teksten. Siden er skjult mens vi sjekker.
+    (function () {
+      var SIDER = { "": "/gjeng/", smaking: "/smaking/", vert: "/vert/", skjerm: "/vert/skjerm/" };
+      var deler = location.pathname.split("/").filter(Boolean);
+      var slug = (deler[0] || "").toLowerCase();
+      var side = deler[1] || "";
+      if (deler.length > 2 || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(slug) || !Object.prototype.hasOwnProperty.call(SIDER, side)) return;
+      document.documentElement.style.visibility = "hidden";
+      var videre = function () { location.replace(SIDER[side] + "?g=" + encodeURIComponent(slug) + location.hash); };
+      var vis = function () { document.documentElement.style.visibility = ""; };
+      fetch(KARAFFEL.url.replace(/\/$/, "") + "/rest/v1/rpc/gjeng_info", {
+        method: "POST", headers: { "Content-Type": "application/json", "apikey": KARAFFEL.nokkel },
+        body: JSON.stringify({ p_slug: slug })
+      }).then(function (s) { return s.json(); }).then(function (g) { if (g && g.slug) videre(); else vis(); }).catch(videre);
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Figtree:wght@400;500;600&family=Permanent+Marker&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css?v=20261023a">
-  <link rel="stylesheet" href="/tema.css?v=20261023a">
+  <link rel="stylesheet" href="/style.css?v=20261101c">
+  <link rel="stylesheet" href="/tema.css?v=20261101c">
 </head>
 <body>
   <main>

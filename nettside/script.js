@@ -220,7 +220,7 @@ function visPlasser(s) {
 async function visPameldte(s) {
   const liste = $("pameldt-liste");
   let rader = [];
-  try { rader = await kall("hent_dansegulv", { p_samling: s.id }); } catch (e) { rader = []; }
+  try { rader = await kall("hent_dansegulv", { p_samling: s.id, p_tilgang: GJENG.tilgang() }); } catch (e) { rader = []; }
   if (pameldingSamling !== s && !(pameldingSamling && pameldingSamling.id === s.id)) return;   // byttet samling mens vi ventet
   liste.textContent = "";
   liste.hidden = !rader.length;
@@ -287,11 +287,11 @@ async function sendSkjema(e) {
   const knapp = $("send-knapp");
   knapp.disabled = true;
   try {
-    const svar = await kall("meld_pa", { p_samling: s.id, p_navn: navn, p_vin: (s.moduler || {}).tar_med === false ? "" : $("vin").value.trim(),
+    const svar = await kall("meld_pa", { p_tilgang: GJENG.tilgang(), p_samling: s.id, p_navn: navn, p_vin: (s.moduler || {}).tar_med === false ? "" : $("vin").value.trim(),
       p_datoer: s.dato_avtales ? $("datoer").value.trim() : "" });
     visBekreftelse(svar, navn);
     // Oppdater antall påmeldte og status uten å skjule bekreftelsen.
-    SMAKINGER = await kall("hent_samlinger", {});
+    SMAKINGER = await kall("hent_samlinger", { p_tilgang: GJENG.tilgang() });
     const oppdatert = SMAKINGER.find(x => x.id === s.id);
     if (oppdatert) {
       if (neste && neste.id === s.id) neste = oppdatert;
@@ -329,7 +329,7 @@ function lagIcs(s) {
     "DTSTAMP:" + stempel,
     "DTSTART:" + icsDato(start),
     "DTEND:" + icsDato(slutt),
-    "SUMMARY:" + icsTekst("Karaffelkameratene: " + s.tittel),
+    "SUMMARY:" + icsTekst(GJENG_NAVN + ": " + s.tittel),
     "LOCATION:" + icsTekst(s.sted),
     "DESCRIPTION:" + icsTekst(s.tema),
     "END:VEVENT",
@@ -453,8 +453,8 @@ function visKvelder() {
 
 async function lastVinlogg() {
   try {
-    const [rader, kvelder, scorer] = await Promise.all([kall("hent_vinlogg", {}), kall("hent_kvelder", {}).catch(() => []),
-      kall("hent_personscore", {}).catch(() => [])]);
+    const [rader, kvelder, scorer] = await Promise.all([kall("hent_vinlogg", { p_tilgang: GJENG.tilgang() }), kall("hent_kvelder", { p_tilgang: GJENG.tilgang() }).catch(() => []),
+      kall("hent_personscore", { p_tilgang: GJENG.tilgang() }).catch(() => [])]);
     KVELDER = kvelder || [];
     VINLOGG = rader.map(r => Object.assign({}, r, { type: typeNokkel(r.type), poeng: r.score == null ? null : Number(r.score) }));
     PERSONSCORE = {};
@@ -535,7 +535,10 @@ async function kall(navn, args) {
   }
   const tekst = await svar.text();
   const data = tekst ? JSON.parse(tekst) : null;
-  if (!svar.ok) throw new Error((data && data.message) || "Feil fra serveren");
+  if (!svar.ok) {
+    GJENG.sjekkFeil(data && data.message);
+    throw new Error((data && data.message) || "Feil fra serveren");
+  }
   return data;
 }
 
@@ -548,14 +551,14 @@ async function visLagkveld() {
   const s = neste && kveldenErApen(neste) ? neste : null;
   const knapper = [$("nt-smaking")];
   knapper.forEach(k => { k.hidden = !s; });
-  $("stripe").href = s ? "smaking/" : "#pamelding";
+  $("stripe").href = s ? GJENG.sti("smaking") : "#pamelding";
   if (!s) return;
   let tekst = "Gjør deg klar";
   let token = null;
-  try { token = localStorage.getItem("karaffel-lag-token"); } catch (e) { token = null; }
+  try { token = localStorage.getItem(GJENG.nokkel("karaffel-lag-token")); } catch (e) { token = null; }
   if (token) {
     try {
-      const d = await kall("lk_hent", { p_token: token });
+      const d = await kall("lk_hent", { p_token: token, p_tilgang: GJENG.tilgang() });
       if (d && d.mitt_lag) tekst = "Fortsett som " + d.mitt_lag.navn;
     } catch (e) { /* ukjent lag: vis vanlig tekst */ }
   }
@@ -565,7 +568,7 @@ const kveldenErApen = s => Boolean(s && s.lagkveld_aktiv && !avsluttet(s));
 
 async function lastSmakinger() {
   try {
-    SMAKINGER = await kall("hent_samlinger", {});
+    SMAKINGER = await kall("hent_samlinger", { p_tilgang: GJENG.tilgang() });
     startNedtelling();
     visLagkveld();
   } catch (err) {
@@ -742,7 +745,7 @@ let RESULTAT = null;
 const rolig = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 async function lastResultat() {
-  try { RESULTAT = await kall("hent_kveldens_resultat", {}); } catch (e) { return; }   // behold det vi har ved feil
+  try { RESULTAT = await kall("hent_kveldens_resultat", { p_tilgang: GJENG.tilgang() }); } catch (e) { return; }   // behold det vi har ved feil
   const har = Boolean(RESULTAT && RESULTAT.lag && RESULTAT.lag.length);
   $("dansegulv").classList.toggle("har-hemmelighet", har);
   // Kameratene hopper bare til CONFIG.dansTilKl morgenen etter kvelden, som dansegulvet.
@@ -896,28 +899,62 @@ function styrDans() {
   document.addEventListener("visibilitychange", () => gulv.classList.toggle("pause-skjult", document.hidden));
 }
 
+// ---------------- Gjengen ----------------
+
+let GJENG_NAVN = "Karaffelkameratene";
+
+// Tekstene på siden hører til gjengen. Tegningen av kameratene og historien deres vises bare hos dem.
+function visGjeng(g) {
+  if (g.navn) {
+    GJENG_NAVN = g.navn;
+    document.title = g.navn;
+    $("gjeng-navn").textContent = g.navn;
+    $("gjeng-ingress").textContent = g.navn + " er en vinklubb. Vi møtes, smaker blindt, krangler høflig om druer og går hjem litt senere enn planlagt.";
+    $("gjeng-bunn").textContent = g.navn;
+  }
+  $("nt-smaking").href = GJENG.sti("smaking");
+  $("bunn-vert").href = GJENG.sti("vert");
+  const egen = GJENG.slug === "ggmm";
+  document.querySelectorAll(".merke-ikon, .hero-kamerater").forEach(e => { e.hidden = !egen; });
+  document.body.classList.toggle("uten-kamerater", !egen);
+
+  const om = $("om-tekst");
+  om.textContent = "";
+  String(g.om_oss || "").split(/\n\s*\n/).filter(t => t.trim()).forEach(t => {
+    const p = document.createElement("p");
+    p.textContent = t.trim();
+    om.append(p);
+  });
+  $("om").hidden = !om.childElementCount;
+  $("meny-om").hidden = !om.childElementCount;
+}
+
 // ---------------- Start ----------------
 
-styrDrikking();
-styrDans();
+// Ingenting hentes før gjengkoden er godkjent.
+GJENG.klar().then(g => {
+  visGjeng(g);
+  styrDrikking();
+  styrDans();
 
-lastTema();
-lastSmakinger();
-lastResultat();
-// Hent samlingene på nytt hvert minutt, så en PC som står på forsiden bytter til neste samling når kvelden avsluttes.
-setInterval(() => { if (!document.hidden) { lastSmakinger(); lastResultat(); } }, 60000);
-// Dra ned for å oppdatere (app.js) når siden er lagt på hjemskjermen.
-window.oppfrisk = () => Promise.all([lastSmakinger(), lastResultat(), lastVinlogg()]);
-$("dansegulv-tekst").addEventListener("click", visRangering);
-lyttEtterSkal();
-byggFilter();
-lastVinlogg();
-$("skjema").addEventListener("submit", sendSkjema);
-$("person").addEventListener("change", e => { tilstand.person = e.target.value; visLogg(); });
-$("kalender-knapp").addEventListener("click", lastNedKalender);
-$("en-til").addEventListener("click", () => {
-  $("bekreftelse").hidden = true;
-  $("skjema").reset();
-  $("skjema").hidden = false;
-  $("navn").focus();
+  lastTema();
+  lastSmakinger();
+  lastResultat();
+  // Hent samlingene på nytt hvert minutt, så en PC som står på forsiden bytter til neste samling når kvelden avsluttes.
+  setInterval(() => { if (!document.hidden) { lastSmakinger(); lastResultat(); } }, 60000);
+  // Dra ned for å oppdatere (app.js) når siden er lagt på hjemskjermen.
+  window.oppfrisk = () => Promise.all([lastSmakinger(), lastResultat(), lastVinlogg()]);
+  $("dansegulv-tekst").addEventListener("click", visRangering);
+  lyttEtterSkal();
+  byggFilter();
+  lastVinlogg();
+  $("skjema").addEventListener("submit", sendSkjema);
+  $("person").addEventListener("change", e => { tilstand.person = e.target.value; visLogg(); });
+  $("kalender-knapp").addEventListener("click", lastNedKalender);
+  $("en-til").addEventListener("click", () => {
+    $("bekreftelse").hidden = true;
+    $("skjema").reset();
+    $("skjema").hidden = false;
+    $("navn").focus();
+  });
 });

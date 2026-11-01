@@ -59,7 +59,10 @@ async function rpc(navn, args) {
   }
   const tekst = await svar.text();
   const data = tekst ? JSON.parse(tekst) : null;
-  if (!svar.ok) throw new Error((data && data.message) || "Feil fra serveren (" + svar.status + ")");
+  if (!svar.ok) {
+    if (window.GJENG) GJENG.sjekkFeil(data && data.message);
+    throw new Error((data && data.message) || "Feil fra serveren (" + svar.status + ")");
+  }
   return data;
 }
 
